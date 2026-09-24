@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiteForge</title>
+<style>
+  :root{
+    --bg:#0d0f12; --panel:#161a20; --panel2:#1d222a; --border:#2a3038;
+    --text:#e8ebef; --muted:#8b93a1; --accent:#5b8cff; --accent2:#7c9cff;
+    --green:#1f7a4d; --blue:#1f5f9e; --yellow:#8a6d1f; --red:#7a2626;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:18px 4%;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header h1{font-size:1.3rem;margin:0;}
+  header h1 span{color:var(--accent);}
+  .tabs{display:flex;gap:8px;padding:14px 4%;border-bottom:1px solid var(--border);}
+  .tab-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.95rem;}
+  .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  main{padding:20px 4% 140px;}
+  .action-log-panel{position:fixed;left:0;right:0;bottom:0;max-height:130px;overflow-y:auto;background:var(--panel2);border-top:1px solid var(--border);padding:8px 4%;font-size:.78rem;z-index:30;}
+  .action-log-header{color:var(--muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;font-size:.68rem;letter-spacing:.04em;}
+  .log-entry{display:flex;gap:8px;padding:2px 0;align-items:baseline;}
+  .log-entry.log-ok .log-icon{color:#3dbd6e;}
+  .log-entry.log-fail .log-icon{color:#e05252;}
+  .log-icon{flex:none;font-weight:700;}
+  .log-time{color:var(--muted);flex:none;}
+  .log-action{font-weight:600;flex:none;}
+  .log-detail{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+  input[type=text]{flex:1;min-width:220px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-size:1rem;font-family:inherit;}
+  select{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-size:.95rem;font-family:inherit;}
+  textarea{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.5;resize:vertical;}
+  button{background:var(--accent);border:none;color:#fff;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:.95rem;font-weight:600;font-family:inherit;}
+  button:hover{background:var(--accent2);}
+  button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+  button.secondary:hover{background:#262c36;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;}
+  th,td{padding:10px 12px;text-align:left;font-size:.9rem;border-bottom:1px solid var(--border);}
+  th{cursor:pointer;color:var(--muted);user-select:none;background:var(--panel2);white-space:nowrap;}
+  th:hover{color:var(--text);}
+  .pipeline-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;align-items:start;}
+  .pipeline-row{position:relative;border-radius:10px;overflow:hidden;background:var(--panel2);border:1px solid var(--border);}
+  .status-dot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 3px rgba(0,0,0,.25);}
+  .status-dot.cold{background:#e05252;}
+  .status-dot.sent{background:#e0b93d;}
+  .status-dot.replied{background:#e0b93d;}
+  .status-dot.sold{background:#3dbd6e;}
+  .pipeline-row-header{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:16px;cursor:pointer;}
+  .pipeline-row-header .name{font-weight:600;font-size:.95rem;padding-right:20px;}
+  .pipeline-row-actions{display:flex;align-items:center;gap:6px;}
+  .pipeline-row-actions button{flex:1;padding:7px 8px;font-size:.78rem;}
+  .pipeline-row-actions .chevron{flex:none;color:var(--muted);transition:transform .2s;padding:0 2px;}
+  .pipeline-row.expanded .chevron{transform:rotate(180deg);}
+  .pipeline-row-body{display:none;padding:0 16px 16px;}
+  .pipeline-row.expanded .pipeline-row-body{display:block;}
+  @media(max-width:900px){.pipeline-grid{grid-template-columns:repeat(2, 1fr);}}
+  @media(max-width:600px){.pipeline-grid{grid-template-columns:1fr;}}
+  .pipeline-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);}
+  .pipeline-detail-grid .label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;margin-bottom:2px;}
+  .pipeline-detail-grid .value{font-size:.88rem;overflow-wrap:anywhere;word-break:break-word;}
+  .open-demo-link{color:var(--accent);text-decoration:none;font-size:.88rem;overflow-wrap:anywhere;word-break:break-word;}
+  .open-demo-link:hover{text-decoration:underline;}
+  .table-wrap{overflow-x:auto;border-radius:10px;}
+  .score-badge{display:inline-block;min-width:26px;text-align:center;padding:2px 8px;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;}
+  .actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .actions button{padding:7px 12px;font-size:.82rem;}
+  .empty{color:var(--muted);padding:40px;text-align:center;}
+  @keyframes morph-square{
+    0%{border-radius:6%;transform:rotate(0deg);}
+    50%{border-radius:50%;transform:rotate(180deg);}
+    100%{border-radius:6%;transform:rotate(360deg);}
+  }
+  .morphing-square{width:16px;height:16px;flex:none;background:var(--accent);animation:morph-square 2s ease-in-out infinite;}
+  .loading-row{display:inline-flex;align-items:center;gap:8px;}
+  .loading-center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:70px 20px;}
+  .loading-center .morphing-square, .iframe-loading-overlay .morphing-square{width:56px;height:56px;}
+  .loading-center .loading-text, .iframe-loading-overlay .loading-text{font-size:.9rem;color:var(--muted);text-align:center;}
+  .pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;}
+  .pagination span{color:var(--muted);font-size:.85rem;}
+  .status{color:var(--muted);font-size:.85rem;margin-bottom:10px;min-height:1.2em;}
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(2px);z-index:50;align-items:center;justify-content:center;padding:20px;}
+  .modal-backdrop.open{display:flex;}
+  .modal-outer{position:relative;width:95vw;height:94vh;}
+  .modal{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:12px;width:100%;height:100%;overflow:hidden;padding:16px;display:flex;flex-direction:column;}
+  .modal h2{margin:0 0 10px;font-size:1.05rem;flex:none;}
+  .modal-close-circle{position:absolute;top:-14px;right:-14px;width:36px;height:36px;padding:0;margin:0;border-radius:50%;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-size:1.1rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.4);flex-shrink:0;}
+  .modal-close-circle:hover{background:#262c36;}
+  .iframe-wrap{position:relative;flex:1 1 auto;min-height:0;border-radius:8px;overflow:hidden;}
+  .modal iframe{width:100%;height:100%;border:1px solid var(--border);border-radius:8px;background:#fff;}
+  .iframe-loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--panel);border:1px solid var(--border);border-radius:8px;z-index:5;}
+  .edit-overlay-scrim{position:absolute;left:0;right:0;bottom:0;height:38%;z-index:8;pointer-events:none;background:linear-gradient(to top, rgba(6,7,9,.92) 0%, rgba(6,7,9,.75) 45%, rgba(6,7,9,0) 100%);}
+  .edit-overlay-controls{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:10;width:min(640px,92%);display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+  .layout-image-preview{display:flex;align-items:center;gap:8px;margin:0 0 8px;background:rgba(255,255,255,.05);border:1px solid #333638;border-radius:10px;padding:6px 10px;}
+  .layout-image-preview img{width:36px;height:36px;object-fit:cover;border-radius:4px;flex:none;}
+  .layout-image-preview span{flex:1;font-size:.78rem;color:#9CA3AF;}
+  .layout-image-preview button{flex:none;padding:2px 8px;font-size:.9rem;}
+  /* Prompt box — styled after a chat-style AI prompt input: dark rounded
+     card, autosizing textarea, icon action row along the bottom. */
+  .prompt-box{background:#1F2023;border:1px solid #3a3d42;border-radius:24px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  .prompt-box-textarea{width:100%;background:transparent;border:none;color:#e8ebef;font-family:inherit;font-size:.92rem;line-height:1.5;padding:4px 4px 6px;resize:none;min-height:22px;max-height:160px;outline:none;}
+  .prompt-box-textarea::placeholder{color:#7d8590;}
+  .prompt-box-actions{display:flex;align-items:center;gap:6px;}
+  .prompt-box-spacer{flex:1;}
+  .prompt-icon-btn{flex:none;width:32px;height:32px;border-radius:50%;background:transparent;border:none;color:#9CA3AF;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+  .prompt-icon-btn:hover{background:rgba(255,255,255,.1);color:#D1D5DB;}
+  .prompt-icon-btn-secondary{border:1px solid #3a3d42;color:#9CA3AF;font-size:.7rem;}
+  .prompt-icon-btn-send{background:#fff;color:#1F2023;}
+  .prompt-icon-btn-send:hover{background:rgba(255,255,255,.85);color:#1F2023;}
+  .component-results-wrap{position:relative;max-height:70vh;overflow-y:auto;overflow-x:hidden;background:#1F2023;border:1px solid #3a3d42;border-radius:16px;padding:16px;}
+  .component-results{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:640px){.component-results{grid-template-columns:1fr;}}
+  .component-result{display:flex;flex-direction:column;background:#25262a;border:1px solid #3a3d42;border-radius:14px;overflow:hidden;}
+  .component-result:hover{border-color:#5b8cff;}
+  .component-result img{width:100%;height:280px;min-height:280px;object-fit:cover;object-position:top;background:#151618;display:block;}
+  .component-result .cr-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;}
+  .component-result .cr-name{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .component-result .cr-desc{color:#9CA3AF;font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .component-result .cr-add-btn{width:100%;margin-top:4px;padding:10px;border-radius:9px;border:none;background:#5b8cff;color:#fff;font-weight:600;font-size:.85rem;cursor:pointer;}
+  .component-result .cr-add-btn:hover{background:#7c9cff;}
+  .component-results-close{position:absolute;top:-10px;right:-10px;background:#1F2023;border:1px solid #3a3d42;color:var(--text);width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;padding:0;font-size:.78rem;line-height:1;}
+  .component-results-empty{padding:18px 10px;color:#9CA3AF;font-size:.82rem;text-align:center;width:100%;}
+  .component-results-loading{display:flex;align-items:center;gap:8px;padding:18px 10px;color:#9CA3AF;font-size:.82rem;width:100%;}
+  .edit-overlay-controls .status{margin:0;font-size:.78rem;text-align:center;}
+  .email-card label{font-size:.8rem;color:var(--muted);display:block;margin:10px 0 4px;}
+  .email-card input[type=text]{width:100%;margin-bottom:0;}
+  .email-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .checkbox-cell{text-align:center;}
+  .subtabs{display:flex;gap:8px;margin-bottom:16px;}
+  .subtab-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:7px 16px;border-radius:20px;cursor:pointer;font-size:.85rem;}
+  .subtab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .email-row{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;}
+  .email-row-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;gap:12px;}
+  .email-row-header .name{font-weight:600;}
+  .email-row-header .meta{color:var(--muted);font-size:.82rem;margin-left:10px;}
+  .email-row-header .left{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .email-row-header .chevron{flex:none;color:var(--muted);transition:transform .2s;}
+  .email-row.expanded .chevron{transform:rotate(180deg);}
+  .email-row-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border);}
+  .email-row.expanded .email-row-body{display:block;padding-top:16px;}
+  .sent-row{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 18px;margin-bottom:8px;gap:12px;flex-wrap:wrap;}
+  .sent-row .name{font-weight:600;}
+  .sent-row .meta{color:var(--muted);font-size:.82rem;}
+  .sent-row a{color:var(--accent);text-decoration:none;font-size:.85rem;}
+  @media(max-width:700px){
+    header{flex-direction:column;align-items:flex-start;}
+    th,td{font-size:.8rem;padding:8px 6px;}
+    .modal-outer{width:96vw;height:88vh;}
+    .modal{padding:14px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Site<span>Forge</span></h1>
+  <div class="status" id="globalStatus"></div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="leads">Leads</button>
+  <button class="tab-btn" data-tab="pipeline">Pipeline</button>
+  <button class="tab-btn" data-tab="emails">Emails</button>
+</div>
+
+<main>
+
+  <!-- TAB 1: LEADS -->
+  <section id="tab-leads" class="tab-panel active">
+    <div class="row">
+      <input type="text" id="searchQuery" placeholder="e.g. electrician leinster">
+      <button id="searchBtn">Search</button>
+    </div>
+    <div class="status" id="leadsStatus"></div>
+    <div class="row">
+      <button class="secondary" id="addSelectedBtn" disabled>Add selected to pipeline</button>
+    </div>
+    <div class="loading-center" id="leadsLoadingCenter" style="display:none;">
+      <div class="morphing-square"></div>
+      <div class="loading-text">Loading...</div>
+    </div>
+    <div class="table-wrap" id="leadsTableWrap">
+      <table id="leadsTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th data-key="score">Score</th>
+            <th data-key="name">Name</th>
+            <th data-key="phone">Phone</th>
+            <th data-key="email">Email</th>
+            <th data-key="website">Website</th>
+            <th data-key="location">Location</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="empty" id="leadsEmpty">Search for a trade + location to find leads.</div>
+    <div class="pagination" id="leadsPagination" style="display:none;">
+      <button class="secondary" id="prevPageBtn">&larr; Prev</button>
+      <span id="pageIndicator"></span>
+      <button class="secondary" id="nextPageBtn">Next &rarr;</button>
+    </div>
+  </section>
+
+  <!-- TAB 2: PIPELINE -->
+  <section id="tab-pipeline" class="tab-panel">
+    <div class="status" id="pipelineStatus"></div>
+    <div class="loading-center" id="pipelineLoadingCenter" style="display:none;">
+      <div class="morphing-square"></div>
+      <div class="loading-text">Loading pipeline...</div>
+    </div>
+    <div id="pipelineTableWrap">
+      <div id="pipelineList" class="pipeline-grid"></div>
+    </div>
+    <div class="empty" id="pipelineEmpty" style="display:none;">No leads in pipeline yet. Add some from the Leads tab.</div>
+    <div class="pagination" id="pipelinePagination" style="display:none;">
+      <button class="secondary" id="pipelinePrevBtn">&larr; Prev</button>
+      <span id="pipelinePageIndicator"></span>
+      <button class="secondary" id="pipelineNextBtn">Next &rarr;</button>
+    </div>
+  </section>
+
+  <!-- TAB 3: EMAILS -->
+  <section id="tab-emails" class="tab-panel">
+    <div class="subtabs">
+      <button class="subtab-btn active" id="emailsPendingTabBtn" data-emailview="pending">Pending</button>
+      <button class="subtab-btn" id="emailsSentTabBtn" data-emailview="sent">Sent</button>
+    </div>
+    <div class="status" id="emailsStatus"></div>
+    <div class="loading-center" id="emailsLoadingCenter" style="display:none;">
+      <div class="morphing-square"></div>
+      <div class="loading-text" id="emailsLoadingText">Claude is drafting outreach copy...</div>
+    </div>
+    <div id="emailsPendingView">
+      <div id="emailsList"></div>
+      <div class="empty" id="emailsEmpty" style="display:none;">No demos ready for outreach yet.</div>
+    </div>
+    <div id="emailsSentView" style="display:none;">
+      <div id="emailsSentList"></div>
+      <div class="empty" id="emailsSentEmpty" style="display:none;">No emails sent yet.</div>
+    </div>
+  </section>
+
+</main>
+
+<div class="action-log-panel">
+  <div class="action-log-header">Recent actions</div>
+  <div id="actionLogList"></div>
+</div>
+
+<!-- Edit Site Modal -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal-outer">
+    <button class="modal-close-circle" id="closeModalBtn">&times;</button>
+    <div class="modal">
+      <h2 id="editModalTitle">Edit Site</h2>
+      <div class="iframe-wrap">
+        <iframe id="editIframe" src="about:blank"></iframe>
+        <div class="iframe-loading-overlay" id="iframeLoadingOverlay">
+          <div class="morphing-square"></div>
+          <div class="loading-text" id="iframeLoadingText">Building...</div>
+        </div>
+        <div class="edit-overlay-scrim"></div>
+        <div class="edit-overlay-controls">
+          <div id="componentResultsWrap" class="component-results-wrap" style="display:none;">
+            <button type="button" class="component-results-close" id="componentCloseBtn" title="Close">&times;</button>
+            <div id="componentResults" class="component-results"></div>
+          </div>
+          <div class="prompt-box" id="promptBox">
+            <div id="layoutImagePreview" class="layout-image-preview" style="display:none;">
+              <img id="layoutImageThumb" alt="Attached layout reference">
+              <span>Layout reference attached — describe what goes in each box/colour below</span>
+              <button type="button" class="secondary" id="removeLayoutImageBtn">&times;</button>
+            </div>
+            <textarea id="editInstruction" class="prompt-box-textarea" rows="1" placeholder="Type an edit, or 'add [component]' to search 21st.dev..."></textarea>
+            <div class="prompt-box-actions">
+              <button type="button" class="prompt-icon-btn" id="attachImageBtn" title="Attach a layout screenshot/mockup">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <input type="file" id="layoutImageInput" accept="image/*" style="display:none;">
+              <div class="prompt-box-spacer"></div>
+              <button type="button" class="prompt-icon-btn prompt-icon-btn-secondary" id="deployBtn" title="Deploy to Vercel">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 19.5h20L12 2z"/></svg>
+              </button>
+              <button type="button" class="prompt-icon-btn prompt-icon-btn-send" id="applyEditBtn" title="Apply edit">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="status" id="editStatus"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  leads: [],
+  pipeline: [],
+  emails: [],
+  sortKeyLeads: 'score', sortDirLeads: -1,
+  sortKeyPipeline: 'score', sortDirPipeline: -1,
+  currentQuery: '',
+  currentPage: 1,
+  totalPages: null,
+  hasMore: false,
+};
+
+function setStatus(id, msg, isError){
+  const el = document.getElementById(id);
+  el.textContent = msg || '';
+  el.style.color = isError ? '#ff8080' : 'var(--muted)';
+}
+
+function showRetryButton(statusId, retryFn){
+  const el = document.getElementById(statusId);
+  const btn = document.createElement('button');
+  btn.className = 'secondary';
+  btn.textContent = 'Retry';
+  btn.style.marginLeft = '10px';
+  btn.style.padding = '4px 10px';
+  btn.style.fontSize = '.78rem';
+  btn.addEventListener('click', retryFn);
+  el.appendChild(btn);
+}
+
+state.actionLog = [];
+
+function logAction(action, success, detail){
+  state.actionLog.unshift({ time: new Date(), action, success, detail: detail || '' });
+  if (state.actionLog.length > 10) state.actionLog.length = 10;
+  renderActionLog();
+}
+
+function renderActionLog(){
+  const list = document.getElementById('actionLogList');
+  if (!list) return;
+  list.innerHTML = state.actionLog.map(e => {
+    const t = e.time.toLocaleTimeString();
+    const cls = e.success ? 'log-ok' : 'log-fail';
+    const icon = e.success ? '✓' : '✗';
+    return `<div class="log-entry ${cls}"><span class="log-icon">${icon}</span><span class="log-time">${t}</span><span class="log-action">${escapeHtml(e.action)}</span>${e.detail ? `<span class="log-detail">${escapeHtml(e.detail)}</span>` : ''}</div>`;
+  }).join('');
+}
+
+function setLoading(id, msg){
+  const el = document.getElementById(id);
+  el.style.color = 'var(--muted)';
+  el.innerHTML = `<span class="loading-row"><span class="morphing-square"></span>${escapeHtml(msg || '')}</span>`;
+}
+
+function showLoadingCenter(id, show){
+  document.getElementById(id).style.display = show ? 'flex' : 'none';
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'pipeline') loadPipeline();
+    if (btn.dataset.tab === 'emails') loadEmails();
+  });
+});
+
+// ---------- Tab 1: Leads ----------
+document.getElementById('searchBtn').addEventListener('click', () => {
+  const query = document.getElementById('searchQuery').value.trim();
+  if (!query) return;
+  state.currentQuery = query;
+  fetchLeadsPage(1);
+});
+document.getElementById('searchQuery').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('searchBtn').click();
+});
+document.getElementById('prevPageBtn').addEventListener('click', () => {
+  if (state.currentPage > 1) fetchLeadsPage(state.currentPage - 1);
+});
+document.getElementById('nextPageBtn').addEventListener('click', () => {
+  if (state.hasMore) fetchLeadsPage(state.currentPage + 1);
+});
+
+async function fetchLeadsPage(page){
+  const query = state.currentQuery;
+  if (!query) return;
+  setStatus('leadsStatus', '');
+  document.getElementById('leadsTableWrap').style.display = 'none';
+  document.getElementById('leadsEmpty').style.display = 'none';
+  document.getElementById('leadsPagination').style.display = 'none';
+  document.querySelector('#leadsLoadingCenter .loading-text').textContent = 'Loading...';
+  showLoadingCenter('leadsLoadingCenter', true);
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('prevPageBtn').disabled = true;
+  document.getElementById('nextPageBtn').disabled = true;
+  try {
+    const res = await fetch('/api/search', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query, page})
+    });
+    const data = await res.json();
+    if (data.error) {
+      state.leads = [];
+      state.hasMore = false;
+      setStatus('leadsStatus', data.error, true);
+      logAction('Search leads', false, data.error);
+      return;
+    }
+    state.leads = data.results || [];
+    state.currentPage = data.page || page;
+    state.totalPages = data.total_pages || null;
+    state.hasMore = !!data.has_more;
+
+    const scanned = data.scanned != null ? data.scanned : state.leads.length;
+    let msg = `Page ${state.currentPage}${state.totalPages ? ' of ' + state.totalPages : ''} — scanned ${scanned} listing(s), ${state.leads.length} qualify as leads` +
+      (data.total_count ? ` (goldenpages reports ~${data.total_count} total).` : '.');
+    if (data.warning) msg += ` Warning: ${data.warning}`;
+    setStatus('leadsStatus', msg);
+    logAction('Search leads', true, `${state.leads.length} qualifying`);
+  } catch(e) {
+    setStatus('leadsStatus', 'Search failed: ' + e.message, true);
+    logAction('Search leads', false, e.message);
+  } finally {
+    showLoadingCenter('leadsLoadingCenter', false);
+    document.getElementById('leadsTableWrap').style.display = '';
+    renderLeads();
+    renderPagination();
+    document.getElementById('searchBtn').disabled = false;
+    document.getElementById('prevPageBtn').disabled = state.currentPage <= 1;
+    document.getElementById('nextPageBtn').disabled = !state.hasMore;
+  }
+}
+
+function renderPagination(){
+  const pag = document.getElementById('leadsPagination');
+  if (!state.leads.length && state.currentPage === 1) { pag.style.display = 'none'; return; }
+  pag.style.display = 'flex';
+  document.getElementById('pageIndicator').textContent =
+    `Page ${state.currentPage}${state.totalPages ? ' of ' + state.totalPages : ''}`;
+  document.getElementById('prevPageBtn').disabled = state.currentPage <= 1;
+  document.getElementById('nextPageBtn').disabled = !state.hasMore;
+}
+
+function sortRows(rows, key, dir){
+  return [...rows].sort((a,b) => {
+    let av = a[key], bv = b[key];
+    if (key === 'score') { av = Number(av)||0; bv = Number(bv)||0; }
+    else { av = (av||'').toString().toLowerCase(); bv = (bv||'').toString().toLowerCase(); }
+    if (av < bv) return -1*dir;
+    if (av > bv) return 1*dir;
+    return 0;
+  });
+}
+
+function renderLeads(){
+  const tbody = document.querySelector('#leadsTable tbody');
+  const empty = document.getElementById('leadsEmpty');
+  tbody.innerHTML = '';
+  if (!state.leads.length) { empty.style.display = 'block'; document.getElementById('addSelectedBtn').disabled = true; return; }
+  empty.style.display = 'none';
+
+  const rows = sortRows(state.leads, state.sortKeyLeads, state.sortDirLeads);
+  rows.forEach((lead, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="checkbox-cell"><input type="checkbox" class="lead-check" data-idx="${i}"></td>
+      <td><span class="score-badge">${lead.score}</span></td>
+      <td>${escapeHtml(lead.name||'')}</td>
+      <td>${escapeHtml(lead.phone||'')}</td>
+      <td>${escapeHtml(lead.email||'')}</td>
+      <td>${lead.website ? `<a href="${escapeHtml(lead.website)}" target="_blank" style="color:var(--accent)">link</a>` : ''}</td>
+      <td>${escapeHtml(lead.location||'')}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.lead-check').forEach(cb => cb.addEventListener('change', updateAddButton));
+  updateAddButton();
+}
+
+function updateAddButton(){
+  const any = document.querySelectorAll('.lead-check:checked').length > 0;
+  document.getElementById('addSelectedBtn').disabled = !any;
+}
+
+document.getElementById('addSelectedBtn').addEventListener('click', async () => {
+  const rows = sortRows(state.leads, state.sortKeyLeads, state.sortDirLeads);
+  const checked = [...document.querySelectorAll('.lead-check:checked')].map(cb => rows[Number(cb.dataset.idx)]);
+  if (!checked.length) return;
+  setLoading('leadsStatus', 'Adding to pipeline...');
+  try {
+    const res = await fetch('/api/pipeline/add', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({leads: checked})
+    });
+    const data = await res.json();
+    setStatus('leadsStatus', `Added ${data.added} lead(s) to pipeline.`);
+    logAction('Add to pipeline', true, `${data.added} added`);
+  } catch(e) {
+    setStatus('leadsStatus', 'Failed to add: ' + e.message, true);
+    logAction('Add to pipeline', false, e.message);
+  }
+});
+
+document.querySelectorAll('#leadsTable th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (state.sortKeyLeads === key) state.sortDirLeads *= -1;
+    else { state.sortKeyLeads = key; state.sortDirLeads = 1; }
+    renderLeads();
+  });
+});
+
+// ---------- Tab 2: Pipeline ----------
+const PIPELINE_PAGE_SIZE = 12; // 3 across x 4 down
+state.pipelinePage = 1;
+state.expandedSlugs = new Set();
+
+async function loadPipeline(){
+  setStatus('pipelineStatus', '');
+  document.getElementById('pipelineTableWrap').style.display = 'none';
+  document.getElementById('pipelineEmpty').style.display = 'none';
+  showLoadingCenter('pipelineLoadingCenter', true);
+  try {
+    const res = await fetch('/api/pipeline');
+    const data = await res.json();
+    state.pipeline = data.leads || [];
+    setStatus('pipelineStatus', `${state.pipeline.length} lead(s) in pipeline.`);
+  } catch(e) {
+    setStatus('pipelineStatus', 'Failed to load: ' + e.message, true);
+  } finally {
+    showLoadingCenter('pipelineLoadingCenter', false);
+    document.getElementById('pipelineTableWrap').style.display = '';
+    renderPipeline();
+  }
+}
+
+document.getElementById('pipelinePrevBtn').addEventListener('click', () => {
+  if (state.pipelinePage > 1) { state.pipelinePage--; renderPipeline(); }
+});
+document.getElementById('pipelineNextBtn').addEventListener('click', () => {
+  state.pipelinePage++; renderPipeline();
+});
+
+function renderPipeline(){
+  const list = document.getElementById('pipelineList');
+  const empty = document.getElementById('pipelineEmpty');
+  const pagination = document.getElementById('pipelinePagination');
+  list.innerHTML = '';
+
+  if (!state.pipeline.length) {
+    empty.style.display = 'block';
+    pagination.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const sorted = sortRows(state.pipeline, 'score', -1);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PIPELINE_PAGE_SIZE));
+  if (state.pipelinePage > totalPages) state.pipelinePage = totalPages;
+  const start = (state.pipelinePage - 1) * PIPELINE_PAGE_SIZE;
+  const pageLeads = sorted.slice(start, start + PIPELINE_PAGE_SIZE);
+
+  pageLeads.forEach(lead => {
+    let rowClass = 'cold';
+    if (lead.sold === 'Yes') rowClass = 'sold';
+    else if (lead.replied === 'Yes') rowClass = 'replied';
+    else if (lead.email_sent === 'Yes') rowClass = 'sent';
+
+    const row = document.createElement('div');
+    row.className = 'pipeline-row ' + rowClass + (state.expandedSlugs.has(lead.slug) ? ' expanded' : '');
+    row.innerHTML = `
+      <span class="status-dot ${rowClass}" title="${rowClass}"></span>
+      <div class="pipeline-row-header">
+        <span class="name">${escapeHtml(lead.name||'')}</span>
+        <div class="pipeline-row-actions">
+          <button class="secondary build-btn" data-slug="${lead.slug}">${lead.demo_built === 'Yes' ? 'Rebuild' : 'Build Site'}</button>
+          <button class="secondary edit-btn" data-slug="${lead.slug}" ${lead.demo_built === 'Yes' ? '' : 'disabled'}>Edit Site</button>
+          <span class="chevron">&#9662;</span>
+        </div>
+      </div>
+      <div class="pipeline-row-body">
+        <div class="pipeline-detail-grid">
+          <div><span class="label">Location</span><span class="value">${escapeHtml(lead.location||'')}</span></div>
+          <div><span class="label">Score</span><span class="value"><span class="score-badge">${lead.score}</span></span></div>
+          <div><span class="label">Email</span><span class="value">${escapeHtml(lead.email||'')}</span></div>
+          <div><span class="label">Demo Built</span><span class="value">${lead.demo_built}</span></div>
+          <div><span class="label">Email Sent</span><span class="value">${lead.email_sent}</span></div>
+          <div><span class="label">Replied</span><span class="value">${lead.replied}</span></div>
+          <div><span class="label">Sold</span><span class="value">${lead.sold}</span></div>
+          ${lead.demo_url ? `<div><span class="label">Demo</span><a class="open-demo-link" href="${escapeHtml(lead.demo_url)}" target="_blank" rel="noopener noreferrer">Open Demo &rarr;</a></div>` : ''}
+        </div>
+      </div>
+    `;
+    row.querySelector('.pipeline-row-header').addEventListener('click', () => {
+      row.classList.toggle('expanded');
+      if (row.classList.contains('expanded')) state.expandedSlugs.add(lead.slug);
+      else state.expandedSlugs.delete(lead.slug);
+    });
+    row.querySelector('.build-btn').addEventListener('click', (e) => { e.stopPropagation(); openPreviewModal(lead.slug, true); });
+    row.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openPreviewModal(lead.slug, false); });
+    list.appendChild(row);
+  });
+
+  pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+  document.getElementById('pipelinePageIndicator').textContent = `Page ${state.pipelinePage} of ${totalPages}`;
+  document.getElementById('pipelinePrevBtn').disabled = state.pipelinePage <= 1;
+  document.getElementById('pipelineNextBtn').disabled = state.pipelinePage >= totalPages;
+}
+
+// ---------- Edit Site Modal ----------
+let currentEditSlug = null;
+let currentPreviewPort = null;
+
+function setIframeLoading(show, text){
+  if (text) document.getElementById('iframeLoadingText').textContent = text;
+  document.getElementById('iframeLoadingOverlay').style.display = show ? 'flex' : 'none';
+}
+
+// Guards against a stale iframe 'load' event (e.g. from the earlier
+// about:blank navigation) firing AFTER we've already moved on to loading
+// the real preview URL and hiding the loading overlay too early.
+let previewLoadGen = 0;
+
+function resetPreviewIframe(){
+  previewLoadGen++;
+  document.getElementById('editIframe').src = 'about:blank';
+}
+
+function loadPreviewUrl(url){
+  const gen = ++previewLoadGen;
+  const iframe = document.getElementById('editIframe');
+  iframe.onload = () => {
+    if (gen === previewLoadGen) setIframeLoading(false);
+  };
+  iframe.src = url;
+}
+
+let buildMessageTimer = null;
+const BUILD_MESSAGES = ['Building...', 'Installing dependencies...', 'This can take a minute on first build...'];
+
+function startBuildMessageRotation(){
+  stopBuildMessageRotation();
+  let i = 0;
+  document.getElementById('iframeLoadingText').textContent = BUILD_MESSAGES[0];
+  buildMessageTimer = setInterval(() => {
+    i = (i + 1) % BUILD_MESSAGES.length;
+    document.getElementById('iframeLoadingText').textContent = BUILD_MESSAGES[i];
+  }, 3000);
+}
+
+function stopBuildMessageRotation(){
+  if (buildMessageTimer) { clearInterval(buildMessageTimer); buildMessageTimer = null; }
+}
+
+// build=true: build/rebuild the site from scratch, then preview it.
+// build=false: just (re)connect to an already-built site's live preview.
+async function openPreviewModal(slug, build){
+  currentEditSlug = slug;
+  currentPreviewPort = null;
+  const lead = state.pipeline.find(l => l.slug === slug);
+  document.getElementById('editModalTitle').textContent = (build ? 'Building: ' : 'Edit Site: ') + (lead ? lead.name : slug);
+  resetPreviewIframe();
+  clearEditInstruction();
+  hideComponentResults();
+  document.getElementById('removeLayoutImageBtn').click();
+  setStatus('editStatus', '');
+  document.getElementById('editModal').classList.add('open');
+  setIframeLoading(true);
+  if (build) startBuildMessageRotation();
+  else setIframeLoading(true, 'Starting live preview...');
+
+  try {
+    const res = build
+      ? await fetch('/api/pipeline/build_site', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({slug})
+        })
+      : await fetch(`/api/pipeline/preview/${slug}`);
+    const data = await res.json();
+    stopBuildMessageRotation();
+    if (data.error) {
+      setIframeLoading(false);
+      const stepLabel = data.step ? `[${data.step}] ` : '';
+      setStatus('editStatus', stepLabel + data.error, true);
+      logAction(build ? 'Build site' : 'Open preview', false, data.error);
+      return;
+    }
+
+    const port = data.preview_port || data.port;
+    currentPreviewPort = port;
+    setIframeLoading(true, 'Loading preview...');
+    loadPreviewUrl(`http://localhost:${port}/`);
+    logAction(build ? 'Build site' : 'Open preview', true, slug);
+    if (build) loadPipeline();
+  } catch(e) {
+    stopBuildMessageRotation();
+    setIframeLoading(false);
+    setStatus('editStatus', (build ? 'Build failed: ' : 'Failed to start preview: ') + e.message, true);
+    logAction(build ? 'Build site' : 'Open preview', false, e.message);
+  }
+}
+
+document.getElementById('closeModalBtn').addEventListener('click', () => {
+  document.getElementById('editModal').classList.remove('open');
+  stopBuildMessageRotation();
+});
+
+// ---------- Hotbar: 21st.dev component search ----------
+function hideComponentResults(){
+  document.getElementById('componentResultsWrap').style.display = 'none';
+  document.getElementById('componentResults').innerHTML = '';
+}
+
+document.getElementById('componentCloseBtn').addEventListener('click', hideComponentResults);
+
+async function searchComponents(query){
+  const el = document.getElementById('componentResults');
+  const wrap = document.getElementById('componentResultsWrap');
+  setLoading('editStatus', `Searching 21st.dev for "${query}"...`);
+  wrap.style.display = 'block';
+  el.innerHTML = `<div class="component-results-loading"><span class="morphing-square"></span>Searching 21st.dev...</div>`;
+  try {
+    const res = await fetch('/api/pipeline/component_search', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query})
+    });
+    const data = await res.json();
+    if (data.error) { setStatus('editStatus', data.error, true); logAction('Component search', false, data.error); hideComponentResults(); return; }
+    if (!data.results || !data.results.length) {
+      setStatus('editStatus', `No results for "${query}".`);
+      logAction('Component search', true, query);
+      el.innerHTML = `<div class="component-results-empty">No results found for "${escapeHtml(query)}".</div>`;
+      return;
+    }
+    setStatus('editStatus', `${data.results.length} result(s) for "${query}" — click "Add to site" on one to use it.`);
+    logAction('Component search', true, query);
+    el.innerHTML = data.results.map((r, i) => `
+      <div class="component-result" data-i="${i}">
+        ${r.thumbnail ? `<img src="${escapeHtml(r.thumbnail)}" alt="">` : '<div style="height:280px;background:#151618;"></div>'}
+        <div class="cr-body">
+          <div class="cr-name">${escapeHtml(r.name)}</div>
+          <div class="cr-desc">${escapeHtml(r.description||'')}</div>
+          <button type="button" class="cr-add-btn" data-i="${i}">Add to site</button>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('componentResultsWrap').scrollTop = 0;
+    el.querySelectorAll('.cr-add-btn').forEach(btn => {
+      btn.addEventListener('click', () => applyComponent(data.results[Number(btn.dataset.i)], query));
+    });
+  } catch(e) {
+    setStatus('editStatus', 'Component search failed: ' + e.message, true);
+    logAction('Component search', false, e.message);
+  }
+}
+
+async function applyComponent(component, sectionHint){
+  if (!currentEditSlug) return;
+  hideComponentResults();
+  setLoading('editStatus', `Adding "${component.name}"...`);
+  try {
+    const res = await fetch('/api/pipeline/component_apply', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ slug: currentEditSlug, component_id: component.id, section: sectionHint })
+    });
+    const data = await res.json();
+    if (data.error) { setStatus('editStatus', data.error, true); logAction('Add component', false, data.error); return; }
+    setStatus('editStatus', 'Added: ' + (data.changed_files || []).join(', '));
+    logAction('Add component', true, component.name);
+    clearEditInstruction();
+    if (currentPreviewPort) {
+      setIframeLoading(true, 'Reloading preview...');
+      loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
+    }
+  } catch(e) {
+    setStatus('editStatus', 'Failed: ' + e.message, true);
+    logAction('Add component', false, e.message);
+  }
+}
+
+const HOTBAR_STOPWORDS = new Set([
+  'new','a','an','the','our','my','some','another','nice','cool','good',
+  'better','different','fresh','little','small','simple','basic'
+]);
+
+function extractComponentQuery(phrase){
+  const words = phrase.trim().split(/\s+/).filter(w => !HOTBAR_STOPWORDS.has(w.toLowerCase()));
+  return (words.join(' ') || phrase.trim());
+}
+
+// ---------- Hotbar: attach a layout screenshot ----------
+let pendingLayoutImage = null;      // base64 (no data: prefix)
+let pendingLayoutImageType = null;  // e.g. image/png
+
+document.getElementById('attachImageBtn').addEventListener('click', () => {
+  document.getElementById('layoutImageInput').click();
+});
+
+document.getElementById('layoutImageInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/s);
+    if (!match) return;
+    pendingLayoutImageType = match[1];
+    pendingLayoutImage = match[2];
+    document.getElementById('layoutImageThumb').src = dataUrl;
+    document.getElementById('layoutImagePreview').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('removeLayoutImageBtn').addEventListener('click', () => {
+  pendingLayoutImage = null;
+  pendingLayoutImageType = null;
+  document.getElementById('layoutImageInput').value = '';
+  document.getElementById('layoutImagePreview').style.display = 'none';
+});
+
+async function submitEditInstruction(){
+  const instruction = document.getElementById('editInstruction').value.trim();
+  if (!instruction || !currentEditSlug) return;
+
+  // Only treat this as a "search 21st.dev for a component" request when it
+  // reads like a short noun phrase (e.g. "add new footer") — a full
+  // instruction sentence that merely happens to start with "add" (e.g. the
+  // "Add animations" hotbar preset's actual text, "Add subtle scroll/
+  // entrance animations to sections that don't have any yet.") should go
+  // through as a normal edit instead of hijacking it into a search.
+  const addMatch = instruction.match(/^add\s+(.+)/i);
+  const addPhrase = addMatch ? addMatch[1].trim() : '';
+  const looksLikeComponentRequest = addMatch
+    && !pendingLayoutImage
+    && !/[.!?]/.test(addPhrase)
+    && addPhrase.split(/\s+/).length <= 5;
+  if (looksLikeComponentRequest) {
+    searchComponents(extractComponentQuery(addPhrase));
+    return;
+  }
+
+  hideComponentResults();
+  const hasImage = !!pendingLayoutImage;
+  setLoading('editStatus', hasImage
+    ? 'Applying edit from your layout reference (Claude is editing the site source)...'
+    : 'Applying edit (Claude is editing the site source)...');
+  try {
+    const res = await fetch('/api/pipeline/edit_site', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        slug: currentEditSlug,
+        instruction,
+        image: pendingLayoutImage,
+        image_media_type: pendingLayoutImageType,
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      setStatus('editStatus', data.error, true);
+      logAction('Apply edit', false, data.error);
+      return;
+    }
+    setStatus('editStatus', 'Edit applied: ' + (data.changed_files || []).join(', '));
+    logAction('Apply edit', true, instruction.slice(0, 60) + (hasImage ? ' (with layout image)' : ''));
+    document.getElementById('removeLayoutImageBtn').click();
+    if (currentPreviewPort) {
+      setIframeLoading(true, 'Reloading preview...');
+      loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
+    }
+  } catch(e) {
+    setStatus('editStatus', 'Failed: ' + e.message, true);
+    logAction('Apply edit', false, e.message);
+  }
+}
+
+document.getElementById('applyEditBtn').addEventListener('click', submitEditInstruction);
+
+// Autosize the prompt textarea as the user types, and submit on Enter
+// (Shift+Enter for a newline) like a normal chat input.
+const editInstructionEl = document.getElementById('editInstruction');
+function clearEditInstruction(){
+  editInstructionEl.value = '';
+  editInstructionEl.style.height = 'auto';
+}
+editInstructionEl.addEventListener('input', () => {
+  editInstructionEl.style.height = 'auto';
+  editInstructionEl.style.height = Math.min(editInstructionEl.scrollHeight, 160) + 'px';
+});
+editInstructionEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitEditInstruction();
+  }
+});
+
+document.getElementById('deployBtn').addEventListener('click', async () => {
+  if (!currentEditSlug) return;
+  const slug = currentEditSlug;
+  setLoading('editStatus', 'Deploying to Vercel...');
+
+  const pollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/pipeline/deploy_status/${slug}`);
+      const status = await res.json();
+      if (status.detail && !status.done) setLoading('editStatus', status.detail);
+    } catch (e) { /* ignore poll errors, the main request will surface real failures */ }
+  }, 1500);
+
+  try {
+    const res = await fetch('/api/pipeline/deploy', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({slug})
+    });
+    const data = await res.json();
+    if (data.error) {
+      const manual = data.manual_dir
+        ? ` Your local files are untouched at ${data.manual_dir} — you can deploy manually by running "npx vercel deploy --prod" in that folder.`
+        : '';
+      setStatus('editStatus', data.error + manual, true);
+      logAction('Deploy', false, data.error);
+      return;
+    }
+    setStatus('editStatus', 'Live: ' + data.demo_url);
+    logAction('Deploy', true, data.demo_url);
+    loadPipeline();
+  } catch(e) {
+    setStatus('editStatus', 'Deploy failed: ' + e.message, true);
+    logAction('Deploy', false, e.message);
+  } finally {
+    clearInterval(pollTimer);
+  }
+});
+
+// ---------- Tab 3: Emails ----------
+state.emailView = 'pending';
+
+document.querySelectorAll('.subtab-btn[data-emailview]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.emailView = btn.dataset.emailview;
+    document.querySelectorAll('.subtab-btn[data-emailview]').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('emailsPendingView').style.display = state.emailView === 'pending' ? '' : 'none';
+    document.getElementById('emailsSentView').style.display = state.emailView === 'sent' ? '' : 'none';
+    if (state.emailView === 'pending') loadEmails();
+    else loadSentEmails();
+  });
+});
+
+async function loadEmails(){
+  setStatus('emailsStatus', '');
+  document.getElementById('emailsList').style.display = 'none';
+  document.getElementById('emailsEmpty').style.display = 'none';
+  document.getElementById('emailsLoadingText').textContent = 'Claude is drafting outreach copy...';
+  showLoadingCenter('emailsLoadingCenter', true);
+  try {
+    const res = await fetch('/api/emails');
+    const data = await res.json();
+    if (data.error) {
+      setStatus('emailsStatus', data.error, true);
+      logAction('Load emails', false, data.error);
+      showRetryButton('emailsStatus', () => loadEmails());
+      return;
+    }
+    state.emails = data.leads || [];
+    setStatus('emailsStatus', `${state.emails.length} email(s) ready.`);
+    logAction('Load emails', true, `${state.emails.length} ready`);
+  } catch(e) {
+    setStatus('emailsStatus', 'Failed to load: ' + e.message, true);
+    logAction('Load emails', false, e.message);
+    showRetryButton('emailsStatus', () => loadEmails());
+  } finally {
+    showLoadingCenter('emailsLoadingCenter', false);
+    document.getElementById('emailsList').style.display = '';
+    renderEmails();
+  }
+}
+
+function renderEmails(){
+  const list = document.getElementById('emailsList');
+  const empty = document.getElementById('emailsEmpty');
+  list.innerHTML = '';
+  if (!state.emails.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  state.emails.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'email-row';
+    row.innerHTML = `
+      <div class="email-row-header">
+        <div class="left"><span class="name">${escapeHtml(lead.name||'')}</span><span class="meta">${escapeHtml(lead.email||'')} &middot; score ${lead.score}</span></div>
+        <span class="chevron">&#9662;</span>
+      </div>
+      <div class="email-row-body">
+        <div class="meta" style="margin-bottom:8px;">${escapeHtml(lead.demo_url||'')}</div>
+        <label>Subject</label>
+        <input type="text" class="subj-input" value="${escapeHtml(lead.email_subject||'')}">
+        <label>Body</label>
+        <textarea class="body-input" rows="8">${escapeHtml(lead.email_body||'')}</textarea>
+        <div class="email-actions">
+          <button class="secondary open-gmail-btn">Open in Gmail</button>
+          <button class="mark-sent-btn">Mark sent</button>
+        </div>
+      </div>
+    `;
+    row.querySelector('.email-row-header').addEventListener('click', () => {
+      row.classList.toggle('expanded');
+    });
+    row.querySelector('.open-gmail-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const subject = row.querySelector('.subj-input').value;
+      const body = row.querySelector('.body-input').value;
+      const mailto = `mailto:${encodeURIComponent(lead.email||'')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+    });
+    row.querySelector('.mark-sent-btn').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        const res = await fetch('/api/emails/mark_sent', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({slug: lead.slug})
+        });
+        const data = await res.json();
+        if (data.error) {
+          setStatus('emailsStatus', 'Mark sent failed: ' + data.error, true);
+          logAction('Mark sent', false, `${lead.name}: ${data.error}`);
+          showRetryButton('emailsStatus', () => row.querySelector('.mark-sent-btn').click());
+          return;
+        }
+        logAction('Mark sent', true, lead.name);
+        loadEmails();
+      } catch(e) {
+        setStatus('emailsStatus', 'Failed: ' + e.message, true);
+        logAction('Mark sent', false, `${lead.name}: ${e.message}`);
+        showRetryButton('emailsStatus', () => row.querySelector('.mark-sent-btn').click());
+      }
+    });
+    list.appendChild(row);
+  });
+}
+
+async function loadSentEmails(){
+  setStatus('emailsStatus', '');
+  document.getElementById('emailsSentList').style.display = 'none';
+  document.getElementById('emailsSentEmpty').style.display = 'none';
+  document.getElementById('emailsLoadingText').textContent = 'Loading sent emails...';
+  showLoadingCenter('emailsLoadingCenter', true);
+  try {
+    const res = await fetch('/api/pipeline');
+    const data = await res.json();
+    state.sentEmails = (data.leads || []).filter(l => l.email_sent === 'Yes');
+    setStatus('emailsStatus', `${state.sentEmails.length} email(s) sent.`);
+  } catch(e) {
+    setStatus('emailsStatus', 'Failed to load: ' + e.message, true);
+  } finally {
+    showLoadingCenter('emailsLoadingCenter', false);
+    document.getElementById('emailsSentList').style.display = '';
+    renderSentEmails();
+  }
+}
+
+function renderSentEmails(){
+  const list = document.getElementById('emailsSentList');
+  const empty = document.getElementById('emailsSentEmpty');
+  list.innerHTML = '';
+  const emails = state.sentEmails || [];
+  if (!emails.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  emails.forEach(lead => {
+    const row = document.createElement('div');
+    row.className = 'sent-row';
+    row.innerHTML = `
+      <div><span class="name">${escapeHtml(lead.name||'')}</span> <span class="meta">${escapeHtml(lead.email||'')}</span></div>
+      ${lead.demo_url ? `<a href="${escapeHtml(lead.demo_url)}" target="_blank">${escapeHtml(lead.demo_url)}</a>` : ''}
+    `;
+    list.appendChild(row);
+  });
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
