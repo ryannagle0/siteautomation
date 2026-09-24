@@ -2,6 +2,12 @@
 *.log
 __pycache__/
 *.pyc
-sites/
+# All generated per-lead demo sites are excluded, EXCEPT the master
+# template (derek-doyle-electrical) that build_site clones from — that one
+# is real source the app can't run without, not generated output.
+sites/*
+!sites/derek-doyle-electrical
+sites/derek-doyle-electrical/node_modules/
+sites/derek-doyle-electrical/.next/
 leads.csv
 leads.db

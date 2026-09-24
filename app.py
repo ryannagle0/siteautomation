@@ -1666,13 +1666,22 @@ def api_update_status():
     return jsonify({"lead": lead})
 
 
-def open_browser():
-    webbrowser.open("http://localhost:5000")
+def open_browser(port):
+    webbrowser.open(f"http://localhost:{port}")
 
+
+# Runs on import too (not just `python app.py`), so a production WSGI server
+# (gunicorn, per the Procfile) that imports this module directly still gets
+# the database/sites-folder set up — the __main__ block below never runs
+# under gunicorn.
+ensure_db()
+SITES_DIR.mkdir(exist_ok=True)
 
 if __name__ == "__main__":
-    ensure_db()
-    SITES_DIR.mkdir(exist_ok=True)
-    print("SiteForge running at localhost:5000")
-    Timer(1.0, open_browser).start()
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"SiteForge running at localhost:{port}")
+    if not os.environ.get("PORT"):
+        # Only auto-open a local browser for local dev — meaningless (and
+        # unwanted) when running as a deployed service.
+        Timer(1.0, open_browser, args=(port,)).start()
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

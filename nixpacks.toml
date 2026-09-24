@@ -1,0 +1,6 @@
+# SiteForge is a Python (Flask) app, but it also shells out to `npm`/`next`
+# to build and preview each generated demo site — Railway's default Python
+# detection won't install Node.js on its own, so it's requested explicitly
+# here alongside Python.
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20"]
