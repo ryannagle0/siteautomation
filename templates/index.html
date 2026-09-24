@@ -101,7 +101,7 @@
   .layout-image-preview button{flex:none;padding:2px 8px;font-size:.9rem;}
   /* Prompt box — styled after a chat-style AI prompt input: dark rounded
      card, autosizing textarea, icon action row along the bottom. */
-  .prompt-box{background:#1F2023;border:1px solid #3a3d42;border-radius:24px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  .prompt-box{position:relative;background:#1F2023;border:1px solid #3a3d42;border-radius:24px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
   .prompt-box-textarea{width:100%;background:transparent;border:none;color:#e8ebef;font-family:inherit;font-size:.92rem;line-height:1.5;padding:4px 4px 6px;resize:none;min-height:22px;max-height:160px;outline:none;}
   .prompt-box-textarea::placeholder{color:#7d8590;}
   .prompt-box-actions{display:flex;align-items:center;gap:6px;}
@@ -111,21 +111,60 @@
   .prompt-icon-btn-secondary{border:1px solid #3a3d42;color:#9CA3AF;font-size:.7rem;}
   .prompt-icon-btn-send{background:#fff;color:#1F2023;}
   .prompt-icon-btn-send:hover{background:rgba(255,255,255,.85);color:#1F2023;}
-  .component-results-wrap{position:relative;max-height:70vh;overflow-y:auto;overflow-x:hidden;background:#1F2023;border:1px solid #3a3d42;border-radius:16px;padding:16px;}
-  .component-results{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  @media(max-width:640px){.component-results{grid-template-columns:1fr;}}
-  .component-result{display:flex;flex-direction:column;background:#25262a;border:1px solid #3a3d42;border-radius:14px;overflow:hidden;}
-  .component-result:hover{border-color:#5b8cff;}
-  .component-result img{width:100%;height:280px;min-height:280px;object-fit:cover;object-position:top;background:#151618;display:block;}
-  .component-result .cr-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;}
-  .component-result .cr-name{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .component-result .cr-desc{color:#9CA3AF;font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-  .component-result .cr-add-btn{width:100%;margin-top:4px;padding:10px;border-radius:9px;border:none;background:#5b8cff;color:#fff;font-weight:600;font-size:.85rem;cursor:pointer;}
-  .component-result .cr-add-btn:hover{background:#7c9cff;}
+  .component-results-wrap{position:absolute;left:0;right:0;bottom:100%;width:100%;background:#0a0a0a;border-top:1px solid rgba(255,255,255,.1);max-height:320px;overflow:hidden;margin-bottom:8px;border-radius:16px 16px 0 0;}
+  .component-results{display:flex;flex-direction:row;overflow-x:auto;gap:10px;padding:12px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .component-results::-webkit-scrollbar{display:none;}
+  .component-result{flex:0 0 180px;height:240px;border-radius:8px;overflow:hidden;position:relative;cursor:pointer;scroll-snap-align:start;border:1px solid rgba(255,255,255,.08);background:#151618;}
+  .component-result img{width:100%;height:100%;object-fit:cover;display:block;}
+  .component-result .cr-gradient{position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(to top, rgba(14,14,14,.95) 0%, transparent 100%);pointer-events:none;}
+  .component-result .cr-name{position:absolute;bottom:32px;left:10px;right:36px;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .component-result .cr-add-btn{position:absolute;bottom:8px;right:8px;width:26px;height:26px;background:#fff;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+  .component-result .cr-add-btn:hover{background:rgba(255,255,255,.85);}
+  .cr-count-line{padding:0 12px 10px;color:#9CA3AF;font-size:.78rem;}
   .component-results-close{position:absolute;top:-10px;right:-10px;background:#1F2023;border:1px solid #3a3d42;color:var(--text);width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;padding:0;font-size:.78rem;line-height:1;}
   .component-results-empty{padding:18px 10px;color:#9CA3AF;font-size:.82rem;text-align:center;width:100%;}
   .component-results-loading{display:flex;align-items:center;gap:8px;padding:18px 10px;color:#9CA3AF;font-size:.82rem;width:100%;}
   .edit-overlay-controls .status{margin:0;font-size:.78rem;text-align:center;}
+  /* Full component browser — sidebar categories + searchable/sortable grid.
+     Covers the whole preview area while open (the modal itself is already
+     near-fullscreen). */
+  .component-browser{position:absolute;inset:0;z-index:20;background:#0d0f12;display:flex;flex-direction:column;}
+  .cb-header{display:flex;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3038;flex:none;}
+  .cb-search-wrap{position:relative;flex:1;}
+  .cb-search-wrap input{width:100%;background:#1F2023;border:1px solid #3a3d42;color:#e8ebef;padding:10px 14px;border-radius:10px;font-size:.9rem;font-family:inherit;outline:none;}
+  .cb-search-wrap input:focus{border-color:#5b8cff;}
+  .cb-suggestions{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1F2023;border:1px solid #3a3d42;border-radius:10px;overflow-y:auto;max-height:220px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .cb-suggestions.open{display:block;}
+  .cb-suggestion-item{padding:8px 14px;font-size:.82rem;color:#D1D5DB;cursor:pointer;}
+  .cb-suggestion-item:hover{background:rgba(255,255,255,.08);}
+  .cb-header button{flex:none;}
+  .cb-body{flex:1;display:flex;min-height:0;}
+  .cb-sidebar{width:180px;flex:none;overflow-y:auto;border-right:1px solid #2a3038;padding:12px 8px;}
+  .cb-cat-btn{display:block;width:100%;text-align:left;background:transparent;border:none;color:#9CA3AF;padding:8px 10px;border-radius:8px;font-size:.82rem;cursor:pointer;margin-bottom:2px;font-family:inherit;}
+  .cb-cat-btn:hover{background:rgba(255,255,255,.06);color:#D1D5DB;}
+  .cb-cat-btn.active{background:#5b8cff;color:#fff;}
+  .cb-main{flex:1;display:flex;flex-direction:column;min-width:0;padding:14px 18px;overflow-y:auto;}
+  .cb-sort-row{display:flex;gap:8px;margin-bottom:14px;flex:none;}
+  .cb-sort-btn{background:#1F2023;border:1px solid #3a3d42;color:#9CA3AF;padding:6px 12px;border-radius:14px;font-size:.76rem;cursor:pointer;font-family:inherit;}
+  .cb-sort-btn.active{background:#5b8cff;border-color:#5b8cff;color:#fff;}
+  .cb-grid{display:flex;flex-direction:row;overflow-x:auto;gap:12px;padding:12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .cb-grid::-webkit-scrollbar{display:none;}
+  .cb-card{flex:0 0 220px;height:280px;scroll-snap-align:start;position:relative;border-radius:8px;overflow:hidden;cursor:pointer;background:#151618;}
+  .cb-card-thumb{position:absolute;inset:0;}
+  .cb-card-thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .2s;}
+  .cb-card-thumb img.loaded{opacity:1;}
+  .cb-card-thumb.skeleton{background:linear-gradient(90deg,#1a1c20 25%,#24262b 37%,#1a1c20 63%);background-size:400% 100%;animation:cb-shimmer 1.4s ease infinite;}
+  @keyframes cb-shimmer{0%{background-position:100% 0;}100%{background-position:0 0;}}
+  .cb-card-gradient{position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(to top, rgba(20,20,20,.92) 0%, transparent 100%);pointer-events:none;}
+  .cb-card-name{position:absolute;bottom:36px;left:10px;right:40px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cb-card-add-btn{position:absolute;bottom:8px;right:8px;width:28px;height:28px;background:#fff;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:background .15s,transform .15s;}
+  .cb-card-add-btn:hover{background:rgba(255,255,255,.85);transform:scale(1.1);}
+  .cb-empty,.cb-loading-text{color:#9CA3AF;padding:30px;text-align:center;}
+  .cb-load-more-card{flex:0 0 220px;height:280px;scroll-snap-align:start;border-radius:8px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:#fff;}
+  .cb-load-more-card .cb-load-more-icon{font-size:32px;line-height:1;}
+  .cb-load-more-card .cb-load-more-label{font-size:13px;color:#9CA3AF;}
+  .cb-load-more-card.loading .cb-load-more-icon{animation:cb-spin 1s linear infinite;}
+  @keyframes cb-spin{to{transform:rotate(360deg);}}
   .email-card label{font-size:.8rem;color:var(--muted);display:block;margin:10px 0 4px;}
   .email-card input[type=text]{width:100%;margin-bottom:0;}
   .email-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
@@ -267,11 +306,12 @@
         </div>
         <div class="edit-overlay-scrim"></div>
         <div class="edit-overlay-controls">
-          <div id="componentResultsWrap" class="component-results-wrap" style="display:none;">
-            <button type="button" class="component-results-close" id="componentCloseBtn" title="Close">&times;</button>
-            <div id="componentResults" class="component-results"></div>
-          </div>
           <div class="prompt-box" id="promptBox">
+            <div id="componentResultsWrap" class="component-results-wrap" style="display:none;">
+              <button type="button" class="component-results-close" id="componentCloseBtn" title="Close">&times;</button>
+              <div id="componentResults" class="component-results"></div>
+              <div class="cr-count-line" id="crCountLine"></div>
+            </div>
             <div id="layoutImagePreview" class="layout-image-preview" style="display:none;">
               <img id="layoutImageThumb" alt="Attached layout reference">
               <span>Layout reference attached — describe what goes in each box/colour below</span>
@@ -283,6 +323,9 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               </button>
               <input type="file" id="layoutImageInput" accept="image/*" style="display:none;">
+              <button type="button" class="prompt-icon-btn" id="browseComponentsBtn" title="Browse 21st.dev components">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              </button>
               <div class="prompt-box-spacer"></div>
               <button type="button" class="prompt-icon-btn prompt-icon-btn-secondary" id="deployBtn" title="Deploy to Vercel">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 19.5h20L12 2z"/></svg>
@@ -293,6 +336,22 @@
             </div>
           </div>
           <div class="status" id="editStatus"></div>
+        </div>
+        <div class="component-browser" id="componentBrowser" style="display:none;">
+          <div class="cb-header">
+            <div class="cb-search-wrap">
+              <input type="text" id="cbSearchInput" placeholder="Search 21st.dev components..." autocomplete="off">
+              <div class="cb-suggestions" id="cbSuggestions"></div>
+            </div>
+            <button type="button" class="secondary" id="cbCloseBtn">&times;</button>
+          </div>
+          <div class="cb-body">
+            <div class="cb-sidebar" id="cbSidebar"></div>
+            <div class="cb-main">
+              <div class="cb-sort-row" id="cbSortRow"></div>
+              <div class="cb-grid" id="cbGrid"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -713,9 +772,12 @@ document.getElementById('closeModalBtn').addEventListener('click', () => {
 });
 
 // ---------- Hotbar: 21st.dev component search ----------
+const CR_PLUS_ICON = `<svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>`;
+
 function hideComponentResults(){
   document.getElementById('componentResultsWrap').style.display = 'none';
   document.getElementById('componentResults').innerHTML = '';
+  document.getElementById('crCountLine').textContent = '';
 }
 
 document.getElementById('componentCloseBtn').addEventListener('click', hideComponentResults);
@@ -723,8 +785,10 @@ document.getElementById('componentCloseBtn').addEventListener('click', hideCompo
 async function searchComponents(query){
   const el = document.getElementById('componentResults');
   const wrap = document.getElementById('componentResultsWrap');
+  const countLine = document.getElementById('crCountLine');
   setLoading('editStatus', `Searching 21st.dev for "${query}"...`);
   wrap.style.display = 'block';
+  countLine.textContent = '';
   el.innerHTML = `<div class="component-results-loading"><span class="morphing-square"></span>Searching 21st.dev...</div>`;
   try {
     const res = await fetch('/api/pipeline/component_search', {
@@ -739,21 +803,23 @@ async function searchComponents(query){
       el.innerHTML = `<div class="component-results-empty">No results found for "${escapeHtml(query)}".</div>`;
       return;
     }
-    setStatus('editStatus', `${data.results.length} result(s) for "${query}" — click "Add to site" on one to use it.`);
+    setStatus('editStatus', `${data.results.length} result(s) for "${query}" — click a card's + to add it.`);
     logAction('Component search', true, query);
     el.innerHTML = data.results.map((r, i) => `
-      <div class="component-result" data-i="${i}">
-        ${r.thumbnail ? `<img src="${escapeHtml(r.thumbnail)}" alt="">` : '<div style="height:280px;background:#151618;"></div>'}
-        <div class="cr-body">
-          <div class="cr-name">${escapeHtml(r.name)}</div>
-          <div class="cr-desc">${escapeHtml(r.description||'')}</div>
-          <button type="button" class="cr-add-btn" data-i="${i}">Add to site</button>
-        </div>
+      <div class="component-result" data-i="${i}" title="${escapeHtml(r.name)}">
+        ${r.thumbnail ? `<img src="${escapeHtml(r.thumbnail)}" alt="">` : ''}
+        <div class="cr-gradient"></div>
+        <div class="cr-name">${escapeHtml(r.name)}</div>
+        <button type="button" class="cr-add-btn" data-i="${i}" title="Add to site">${CR_PLUS_ICON}</button>
       </div>
     `).join('');
+    countLine.textContent = `${data.results.length} results for ${query}`;
     document.getElementById('componentResultsWrap').scrollTop = 0;
     el.querySelectorAll('.cr-add-btn').forEach(btn => {
-      btn.addEventListener('click', () => applyComponent(data.results[Number(btn.dataset.i)], query));
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyComponent(data.results[Number(btn.dataset.i)], query);
+      });
     });
   } catch(e) {
     setStatus('editStatus', 'Component search failed: ' + e.message, true);
@@ -775,6 +841,7 @@ async function applyComponent(component, sectionHint){
     setStatus('editStatus', 'Added: ' + (data.changed_files || []).join(', '));
     logAction('Add component', true, component.name);
     clearEditInstruction();
+    closeComponentBrowser();
     if (currentPreviewPort) {
       setIframeLoading(true, 'Reloading preview...');
       loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
@@ -784,6 +851,310 @@ async function applyComponent(component, sectionHint){
     logAction('Add component', false, e.message);
   }
 }
+
+// ---------- Full 21st.dev component browser ----------
+// Built against the REAL 21st.dev MCP `search` tool (verified live), which
+// only supports a free-text `query` and a hard max of 30 results per call —
+// there is no true server-side pagination, no sort-by-downloads/newest for
+// components (always relevance-ranked), and no download/usage-count field.
+// So: categories work by using the category name AS the search query;
+// "Load more" reveals more of the one already-fetched batch (client-side,
+// not a new page); sort offers only what's real — the API's own relevance
+// order ("Popular"), plus a genuine client-side A-Z sort — rather than
+// faking metrics the API doesn't provide.
+const CB_CATEGORIES = [
+  'All', 'Headers/Nav', 'Hero', 'Footer', 'Features', 'Cards', 'Testimonials',
+  'Pricing', 'CTA', 'Forms', 'Stats', 'Timeline', 'Team', 'FAQ', 'Gallery',
+  'Tables', 'Tabs', 'Badges', 'Avatars', 'Buttons', 'Inputs', 'Modals',
+  'Alerts', 'Loading', 'Charts',
+];
+const CB_PAGE_SIZE = 12;
+const CB_MAX_RESULTS = 30; // the MCP search tool's own hard limit per call
+
+// Real, curated alternate phrasings per category. Since the API ranks by
+// relevance to whatever text you send, different wording surfaces a
+// different top-30 — cycling through these (and merging, deduped by id)
+// is the actual workaround for the 30-per-call ceiling: it can't reach
+// "everything in the catalog," but it surfaces meaningfully more than one
+// search does.
+const CB_CATEGORY_KEYWORDS = {
+  'All': ['popular ui components', 'modern web components', 'landing page section', 'dashboard ui', 'saas ui kit', 'marketing page section'],
+  'Headers/Nav': ['header', 'navbar', 'navigation bar', 'site header', 'nav menu', 'sticky header'],
+  'Hero': ['hero section', 'hero banner', 'landing hero', 'hero header', 'hero with image'],
+  'Footer': ['footer', 'site footer', 'footer section', 'page footer', 'footer with links'],
+  'Features': ['features section', 'feature grid', 'feature list', 'product features', 'bento features'],
+  'Cards': ['card component', 'product card', 'info card', 'card grid', 'profile card'],
+  'Testimonials': ['testimonials', 'customer reviews', 'testimonial carousel', 'review section', 'quote section'],
+  'Pricing': ['pricing table', 'pricing section', 'pricing cards', 'subscription plans', 'pricing comparison'],
+  'CTA': ['call to action', 'cta section', 'cta banner', 'signup cta'],
+  'Forms': ['contact form', 'form component', 'signup form', 'input form', 'multi step form'],
+  'Stats': ['stats section', 'statistics counter', 'metrics section', 'numbers section', 'kpi cards'],
+  'Timeline': ['timeline', 'roadmap timeline', 'process timeline', 'vertical timeline', 'stepper'],
+  'Team': ['team section', 'team members', 'about team', 'staff grid', 'team carousel'],
+  'FAQ': ['faq', 'accordion faq', 'frequently asked questions', 'faq section', 'faq accordion'],
+  'Gallery': ['image gallery', 'photo gallery', 'gallery grid', 'masonry gallery', 'lightbox gallery'],
+  'Tables': ['data table', 'table component', 'comparison table', 'sortable table', 'table with pagination'],
+  'Tabs': ['tabs component', 'tab navigation', 'tabbed content', 'segmented control'],
+  'Badges': ['badge component', 'tag badge', 'status badge', 'notification badge'],
+  'Avatars': ['avatar component', 'user avatar', 'avatar group', 'profile picture'],
+  'Buttons': ['button component', 'cta button', 'icon button', 'animated button'],
+  'Inputs': ['input field', 'text input', 'search input', 'otp input'],
+  'Modals': ['modal dialog', 'popup modal', 'dialog component', 'confirmation modal'],
+  'Alerts': ['alert component', 'toast notification', 'banner alert', 'snackbar'],
+  'Loading': ['loading spinner', 'skeleton loader', 'progress indicator', 'loading state'],
+  'Charts': ['chart component', 'bar chart', 'analytics chart', 'dashboard chart', 'line chart'],
+};
+const CB_ALL_KEYWORDS = Array.from(new Set(
+  Object.values(CB_CATEGORY_KEYWORDS).flat().concat(CB_CATEGORIES.filter(c => c !== 'All'))
+));
+
+function cbFreeTextVariants(base){
+  return [base, `${base} section`, `${base} component`, `modern ${base}`, `${base} design`, `simple ${base}`, `${base} block`, `creative ${base}`, `${base} ui`, `minimal ${base}`];
+}
+
+const cbState = {
+  category: 'All',
+  searchText: '',
+  sort: 'popular', // 'popular' (API relevance order, default) | 'az'
+  // topic key -> { items: [...], seenIds: Set, keywordIndex: number }
+  cache: new Map(),
+  revealCount: CB_PAGE_SIZE,
+  debounceTimer: null,
+};
+
+let cbImgObserver = null;
+function getCbImgObserver(){
+  if (cbImgObserver) return cbImgObserver;
+  cbImgObserver = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const img = entry.target;
+      const src = img.dataset.src;
+      if (src) {
+        img.src = src;
+        img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+        img.removeAttribute('data-src');
+      }
+      obs.unobserve(img);
+    });
+  }, { root: document.getElementById('cbGrid'), rootMargin: '200px' });
+  return cbImgObserver;
+}
+
+function renderCbSidebar(){
+  const el = document.getElementById('cbSidebar');
+  el.innerHTML = CB_CATEGORIES.map(cat =>
+    `<button type="button" class="cb-cat-btn${cat === cbState.category ? ' active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`
+  ).join('');
+  el.querySelectorAll('.cb-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      cbState.category = btn.dataset.cat;
+      document.getElementById('cbSearchInput').value = '';
+      document.getElementById('cbSuggestions').classList.remove('open');
+      cbState.searchText = '';
+      renderCbSidebar();
+      runCbSearch();
+    });
+  });
+}
+
+function renderCbSortRow(){
+  const el = document.getElementById('cbSortRow');
+  const options = [
+    { key: 'popular', label: 'Popular' },
+    { key: 'az', label: 'Name A-Z' },
+  ];
+  el.innerHTML = options.map(o =>
+    `<button type="button" class="cb-sort-btn${cbState.sort === o.key ? ' active' : ''}" data-sort="${o.key}">${o.label}</button>`
+  ).join('');
+  el.querySelectorAll('.cb-sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      cbState.sort = btn.dataset.sort;
+      renderCbSortRow();
+      renderCbGrid();
+    });
+  });
+}
+
+function cbTopicKey(){
+  return (cbState.searchText || cbState.category || 'all').toLowerCase();
+}
+
+function cbTopicKeywords(){
+  return cbState.searchText ? cbFreeTextVariants(cbState.searchText) : (CB_CATEGORY_KEYWORDS[cbState.category] || [cbState.category]);
+}
+
+// Fetch the next not-yet-tried keyword for this topic and merge any
+// new (deduped by id) components into its accumulated result list.
+// Returns true if a request was made (regardless of whether it found new
+// results — a variant can legitimately overlap heavily with a prior one).
+async function fetchNextCbVariant(){
+  const topic = cbTopicKey();
+  const keywords = cbTopicKeywords();
+  let entry = cbState.cache.get(topic);
+  if (!entry) {
+    entry = { items: [], seenIds: new Set(), keywordIndex: 0 };
+    cbState.cache.set(topic, entry);
+  }
+  if (entry.keywordIndex >= keywords.length) return false; // no more variants to try
+  const query = keywords[entry.keywordIndex];
+  entry.keywordIndex++;
+  try {
+    const res = await fetch('/api/pipeline/component_search', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ query, limit: CB_MAX_RESULTS })
+    });
+    const data = await res.json();
+    if (data.error) { logAction('Component browse', false, data.error); return true; }
+    let added = 0;
+    (data.results || []).forEach(r => {
+      if (!entry.seenIds.has(r.id)) { entry.seenIds.add(r.id); entry.items.push(r); added++; }
+    });
+    logAction('Component browse', true, `"${query}"` + (added ? ` — ${added} new` : ' — no new results'));
+  } catch(e) {
+    logAction('Component browse', false, e.message);
+  }
+  return true;
+}
+
+function cbHasMoreVariants(){
+  const entry = cbState.cache.get(cbTopicKey());
+  const keywords = cbTopicKeywords();
+  return !entry || entry.keywordIndex < keywords.length;
+}
+
+async function runCbSearch(){
+  cbState.revealCount = CB_PAGE_SIZE;
+  const topic = cbTopicKey();
+  const existing = cbState.cache.get(topic);
+  if (existing && existing.items.length) {
+    renderCbGrid();
+    return;
+  }
+  const grid = document.getElementById('cbGrid');
+  grid.innerHTML = Array.from({ length: CB_PAGE_SIZE }).map(() =>
+    `<div class="cb-card"><div class="cb-card-thumb skeleton"></div></div>`
+  ).join('');
+  await fetchNextCbVariant();
+  const entry = cbState.cache.get(topic);
+  if (!entry || !entry.items.length) {
+    grid.innerHTML = `<div class="cb-empty">No results found.</div>`;
+    return;
+  }
+  renderCbGrid();
+}
+
+const CB_PLUS_ICON = `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v12M1 7h12" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+function renderCbGrid(){
+  const topic = cbTopicKey();
+  const entry = cbState.cache.get(topic);
+  let results = ((entry && entry.items) || []).slice();
+  if (cbState.sort === 'az') {
+    results.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  const grid = document.getElementById('cbGrid');
+  if (!results.length) {
+    grid.innerHTML = `<div class="cb-empty">No results found.</div>`;
+    return;
+  }
+  const shown = results.slice(0, cbState.revealCount);
+  const hasMore = cbState.revealCount < results.length || cbHasMoreVariants();
+  grid.innerHTML = shown.map((r, i) => `
+    <div class="cb-card" data-i="${i}" title="${escapeHtml(r.name)}">
+      <div class="cb-card-thumb">
+        ${r.thumbnail ? `<img class="cb-lazy-img" data-src="${escapeHtml(r.thumbnail)}" alt="">` : ''}
+      </div>
+      <div class="cb-card-gradient"></div>
+      <div class="cb-card-name">${escapeHtml(r.name)}</div>
+      <button type="button" class="cb-card-add-btn" data-i="${i}" title="Add to site">${CB_PLUS_ICON}</button>
+    </div>
+  `).join('') + (hasMore ? `
+    <div class="cb-load-more-card" id="cbLoadMoreCard">
+      <div class="cb-load-more-icon">&#8635;</div>
+      <div class="cb-load-more-label">Load more</div>
+    </div>
+  ` : '');
+  const observer = getCbImgObserver();
+  grid.querySelectorAll('.cb-lazy-img').forEach(img => observer.observe(img));
+  grid.querySelectorAll('.cb-card-add-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const component = shown[Number(btn.dataset.i)];
+      const sectionHint = cbState.category !== 'All' ? cbState.category : (cbState.searchText || component.name);
+      applyComponent(component, sectionHint);
+    });
+  });
+  const loadMoreCard = document.getElementById('cbLoadMoreCard');
+  if (loadMoreCard) {
+    loadMoreCard.addEventListener('click', async () => {
+      const currentEntry = cbState.cache.get(cbTopicKey());
+      if (currentEntry && cbState.revealCount < currentEntry.items.length) {
+        // Already have unrevealed cached results — no fetch needed.
+        cbState.revealCount += CB_PAGE_SIZE;
+        renderCbGrid();
+        return;
+      }
+      loadMoreCard.classList.add('loading');
+      loadMoreCard.querySelector('.cb-load-more-label').textContent = 'Searching more...';
+      await fetchNextCbVariant();
+      cbState.revealCount += CB_PAGE_SIZE;
+      renderCbGrid();
+    });
+  }
+}
+
+function renderCbSuggestions(value){
+  const box = document.getElementById('cbSuggestions');
+  const q = value.trim().toLowerCase();
+  if (!q) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  const matches = CB_ALL_KEYWORDS.filter(k => k.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  box.innerHTML = matches.map(m => `<div class="cb-suggestion-item" data-term="${escapeHtml(m)}">${escapeHtml(m)}</div>`).join('');
+  box.classList.add('open');
+  box.querySelectorAll('.cb-suggestion-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.getElementById('cbSearchInput').value = item.dataset.term;
+      clearTimeout(cbState.debounceTimer);
+      cbState.searchText = item.dataset.term;
+      box.classList.remove('open');
+      box.innerHTML = '';
+      runCbSearch();
+    });
+  });
+}
+
+const cbSearchInputEl = document.getElementById('cbSearchInput');
+cbSearchInputEl.addEventListener('input', (e) => {
+  const value = e.target.value;
+  renderCbSuggestions(value);
+  clearTimeout(cbState.debounceTimer);
+  cbState.debounceTimer = setTimeout(() => {
+    cbState.searchText = value.trim();
+    runCbSearch();
+  }, 300);
+});
+cbSearchInputEl.addEventListener('blur', () => {
+  // Slight delay so a click on a suggestion registers before it's hidden.
+  setTimeout(() => document.getElementById('cbSuggestions').classList.remove('open'), 150);
+});
+cbSearchInputEl.addEventListener('focus', () => {
+  if (cbSearchInputEl.value.trim()) renderCbSuggestions(cbSearchInputEl.value);
+});
+
+function openComponentBrowser(){
+  document.getElementById('componentBrowser').style.display = 'flex';
+  renderCbSidebar();
+  renderCbSortRow();
+  runCbSearch();
+}
+
+function closeComponentBrowser(){
+  document.getElementById('componentBrowser').style.display = 'none';
+}
+
+document.getElementById('browseComponentsBtn').addEventListener('click', openComponentBrowser);
+document.getElementById('cbCloseBtn').addEventListener('click', closeComponentBrowser);
 
 const HOTBAR_STOPWORDS = new Set([
   'new','a','an','the','our','my','some','another','nice','cool','good',

@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 sites/
 leads.csv
+leads.db

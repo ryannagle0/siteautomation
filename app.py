@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import socket
+import sqlite3
 import subprocess
 import threading
 import time
@@ -22,7 +23,8 @@ from bs4 import BeautifulSoup
 from flask import Flask, jsonify, render_template, request
 
 BASE_DIR = Path(__file__).resolve().parent
-LEADS_CSV = BASE_DIR / "leads.csv"
+LEADS_CSV = BASE_DIR / "leads.csv"  # legacy file, only read once for migration
+LEADS_DB = BASE_DIR / "leads.db"
 SITES_DIR = BASE_DIR / "sites"
 TEMPLATE_SITE = SITES_DIR / "derek-doyle-electrical"
 
@@ -54,6 +56,7 @@ load_env()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 VERCEL_TOKEN = os.environ.get("VERCEL_TOKEN", "")
 TWENTYFIRST_API_KEY = os.environ.get("TWENTYFIRST_API_KEY", "")
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 OPERATOR_NAME = os.environ.get("OPERATOR_NAME", "")
 OPERATOR_PHONE = os.environ.get("OPERATOR_PHONE", "")
 
@@ -67,49 +70,95 @@ CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
 
 # ---------------------------------------------------------------------------
-# CSV helpers
+# SQLite helpers
 # ---------------------------------------------------------------------------
+# read_leads()/write_leads()/leads_transaction() keep the exact same
+# signatures they had as CSV helpers (list-of-dict in, list-of-dict out) so
+# every call site elsewhere in this file — which works with plain Python
+# dicts/lists, not SQL — needed zero changes. SQLite's own file locking
+# handles concurrent access, so there's no separate lock to take: a fresh
+# short-lived connection is opened per call, matching how the CSV version
+# opened the file fresh each time.
 
-_csv_lock = threading.Lock()
+
+def _get_conn():
+    conn = sqlite3.connect(LEADS_DB, timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def ensure_db():
+    conn = _get_conn()
+    try:
+        columns_sql = ", ".join(f'"{f}" TEXT NOT NULL DEFAULT \'\'' for f in CSV_FIELDS)
+        conn.execute(f"CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns_sql})")
+        conn.commit()
+        existing = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+    finally:
+        conn.close()
+
+    # One-time migration from the old leads.csv, if present and the table is
+    # still empty (so this never overwrites data already in the database).
+    if existing == 0 and LEADS_CSV.exists():
+        with LEADS_CSV.open("r", newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        if rows:
+            write_leads([{k: row.get(k, "") for k in CSV_FIELDS} for row in rows])
+
+
+def read_leads():
+    ensure_db()
+    conn = _get_conn()
+    try:
+        rows = conn.execute(f"SELECT {', '.join(CSV_FIELDS)} FROM leads ORDER BY id").fetchall()
+    finally:
+        conn.close()
+    return [dict(row) for row in rows]
+
+
+def write_leads(rows):
+    placeholders = ", ".join("?" for _ in CSV_FIELDS)
+    columns = ", ".join(CSV_FIELDS)
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM leads")
+        conn.executemany(
+            f"INSERT INTO leads ({columns}) VALUES ({placeholders})",
+            [tuple(row.get(k, "") for k in CSV_FIELDS) for row in rows],
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 @contextmanager
 def leads_transaction():
-    """Lock, read, yield the rows for mutation, then write them back.
+    """Read the rows, yield them for in-place mutation, then write them back.
 
-    Keep the body fast: the lock is held for the whole block, and SiteForge
-    runs threaded so multiple browser tabs/requests can hit the CSV at once.
-    Long-running work (npm install, vercel deploy) must happen OUTSIDE this
-    context and only take the lock for the final read-mutate-write.
+    Kept as a single connection/transaction so the read-modify-write is
+    atomic under SQLite's own locking — a concurrent writer blocks (up to
+    the connection timeout) rather than racing this one.
     """
-    with _csv_lock:
-        leads = read_leads()
+    ensure_db()
+    conn = _get_conn()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        rows = conn.execute(f"SELECT {', '.join(CSV_FIELDS)} FROM leads ORDER BY id").fetchall()
+        leads = [dict(row) for row in rows]
         yield leads
-        write_leads(leads)
-
-
-def ensure_csv():
-    if not LEADS_CSV.exists():
-        with LEADS_CSV.open("w", newline="", encoding="utf-8") as f:
-            csv.DictWriter(f, fieldnames=CSV_FIELDS).writeheader()
-
-
-def read_leads():
-    ensure_csv()
-    with LEADS_CSV.open("r", newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    for row in rows:
-        for field in CSV_FIELDS:
-            row.setdefault(field, "")
-    return rows
-
-
-def write_leads(rows):
-    with LEADS_CSV.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({k: row.get(k, "") for k in CSV_FIELDS})
+        placeholders = ", ".join("?" for _ in CSV_FIELDS)
+        columns = ", ".join(CSV_FIELDS)
+        conn.execute("DELETE FROM leads")
+        conn.executemany(
+            f"INSERT INTO leads ({columns}) VALUES ({placeholders})",
+            [tuple(row.get(k, "") for k in CSV_FIELDS) for row in leads],
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def slugify(name):
@@ -645,6 +694,34 @@ def scrape_goldenpages_page(query, page_num=1):
     return results, total_count, None
 
 
+def scrape_google_maps(query):
+    """Google Places Text Search API. Returns (leads, total_count, error),
+    matching scrape_goldenpages_page's signature. Phone numbers aren't
+    included in a Text Search result — that needs a separate Place Details
+    call per result (using each result's "place_id"), not yet wired up
+    here."""
+    if not GOOGLE_MAPS_API_KEY:
+        return [], None, "GOOGLE_MAPS_API_KEY not set"
+
+    url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+    params = {"query": query + " Ireland", "key": GOOGLE_MAPS_API_KEY}
+
+    resp = requests.get(url, params=params, timeout=15)
+    results = resp.json().get("results", [])
+
+    leads = []
+    for r in results:
+        leads.append({
+            "name": r.get("name", ""),
+            "phone": "",  # needs Place Details call
+            "email": "",
+            "website": r.get("website", ""),
+            "location": r.get("formatted_address", ""),
+            "score": 0,
+        })
+    return leads, len(results), None
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -738,8 +815,7 @@ def find_lead(leads, slug):
 def api_build_site():
     data = request.get_json(force=True) or {}
     slug = data.get("slug")
-    with _csv_lock:
-        lead = find_lead(read_leads(), slug)
+    lead = find_lead(read_leads(), slug)
     if not lead:
         return jsonify({"error": "lead not found"}), 404
 
@@ -942,6 +1018,10 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "matches what was asked for. When you use a lucide-react icon, set its color via a "
         "className like `text-blue` (or whatever the site's accent color token is) so it matches "
         "the rest of the site rather than defaulting to black or an unrelated color.\n\n"
+        "When a 21st.dev component is injected, do NOT rewrite or recreate it. Inject the raw "
+        "component code exactly as received. Only adapt its className values to match the site's "
+        "existing Tailwind color tokens (e.g. replace hardcoded hex colors with the named token "
+        "like 'text-blue' or 'bg-navy').\n\n"
         "You MAY create a brand-new file (e.g. splitting a section into its own "
         "src/components/SomeName.tsx) if that's the cleanest way to do the change — just make "
         "sure you also include and fully write that new file in your response, not only the file "
@@ -1134,8 +1214,8 @@ def call_21st_mcp_tool(tool_name, arguments):
 
 def parse_21st_search_results(text):
     """Parse the markdown-formatted text `search` returns into structured
-    {id, name, description, thumbnail} dicts. Verified against real output:
-    each result looks like:
+    {id, name, description, thumbnail, author} dicts. Verified against real
+    output: each result looks like:
         ### [component] Name  [id: 1234]
         by author
         optional description line(s)
@@ -1153,12 +1233,14 @@ def parse_21st_search_results(text):
             continue
         _entry_type, name, comp_id = header.groups()
         preview = re.search(r"preview:\s*(\S+)", block)
+        author = re.search(r"\[id:\s*\d+\]\s*\nby ([^\n]+)", block)
         desc = re.search(r"\[id:\s*\d+\]\s*\nby [^\n]+\n(.*?)(?:\npreview:|\Z)", block, re.DOTALL)
         results.append({
             "id": int(comp_id),
             "name": name.strip(),
             "description": (desc.group(1).strip() if desc else ""),
             "thumbnail": preview.group(1) if preview else "",
+            "author": (author.group(1).strip() if author else ""),
         })
     return results
 
@@ -1203,9 +1285,14 @@ def api_component_search():
     query = (data.get("query") or "").strip()
     if not query:
         return jsonify({"error": "query is required"}), 400
+    try:
+        limit = int(data.get("limit") or 10)
+    except (TypeError, ValueError):
+        limit = 10
+    limit = max(1, min(limit, 30))  # 30 is the MCP search tool's own hard max
 
     try:
-        text, is_error = call_21st_mcp_tool("search", {"query": query, "type": "component", "limit": 10})
+        text, is_error = call_21st_mcp_tool("search", {"query": query, "type": "component", "limit": limit})
     except Exception as exc:
         return jsonify({"error": f"Could not reach 21st.dev MCP server: {exc}"}), 502
     if is_error:
@@ -1434,8 +1521,7 @@ def deploy_via_vercel_api(slug, site_dir):
 def api_deploy():
     data = request.get_json(force=True) or {}
     slug = data.get("slug")
-    with _csv_lock:
-        lead = find_lead(read_leads(), slug)
+    lead = find_lead(read_leads(), slug)
     if not lead:
         return jsonify({"error": "lead not found"}), 404
 
@@ -1585,7 +1671,7 @@ def open_browser():
 
 
 if __name__ == "__main__":
-    ensure_csv()
+    ensure_db()
     SITES_DIR.mkdir(exist_ok=True)
     print("SiteForge running at localhost:5000")
     Timer(1.0, open_browser).start()
