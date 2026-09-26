@@ -79,6 +79,26 @@ except Exception:
 
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
+APP_VERSION = "0.6.0"
+
+
+def _build_commit():
+    """Short commit hash shown in the dashboard header, so you can tell which
+    build is live. Railway sets RAILWAY_GIT_COMMIT_SHA on GitHub deploys;
+    locally it comes from git."""
+    sha = os.environ.get("RAILWAY_GIT_COMMIT_SHA", "")
+    if sha:
+        return sha[:7]
+    try:
+        out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=str(BASE_DIR),
+                             capture_output=True, text=True, timeout=5)
+        return out.stdout.strip() or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+BUILD_COMMIT = _build_commit()
+
 
 # ---------------------------------------------------------------------------
 # SQLite helpers
@@ -1271,7 +1291,7 @@ def _sync_enrichment_to_pipeline(place_id, updates):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", app_version=APP_VERSION, build_commit=BUILD_COMMIT)
 
 
 @app.route("/api/regions", methods=["GET"])
