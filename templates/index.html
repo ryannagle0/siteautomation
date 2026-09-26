@@ -43,6 +43,41 @@
   th,td{padding:10px 12px;text-align:left;font-size:.9rem;border-bottom:1px solid var(--border);}
   th{cursor:pointer;color:var(--muted);user-select:none;background:var(--panel2);white-space:nowrap;}
   th:hover{color:var(--text);}
+  .lead-filters{display:flex;flex-direction:column;gap:14px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .lf-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
+  .lf-row-bottom{align-items:flex-end;}
+  .lf-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
+  .lf-grow{flex:1;}
+  .lf-field label{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .lf-field input[type=text]{min-width:200px;padding:9px 12px;font-size:.9rem;}
+  .lf-field select{padding:9px 12px;font-size:.9rem;min-width:130px;}
+  .lf-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .lf-chip{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:14px;font-size:.78rem;cursor:pointer;font-weight:500;}
+  .lf-chip:hover{background:#262c36;color:var(--text);}
+  .lf-chip.active{background:rgba(91,140,255,.18);border-color:var(--accent);color:var(--text);}
+  .lf-toggle{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--text);padding-bottom:10px;cursor:pointer;}
+  .lf-row-bottom #searchBtn{margin-left:auto;}
+  .leads-table td{vertical-align:middle;}
+  .leads-table tr.dim td{opacity:.45;}
+  .lead-logo{width:36px;height:36px;border-radius:8px;background:#fff;padding:3px;object-fit:contain;display:block;}
+  .lead-logo-skeleton{width:36px;height:36px;border-radius:8px;background:linear-gradient(90deg,#1a1c20 25%,#262a31 37%,#1a1c20 63%);background-size:400% 100%;animation:cb-shimmer 1.4s ease infinite;}
+  .lead-initials{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#fff;}
+  .lead-name{font-weight:700;font-size:14px;}
+  .lead-town{color:var(--muted);font-size:12px;margin-top:2px;}
+  .lead-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:.66rem;font-weight:600;background:rgba(255,255,255,.08);color:var(--muted);vertical-align:middle;}
+  .lead-muted{color:var(--muted);font-size:.82rem;}
+  .lead-globe{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);color:var(--text);background:var(--panel2);}
+  .lead-globe:hover{border-color:var(--accent);color:var(--accent);}
+  .lead-nosite{display:inline-block;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600;background:rgba(224,82,82,.16);color:#ff8a8a;white-space:nowrap;}
+  .lead-rating{color:var(--text);text-decoration:none;white-space:nowrap;font-size:.85rem;}
+  .lead-rating:hover{color:var(--accent);}
+  .lead-rating .star{color:#e0b93d;}
+  .color-dots{display:flex;gap:5px;}
+  .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;}
+  .color-dot:hover{transform:scale(1.25);}
+  .pipeline-card-brand{display:flex;align-items:center;gap:10px;padding-right:20px;min-width:0;}
+  .pipeline-card-brand .lead-logo,.pipeline-card-brand .lead-initials{width:30px;height:30px;flex:none;}
+  .use-logo-toggle{display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer;}
   .pipeline-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;align-items:start;}
   .pipeline-row{position:relative;border-radius:10px;overflow:hidden;background:var(--panel2);border:1px solid var(--border);}
   .status-dot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 3px rgba(0,0,0,.25);}
@@ -254,9 +289,39 @@
 
   <!-- TAB 1: LEADS -->
   <section id="tab-leads" class="tab-panel active">
-    <div class="row">
-      <input type="text" id="searchQuery" placeholder="e.g. electrician leinster">
-      <button id="searchBtn">Search</button>
+    <div class="lead-filters">
+      <div class="lf-field">
+        <label for="tradeInput">Trade</label>
+        <input type="text" id="tradeInput" placeholder="e.g. Electrician">
+        <div class="lf-chips" id="tradeChips"></div>
+      </div>
+      <div class="lf-row">
+        <div class="lf-field">
+          <label for="provinceSelect">Province</label>
+          <select id="provinceSelect"></select>
+        </div>
+        <div class="lf-field lf-grow">
+          <label>Counties</label>
+          <div class="lf-chips" id="countyChips"></div>
+        </div>
+      </div>
+      <div class="lf-row lf-row-bottom">
+        <div class="lf-field">
+          <label for="townInput">Town (optional)</label>
+          <input type="text" id="townInput" list="townList" placeholder="e.g. Naas">
+          <datalist id="townList"></datalist>
+        </div>
+        <div class="lf-field">
+          <label for="minRatingSelect">Min rating</label>
+          <select id="minRatingSelect">
+            <option value="0">Any</option>
+            <option value="3">3+</option>
+            <option value="4">4+</option>
+          </select>
+        </div>
+        <label class="lf-toggle"><input type="checkbox" id="noWebsiteOnly"> No website only</label>
+        <button id="searchBtn">Search</button>
+      </div>
     </div>
     <div class="status" id="leadsStatus"></div>
     <div class="row">
@@ -267,27 +332,24 @@
       <div class="loading-text">Loading...</div>
     </div>
     <div class="table-wrap" id="leadsTableWrap">
-      <table id="leadsTable">
+      <table id="leadsTable" class="leads-table">
         <thead>
           <tr>
             <th></th>
-            <th data-key="score">Score</th>
+            <th></th>
             <th data-key="name">Name</th>
-            <th data-key="phone">Phone</th>
-            <th data-key="email">Email</th>
-            <th data-key="website">Website</th>
-            <th data-key="location">Location</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Website</th>
+            <th data-key="rating">Rating</th>
+            <th>Colours</th>
+            <th data-key="score">Score</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
-    <div class="empty" id="leadsEmpty">Search for a trade + location to find leads.</div>
-    <div class="pagination" id="leadsPagination" style="display:none;">
-      <button class="secondary" id="prevPageBtn">&larr; Prev</button>
-      <span id="pageIndicator"></span>
-      <button class="secondary" id="nextPageBtn">Next &rarr;</button>
-    </div>
+    <div class="empty" id="leadsEmpty">Pick a trade and a county (or a town) to find leads.</div>
   </section>
 
   <!-- TAB 2: PIPELINE -->
@@ -442,10 +504,12 @@ const state = {
   emails: [],
   sortKeyLeads: 'score', sortDirLeads: -1,
   sortKeyPipeline: 'score', sortDirPipeline: -1,
-  currentQuery: '',
-  currentPage: 1,
-  totalPages: null,
-  hasMore: false,
+  regions: null,              // trades / provinces / counties from /api/regions
+  selectedTrade: '',
+  selectedCounties: new Set(),
+  selectedLeadIds: new Set(), // place_ids ticked in the results table
+  searchJobId: null,
+  searchPollTimer: null,
 };
 
 function setStatus(id, msg, isError){
@@ -508,86 +572,182 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // ---------- Tab 1: Leads ----------
-document.getElementById('searchBtn').addEventListener('click', () => {
-  const query = document.getElementById('searchQuery').value.trim();
-  if (!query) return;
-  state.currentQuery = query;
-  fetchLeadsPage(1);
-});
-document.getElementById('searchQuery').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('searchBtn').click();
-});
-document.getElementById('prevPageBtn').addEventListener('click', () => {
-  if (state.currentPage > 1) fetchLeadsPage(state.currentPage - 1);
-});
-document.getElementById('nextPageBtn').addEventListener('click', () => {
-  if (state.hasMore) fetchLeadsPage(state.currentPage + 1);
-});
+const GLOBE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`;
 
-async function fetchLeadsPage(page){
-  const query = state.currentQuery;
-  if (!query) return;
+function initials(name){
+  const words = (name || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  return ((words[0] || '?')[0] + (words[1] ? words[1][0] : '')).toUpperCase();
+}
+
+function initialsColor(name){
+  let h = 0;
+  for (const ch of (name || '')) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `hsl(${h}, 45%, 38%)`;
+}
+
+// Logo cell shared by the results table and pipeline cards: the real
+// logo, a shimmer while enrichment is still running, or initials.
+function logoHtml(lead){
+  if (lead.logo_path) return `<img class="lead-logo" src="${escapeHtml(lead.logo_path)}" alt="">`;
+  if (lead.enrich_status === 'pending') return `<div class="lead-logo-skeleton"></div>`;
+  return `<div class="lead-initials" style="background:${initialsColor(lead.name)}">${escapeHtml(initials(lead.name))}</div>`;
+}
+
+function colorDotsHtml(colors){
+  const list = Array.isArray(colors) ? colors : (colors || '').split(',').filter(Boolean);
+  return `<div class="color-dots">${list.slice(0, 4).map(c =>
+    `<button type="button" class="color-dot" style="background:${escapeHtml(c)}" title="${escapeHtml(c)}" data-hex="${escapeHtml(c)}"></button>`
+  ).join('')}</div>`;
+}
+
+function bindColorDots(root){
+  root.querySelectorAll('.color-dot').forEach(dot => dot.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(dot.dataset.hex);
+      showToast(`Copied ${dot.dataset.hex}`);
+    } catch(err) {
+      showToast(`Couldn't copy ${dot.dataset.hex}`);
+    }
+  }));
+}
+
+async function loadRegions(){
+  try {
+    const res = await fetch('/api/regions');
+    state.regions = await res.json();
+  } catch(e) {
+    setStatus('leadsStatus', 'Could not load regions: ' + e.message, true);
+    return;
+  }
+  const trades = document.getElementById('tradeChips');
+  trades.innerHTML = state.regions.trades.map(t => `<button type="button" class="lf-chip" data-trade="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('');
+  trades.querySelectorAll('.lf-chip').forEach(chip => chip.addEventListener('click', () => {
+    document.getElementById('tradeInput').value = chip.dataset.trade;
+    renderTradeChips();
+  }));
+  const province = document.getElementById('provinceSelect');
+  province.innerHTML = state.regions.provinces.map(p => `<option>${escapeHtml(p)}</option>`).join('');
+  province.addEventListener('change', () => {
+    const allowed = countiesIn(province.value);
+    state.selectedCounties = new Set([...state.selectedCounties].filter(c => allowed.includes(c)));
+    renderCountyChips();
+  });
+  renderCountyChips();
+}
+
+function renderTradeChips(){
+  const value = document.getElementById('tradeInput').value.trim().toLowerCase();
+  document.querySelectorAll('#tradeChips .lf-chip').forEach(chip =>
+    chip.classList.toggle('active', chip.dataset.trade.toLowerCase() === value));
+}
+document.getElementById('tradeInput').addEventListener('input', renderTradeChips);
+
+function countiesIn(province){
+  return Object.entries(state.regions.counties).filter(([, c]) => c.province === province).map(([name]) => name);
+}
+
+function renderCountyChips(){
+  const province = document.getElementById('provinceSelect').value;
+  const wrap = document.getElementById('countyChips');
+  const counties = countiesIn(province);
+  wrap.innerHTML = counties.map(c =>
+    `<button type="button" class="lf-chip${state.selectedCounties.has(c) ? ' active' : ''}" data-county="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+  ).join('');
+  wrap.querySelectorAll('.lf-chip').forEach(chip => chip.addEventListener('click', () => {
+    const c = chip.dataset.county;
+    if (state.selectedCounties.has(c)) state.selectedCounties.delete(c);
+    else state.selectedCounties.add(c);
+    renderCountyChips();
+  }));
+  // Town suggestions come from the selected counties (or the whole province).
+  const pool = state.selectedCounties.size ? [...state.selectedCounties] : counties;
+  document.getElementById('townList').innerHTML = pool.flatMap(c => state.regions.counties[c].towns)
+    .map(t => `<option value="${escapeHtml(t)}">`).join('');
+}
+
+loadRegions();
+
+function stopSearchPolling(){
+  if (state.searchPollTimer) { clearInterval(state.searchPollTimer); state.searchPollTimer = null; }
+}
+
+document.getElementById('searchBtn').addEventListener('click', async () => {
+  const trade = document.getElementById('tradeInput').value.trim();
+  const town = document.getElementById('townInput').value.trim();
+  if (!trade) { setStatus('leadsStatus', 'Enter a trade (or pick one of the chips).', true); return; }
+  if (!state.selectedCounties.size && !town) { setStatus('leadsStatus', 'Pick at least one county, or type a town.', true); return; }
+
+  stopSearchPolling();
+  state.selectedLeadIds.clear();
   setStatus('leadsStatus', '');
   document.getElementById('leadsTableWrap').style.display = 'none';
   document.getElementById('leadsEmpty').style.display = 'none';
-  document.getElementById('leadsPagination').style.display = 'none';
-  document.querySelector('#leadsLoadingCenter .loading-text').textContent = 'Loading...';
+  document.querySelector('#leadsLoadingCenter .loading-text').textContent = 'Searching Google...';
   showLoadingCenter('leadsLoadingCenter', true);
   document.getElementById('searchBtn').disabled = true;
-  document.getElementById('prevPageBtn').disabled = true;
-  document.getElementById('nextPageBtn').disabled = true;
   try {
     const res = await fetch('/api/search', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({query, page})
+      body: JSON.stringify({
+        trade,
+        town,
+        counties: [...state.selectedCounties],
+        no_website_only: document.getElementById('noWebsiteOnly').checked,
+        min_rating: Number(document.getElementById('minRatingSelect').value),
+      })
     });
     const data = await res.json();
     if (data.error) {
       state.leads = [];
-      state.hasMore = false;
       setStatus('leadsStatus', data.error, true);
       logAction('Search leads', false, data.error);
       return;
     }
     state.leads = data.results || [];
-    state.currentPage = data.page || page;
-    state.totalPages = data.total_pages || null;
-    state.hasMore = !!data.has_more;
-
-    const scanned = data.scanned != null ? data.scanned : state.leads.length;
-    let msg = `Page ${state.currentPage}${state.totalPages ? ' of ' + state.totalPages : ''} — scanned ${scanned} listing(s), ${state.leads.length} qualify as leads` +
-      (data.total_count ? ` (goldenpages reports ~${data.total_count} total).` : '.');
-    if (data.warning) msg += ` Warning: ${data.warning}`;
-    setStatus('leadsStatus', msg);
-    logAction('Search leads', true, `${state.leads.length} qualifying`);
+    state.searchJobId = data.job_id;
+    const where = town || [...state.selectedCounties].join(', ');
+    setStatus('leadsStatus', `${state.leads.length} ${trade.toLowerCase()} lead(s) in ${where} — ${data.api_calls} Places API call(s) across ${data.queries} quer${data.queries === 1 ? 'y' : 'ies'}. Finding emails, logos & colours...` +
+      (data.warning ? ` Warning: ${data.warning}` : ''));
+    logAction('Search leads', true, `${state.leads.length} found, ${data.api_calls} API calls`);
+    if (state.leads.length) state.searchPollTimer = setInterval(pollSearch, 2000);
   } catch(e) {
     setStatus('leadsStatus', 'Search failed: ' + e.message, true);
     logAction('Search leads', false, e.message);
   } finally {
     showLoadingCenter('leadsLoadingCenter', false);
     document.getElementById('leadsTableWrap').style.display = '';
-    renderLeads();
-    renderPagination();
     document.getElementById('searchBtn').disabled = false;
-    document.getElementById('prevPageBtn').disabled = state.currentPage <= 1;
-    document.getElementById('nextPageBtn').disabled = !state.hasMore;
+    renderLeads();
   }
-}
+});
+document.getElementById('tradeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('searchBtn').click();
+});
 
-function renderPagination(){
-  const pag = document.getElementById('leadsPagination');
-  if (!state.leads.length && state.currentPage === 1) { pag.style.display = 'none'; return; }
-  pag.style.display = 'flex';
-  document.getElementById('pageIndicator').textContent =
-    `Page ${state.currentPage}${state.totalPages ? ' of ' + state.totalPages : ''}`;
-  document.getElementById('prevPageBtn').disabled = state.currentPage <= 1;
-  document.getElementById('nextPageBtn').disabled = !state.hasMore;
+async function pollSearch(){
+  const jobId = state.searchJobId;
+  try {
+    const res = await fetch(`/api/search/status/${jobId}`);
+    const data = await res.json();
+    if (jobId !== state.searchJobId) return; // a newer search replaced this one
+    if (data.error) { stopSearchPolling(); return; }
+    state.leads = data.results;
+    renderLeads();
+    if (data.finished) {
+      stopSearchPolling();
+      const withEmail = state.leads.filter(l => l.email).length;
+      setStatus('leadsStatus', `${state.leads.length} lead(s) — enrichment done: ${withEmail} with an email, ${state.leads.filter(l => l.logo_path).length} with a logo.`);
+    } else {
+      setStatus('leadsStatus', `${state.leads.length} lead(s) — enriching ${data.done}/${data.total}...`);
+    }
+  } catch(e) { /* transient; the next tick retries */ }
 }
 
 function sortRows(rows, key, dir){
   return [...rows].sort((a,b) => {
     let av = a[key], bv = b[key];
-    if (key === 'score') { av = Number(av)||0; bv = Number(bv)||0; }
+    if (key === 'score' || key === 'rating') { av = Number(av)||0; bv = Number(bv)||0; }
     else { av = (av||'').toString().toLowerCase(); bv = (bv||'').toString().toLowerCase(); }
     if (av < bv) return -1*dir;
     if (av > bv) return 1*dir;
@@ -595,48 +755,72 @@ function sortRows(rows, key, dir){
   });
 }
 
+function emailCell(lead){
+  if (lead.email) return escapeHtml(lead.email);
+  if (lead.enrich_status !== 'pending' && !lead.website) return `<span class="lead-muted">Phone lead</span>`;
+  return `<span class="lead-muted">No email yet</span>`;
+}
+
 function renderLeads(){
   const tbody = document.querySelector('#leadsTable tbody');
   const empty = document.getElementById('leadsEmpty');
   tbody.innerHTML = '';
-  if (!state.leads.length) { empty.style.display = 'block'; document.getElementById('addSelectedBtn').disabled = true; return; }
+  if (!state.leads.length) { empty.style.display = 'block'; updateAddButton(); return; }
   empty.style.display = 'none';
 
   const rows = sortRows(state.leads, state.sortKeyLeads, state.sortDirLeads);
-  rows.forEach((lead, i) => {
+  rows.forEach(lead => {
     const tr = document.createElement('tr');
+    if (lead.score === 0) tr.className = 'dim';
+    const rating = lead.rating
+      ? `<span class="star">&#9733;</span> ${Number(lead.rating).toFixed(1)} <span class="lead-muted">(${lead.review_count || 0})</span>`
+      : `<span class="lead-muted">No reviews</span>`;
     tr.innerHTML = `
-      <td class="checkbox-cell"><input type="checkbox" class="lead-check" data-idx="${i}"></td>
+      <td class="checkbox-cell"><input type="checkbox" class="lead-check" data-id="${escapeHtml(lead.place_id)}"
+        ${lead.in_pipeline ? 'disabled' : ''} ${state.selectedLeadIds.has(lead.place_id) ? 'checked' : ''}></td>
+      <td>${logoHtml(lead)}</td>
+      <td>
+        <div class="lead-name">${escapeHtml(lead.name || '')}${lead.in_pipeline ? '<span class="lead-tag">In pipeline</span>' : ''}</div>
+        <div class="lead-town">${escapeHtml([lead.town, lead.county].filter(Boolean).join(', '))}</div>
+      </td>
+      <td style="white-space:nowrap">${escapeHtml(lead.phone || '')}</td>
+      <td>${emailCell(lead)}</td>
+      <td>${lead.website
+        ? `<a class="lead-globe" href="${escapeHtml(lead.website)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(lead.website)}">${GLOBE_ICON}</a>`
+        : '<span class="lead-nosite">No site</span>'}</td>
+      <td>${lead.maps_url ? `<a class="lead-rating" href="${escapeHtml(lead.maps_url)}" target="_blank" rel="noopener noreferrer">${rating}</a>` : rating}</td>
+      <td>${colorDotsHtml(lead.brand_colors)}</td>
       <td><span class="score-badge">${lead.score}</span></td>
-      <td>${escapeHtml(lead.name||'')}</td>
-      <td>${escapeHtml(lead.phone||'')}</td>
-      <td>${escapeHtml(lead.email||'')}</td>
-      <td>${lead.website ? `<a href="${escapeHtml(lead.website)}" target="_blank" style="color:var(--accent)">link</a>` : ''}</td>
-      <td>${escapeHtml(lead.location||'')}</td>
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('.lead-check').forEach(cb => cb.addEventListener('change', updateAddButton));
+  tbody.querySelectorAll('.lead-check').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) state.selectedLeadIds.add(cb.dataset.id);
+    else state.selectedLeadIds.delete(cb.dataset.id);
+    updateAddButton();
+  }));
+  bindColorDots(tbody);
   updateAddButton();
 }
 
 function updateAddButton(){
-  const any = document.querySelectorAll('.lead-check:checked').length > 0;
-  document.getElementById('addSelectedBtn').disabled = !any;
+  document.getElementById('addSelectedBtn').disabled = state.selectedLeadIds.size === 0;
 }
 
 document.getElementById('addSelectedBtn').addEventListener('click', async () => {
-  const rows = sortRows(state.leads, state.sortKeyLeads, state.sortDirLeads);
-  const checked = [...document.querySelectorAll('.lead-check:checked')].map(cb => rows[Number(cb.dataset.idx)]);
-  if (!checked.length) return;
+  const chosen = state.leads.filter(l => state.selectedLeadIds.has(l.place_id) && !l.in_pipeline);
+  if (!chosen.length) return;
   setLoading('leadsStatus', 'Adding to pipeline...');
   try {
     const res = await fetch('/api/pipeline/add', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({leads: checked})
+      body: JSON.stringify({leads: chosen})
     });
     const data = await res.json();
-    setStatus('leadsStatus', `Added ${data.added} lead(s) to pipeline.`);
+    chosen.forEach(l => { l.in_pipeline = true; state.selectedLeadIds.delete(l.place_id); });
+    renderLeads();
+    setStatus('leadsStatus', `Added ${data.added} lead(s) to pipeline.` +
+      (state.searchPollTimer ? ' Emails/logos still being found will be filled in automatically.' : ''));
     logAction('Add to pipeline', true, `${data.added} added`);
   } catch(e) {
     setStatus('leadsStatus', 'Failed to add: ' + e.message, true);
@@ -648,7 +832,7 @@ document.querySelectorAll('#leadsTable th[data-key]').forEach(th => {
   th.addEventListener('click', () => {
     const key = th.dataset.key;
     if (state.sortKeyLeads === key) state.sortDirLeads *= -1;
-    else { state.sortKeyLeads = key; state.sortDirLeads = 1; }
+    else { state.sortKeyLeads = key; state.sortDirLeads = key === 'name' ? 1 : -1; }
     renderLeads();
   });
 });
@@ -714,7 +898,13 @@ function renderPipeline(){
     row.innerHTML = `
       <span class="status-dot ${rowClass}" title="${rowClass}"></span>
       <div class="pipeline-row-header">
-        <span class="name">${escapeHtml(lead.name||'')}</span>
+        <div class="pipeline-card-brand">
+          ${logoHtml(lead)}
+          <div style="min-width:0">
+            <span class="name">${escapeHtml(lead.name||'')}</span>
+            ${lead.brand_colors ? colorDotsHtml(lead.brand_colors) : ''}
+          </div>
+        </div>
         <div class="pipeline-row-actions">
           <button class="secondary build-btn" data-slug="${lead.slug}">${lead.demo_built === 'Yes' ? 'Rebuild' : 'Build Site'}</button>
           <button class="secondary edit-btn" data-slug="${lead.slug}" ${lead.demo_built === 'Yes' ? '' : 'disabled'}>Edit Site</button>
@@ -731,6 +921,14 @@ function renderPipeline(){
           <div><span class="label">Replied</span><span class="value">${lead.replied}</span></div>
           <div><span class="label">Sold</span><span class="value">${lead.sold}</span></div>
           ${lead.demo_url ? `<div><span class="label">Demo</span><a class="open-demo-link" href="${escapeHtml(lead.demo_url)}" target="_blank" rel="noopener noreferrer">Open Demo &rarr;</a></div>` : ''}
+          ${lead.rating ? `<div><span class="label">Rating</span><span class="value">&#9733; ${escapeHtml(lead.rating)} (${escapeHtml(lead.review_count || '0')})</span></div>` : ''}
+          <div>
+            <span class="label">Logo</span>
+            <label class="use-logo-toggle" title="${lead.logo_path ? 'Show their logo in the site Nav and Footer' : 'No logo was found for this business'}">
+              <input type="checkbox" class="use-logo-check" ${lead.use_logo === 'Yes' ? 'checked' : ''} ${lead.logo_path ? '' : 'disabled'}>
+              Use their logo
+            </label>
+          </div>
         </div>
       </div>
     `;
@@ -738,6 +936,27 @@ function renderPipeline(){
       row.classList.toggle('expanded');
       if (row.classList.contains('expanded')) state.expandedSlugs.add(lead.slug);
       else state.expandedSlugs.delete(lead.slug);
+    });
+    bindColorDots(row);
+    const logoCheck = row.querySelector('.use-logo-check');
+    logoCheck.addEventListener('click', e => e.stopPropagation());
+    logoCheck.addEventListener('change', async () => {
+      try {
+        const res = await fetch('/api/pipeline/use_logo', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ slug: lead.slug, value: logoCheck.checked })
+        });
+        const data = await res.json();
+        if (data.error) { showToast(data.error); logoCheck.checked = !logoCheck.checked; return; }
+        lead.use_logo = data.lead.use_logo;
+        showToast(logoCheck.checked
+          ? (data.applied ? 'Logo added to the site' : 'Logo will be used on the next build')
+          : (data.applied ? 'Logo removed from the site' : 'Logo turned off'));
+        logAction('Use their logo', true, `${lead.name}: ${logoCheck.checked ? 'on' : 'off'}`);
+      } catch(e) {
+        logoCheck.checked = !logoCheck.checked;
+        showToast('Could not update: ' + e.message);
+      }
     });
     row.querySelector('.build-btn').addEventListener('click', (e) => { e.stopPropagation(); openPreviewModal(lead.slug, true); });
     row.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openPreviewModal(lead.slug, false); });

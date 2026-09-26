@@ -1,0 +1,83 @@
+{
+  "Carlow": {"province": "Leinster", "center": [52.72, -6.83], "towns": [
+    ["Carlow", 52.8408, -6.9261], ["Tullow", 52.8003, -6.7364], ["Bagenalstown", 52.7004, -6.9588]]},
+  "Dublin": {"province": "Leinster", "center": [53.35, -6.26], "towns": [
+    ["Dublin City", 53.3498, -6.2603], ["Swords", 53.4597, -6.2181], ["Tallaght", 53.2859, -6.3733],
+    ["Blanchardstown", 53.3884, -6.3772], ["Dun Laoghaire", 53.2944, -6.1339], ["Lucan", 53.3573, -6.4488],
+    ["Balbriggan", 53.6128, -6.1819]]},
+  "Kildare": {"province": "Leinster", "center": [53.16, -6.76], "towns": [
+    ["Naas", 53.2159, -6.6669], ["Newbridge", 53.1819, -6.7967], ["Celbridge", 53.3399, -6.5389],
+    ["Maynooth", 53.3813, -6.5918], ["Athy", 52.9914, -6.9867], ["Kildare", 53.1569, -6.9111],
+    ["Leixlip", 53.3659, -6.4956]]},
+  "Kilkenny": {"province": "Leinster", "center": [52.58, -7.22], "towns": [
+    ["Kilkenny", 52.6541, -7.2448], ["Callan", 52.5446, -7.3906], ["Thomastown", 52.5264, -7.1375],
+    ["Castlecomer", 52.8053, -7.2094]]},
+  "Laois": {"province": "Leinster", "center": [52.99, -7.33], "towns": [
+    ["Portlaoise", 53.0344, -7.2998], ["Portarlington", 53.1622, -7.1911], ["Mountmellick", 53.1136, -7.3206],
+    ["Abbeyleix", 52.9150, -7.3483]]},
+  "Longford": {"province": "Leinster", "center": [53.73, -7.75], "towns": [
+    ["Longford", 53.7276, -7.7998], ["Granard", 53.7775, -7.4950], ["Edgeworthstown", 53.6989, -7.6072]]},
+  "Louth": {"province": "Leinster", "center": [53.92, -6.49], "towns": [
+    ["Dundalk", 54.0090, -6.4049], ["Drogheda", 53.7179, -6.3561], ["Ardee", 53.8589, -6.5403]]},
+  "Meath": {"province": "Leinster", "center": [53.61, -6.66], "towns": [
+    ["Navan", 53.6528, -6.6814], ["Trim", 53.5553, -6.7911], ["Ashbourne", 53.5111, -6.3975],
+    ["Kells", 53.7264, -6.8794], ["Dunboyne", 53.4194, -6.4744], ["Ratoath", 53.5064, -6.4631]]},
+  "Offaly": {"province": "Leinster", "center": [53.23, -7.60], "towns": [
+    ["Tullamore", 53.2739, -7.4889], ["Birr", 53.0914, -7.9133], ["Edenderry", 53.3450, -7.0494],
+    ["Clara", 53.3422, -7.6128]]},
+  "Westmeath": {"province": "Leinster", "center": [53.53, -7.46], "towns": [
+    ["Mullingar", 53.5259, -7.3381], ["Athlone", 53.4239, -7.9407], ["Moate", 53.3978, -7.7197]]},
+  "Wexford": {"province": "Leinster", "center": [52.47, -6.58], "towns": [
+    ["Wexford", 52.3369, -6.4633], ["Enniscorthy", 52.5008, -6.5578], ["Gorey", 52.6747, -6.2925],
+    ["New Ross", 52.3961, -6.9367]]},
+  "Wicklow": {"province": "Leinster", "center": [52.98, -6.37], "towns": [
+    ["Bray", 53.2028, -6.0983], ["Wicklow", 52.9808, -6.0446], ["Arklow", 52.7978, -6.1599],
+    ["Greystones", 53.1440, -6.0720], ["Blessington", 53.1700, -6.5325]]},
+
+  "Clare": {"province": "Munster", "center": [52.86, -8.98], "towns": [
+    ["Ennis", 52.8436, -8.9864], ["Shannon", 52.7038, -8.8642], ["Kilrush", 52.6397, -9.4833],
+    ["Kilkee", 52.6817, -9.6458]]},
+  "Cork": {"province": "Munster", "center": [51.95, -8.72], "towns": [
+    ["Cork City", 51.8985, -8.4756], ["Ballincollig", 51.8878, -8.5939], ["Mallow", 52.1394, -8.6461],
+    ["Midleton", 51.9153, -8.1806], ["Cobh", 51.8503, -8.2967], ["Bandon", 51.7461, -8.7425],
+    ["Youghal", 51.9531, -7.8506], ["Clonakilty", 51.6231, -8.8706], ["Skibbereen", 51.5500, -9.2667],
+    ["Fermoy", 52.1381, -8.2758]]},
+  "Kerry": {"province": "Munster", "center": [52.15, -9.57], "towns": [
+    ["Tralee", 52.2713, -9.6999], ["Killarney", 52.0599, -9.5044], ["Listowel", 52.4464, -9.4853],
+    ["Kenmare", 51.8801, -9.5835], ["Dingle", 52.1408, -10.2689], ["Castleisland", 52.2328, -9.4628]]},
+  "Limerick": {"province": "Munster", "center": [52.51, -8.75], "towns": [
+    ["Limerick City", 52.6638, -8.6267], ["Newcastle West", 52.4492, -9.0611], ["Kilmallock", 52.4000, -8.5772],
+    ["Abbeyfeale", 52.3858, -9.3006]]},
+  "Tipperary": {"province": "Munster", "center": [52.67, -7.84], "towns": [
+    ["Clonmel", 52.3558, -7.7039], ["Nenagh", 52.8619, -8.1967], ["Thurles", 52.6819, -7.8103],
+    ["Carrick-on-Suir", 52.3494, -7.4133], ["Roscrea", 52.9511, -7.8017], ["Cashel", 52.5158, -7.8856],
+    ["Tipperary Town", 52.4736, -8.1558]]},
+  "Waterford": {"province": "Munster", "center": [52.16, -7.60], "towns": [
+    ["Waterford City", 52.2593, -7.1101], ["Dungarvan", 52.0845, -7.6397], ["Tramore", 52.1622, -7.1522],
+    ["Lismore", 52.1369, -7.9306]]},
+
+  "Galway": {"province": "Connacht", "center": [53.35, -8.80], "towns": [
+    ["Galway City", 53.2707, -9.0568], ["Tuam", 53.5147, -8.8511], ["Ballinasloe", 53.3275, -8.2194],
+    ["Loughrea", 53.1969, -8.5667], ["Oranmore", 53.2686, -8.9281], ["Athenry", 53.2964, -8.7431],
+    ["Clifden", 53.4894, -10.0192]]},
+  "Leitrim": {"province": "Connacht", "center": [54.12, -8.00], "towns": [
+    ["Carrick-on-Shannon", 53.9469, -8.0900], ["Manorhamilton", 54.3036, -8.1772], ["Mohill", 53.9219, -7.8656]]},
+  "Mayo": {"province": "Connacht", "center": [53.90, -9.40], "towns": [
+    ["Castlebar", 53.8550, -9.2880], ["Ballina", 54.1149, -9.1551], ["Westport", 53.8003, -9.5181],
+    ["Claremorris", 53.7219, -8.9939], ["Ballinrobe", 53.6336, -9.2289]]},
+  "Roscommon": {"province": "Connacht", "center": [53.76, -8.27], "towns": [
+    ["Roscommon", 53.6333, -8.1833], ["Boyle", 53.9733, -8.3025], ["Castlerea", 53.7686, -8.4914],
+    ["Ballaghaderreen", 53.9011, -8.5794]]},
+  "Sligo": {"province": "Connacht", "center": [54.15, -8.60], "towns": [
+    ["Sligo", 54.2766, -8.4761], ["Tubbercurry", 54.0561, -8.7283], ["Ballymote", 54.0892, -8.5156]]},
+
+  "Cavan": {"province": "Ulster", "center": [53.97, -7.30], "towns": [
+    ["Cavan", 53.9908, -7.3606], ["Bailieborough", 53.9142, -6.9711], ["Cootehill", 54.0747, -7.0797],
+    ["Virginia", 53.8350, -7.0772]]},
+  "Donegal": {"province": "Ulster", "center": [54.92, -8.00], "towns": [
+    ["Letterkenny", 54.9558, -7.7342], ["Buncrana", 55.1333, -7.4500], ["Donegal Town", 54.6538, -8.1096],
+    ["Ballyshannon", 54.5033, -8.1892], ["Bundoran", 54.4778, -8.2811], ["Lifford", 54.8331, -7.4847]]},
+  "Monaghan": {"province": "Ulster", "center": [54.15, -6.97], "towns": [
+    ["Monaghan", 54.2492, -6.9683], ["Carrickmacross", 53.9778, -6.7189], ["Castleblayney", 54.1197, -6.7372],
+    ["Clones", 54.1797, -7.2319]]}
+}

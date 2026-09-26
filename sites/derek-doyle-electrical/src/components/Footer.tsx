@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { BRAND_LOGO } from "@/brand";
 
 const LINKS = [
   { href: "#services", label: "Services" },
@@ -13,13 +13,10 @@ export function Footer() {
     <footer data-slot="footer" className="bg-ink px-6 py-10 lg:px-16">
       <div className="mx-auto flex max-w-content flex-col items-center gap-8 text-center lg:flex-row lg:justify-between lg:text-left">
         <div className="flex items-center gap-2.5">
-          <Image
-            src="/logo.png"
-            alt="{{BUSINESS_NAME}}"
-            width={24}
-            height={24}
-            className="object-contain"
-          />
+          {BRAND_LOGO && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={BRAND_LOGO} alt="" className="h-8 w-8 rounded-sharp bg-white object-contain p-0.5" />
+          )}
           <div>
             <p className="text-[13.5px] font-semibold text-white">
               {{BUSINESS_NAME}}

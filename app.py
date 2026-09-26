@@ -3,6 +3,8 @@ import asyncio
 import atexit
 import base64
 import csv
+import hashlib
+import io
 import json
 import os
 import re
@@ -12,14 +14,19 @@ import sqlite3
 import subprocess
 import threading
 import time
+import uuid
 import webbrowser
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
+from difflib import SequenceMatcher
 from pathlib import Path
 from threading import Timer
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from PIL import Image
 from flask import Flask, jsonify, render_template, request
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -32,6 +39,9 @@ CSV_FIELDS = [
     "name", "phone", "email", "website", "location", "score", "years",
     "slug", "demo_built", "demo_url", "email_sent", "replied", "sold",
     "accent", "font", "radius",  # saved theme, re-applied on rebuild
+    # From the Google Places search + enrichment:
+    "place_id", "logo_path", "brand_colors", "rating", "review_count", "maps_url",
+    "town", "county", "use_logo",
 ]
 
 app = Flask(__name__)
@@ -707,41 +717,19 @@ def _cleanup_previews():
 FREE_BUILDER_HINTS = ["webador", "wix.com", "weebly", "godaddysites", "sites.google"]
 FREE_EMAIL_HINTS = ["gmail.com", "hotmail.com", "yahoo.com", "outlook.com", "live.com"]
 
-
-def score_lead(name, website, email):
-    name = (name or "").lower()
-    website = (website or "").lower().strip()
-    email = (email or "").lower().strip()
-    has_site = bool(website)
-    is_free_email = any(h in email for h in FREE_EMAIL_HINTS)
-    is_ie_email = email.endswith(".ie")
-
-    if "ltd" in re.split(r"\W+", name) or is_ie_email:
-        return 0
-    if not has_site:
-        return 10 if is_free_email else 9
-    if any(h in website for h in FREE_BUILDER_HINTS):
-        return 8
-    if is_free_email:
-        return 7
-    return 5
-
-
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    )
+    ),
+    "Accept-Language": "en-IE,en;q=0.9",
 }
 
 
-def split_query(query):
-    """Split a free-text "trade location" query into (what, where)."""
-    parts = query.strip().split()
-    if len(parts) < 2:
-        return query.strip(), ""
-    return " ".join(parts[:-1]), parts[-1]
-
+# ---------------------------------------------------------------------------
+# Golden Pages — kept only as a fallback email source for leads that Google
+# Places has no website for (see enrich_lead).
+# ---------------------------------------------------------------------------
 
 def fetch_detail_email(session, detail_url):
     """Visit a listing's detail page to pull an email address, if any."""
@@ -757,13 +745,9 @@ def fetch_detail_email(session, detail_url):
     return email_el.get("href", "").replace("mailto:", "").split("?")[0].strip()
 
 
-DETAIL_WORKERS = 12
-RESULTS_PER_PAGE = 20
-
-
 def fetch_results_page(session, what, where, page_num):
     """Fetch one page of goldenpages.ie business results (20 listings each),
-    plus the "N results" total the page reports (for pagination bounds)."""
+    plus the "N results" total the page reports."""
     url = (
         "https://www.goldenpages.ie/q/business/advanced/where/"
         + requests.utils.quote(where or "ireland")
@@ -775,14 +759,14 @@ def fetch_results_page(session, what, where, page_num):
     try:
         resp = session.get(url, headers=HEADERS, timeout=15)
     except requests.RequestException as exc:
-        return [], None, f"Could not reach goldenpages.ie ({exc.__class__.__name__}). Check your connection and try again."
+        return [], None, f"Could not reach goldenpages.ie ({exc.__class__.__name__})."
 
     if resp.status_code in (429, 403):
-        return [], None, "Rate limited — try again in 10 minutes."
+        return [], None, "Rate limited by goldenpages.ie."
     try:
         resp.raise_for_status()
     except requests.RequestException:
-        return [], None, f"goldenpages.ie returned an error (HTTP {resp.status_code}). Try again shortly."
+        return [], None, f"goldenpages.ie returned an error (HTTP {resp.status_code})."
 
     total_count = None
     count_match = re.search(r"([\d,]+)\s+result", resp.text, re.I)
@@ -790,107 +774,499 @@ def fetch_results_page(session, what, where, page_num):
         total_count = int(count_match.group(1).replace(",", ""))
 
     soup = BeautifulSoup(resp.text, "html.parser")
-    cards = soup.select(".listing_container")
     parsed = []
-    for card in cards:
+    for card in soup.select(".listing_container"):
         title_el = card.select_one(".listing_title_link")
         if not title_el:
             continue
-        name = title_el.get_text(strip=True)
-        name = re.sub(r"^\d+\.\s*", "", name)  # strip leading "1." rank prefix
+        name = re.sub(r"^\d+\.\s*", "", title_el.get_text(strip=True))  # strip "1." rank prefix
         if not name:
             continue
-
         phone_el = card.select_one(".link_listing_number")
         phone = phone_el.get("href", "").replace("tel:", "").strip() if phone_el else ""
-
-        loc_el = card.select_one(".listing_address")
-        location = loc_el.get_text(strip=True) if loc_el else ""
-
-        website = ""
-        for link in card.select(".listing_links a"):
-            href = link.get("href", "")
-            if link.get_text(strip=True) == "Website" and href.startswith("http"):
-                website = href
-                break
-
         detail_link = card.select_one(".listing_base_link, .listing_title_link")
         detail_href = detail_link.get("href", "") if detail_link else ""
-        detail_url = (
-            requests.compat.urljoin("https://www.goldenpages.ie/", detail_href)
-            if detail_href else ""
-        )
-
         parsed.append({
             "name": name,
             "phone": phone,
-            "email": "",
-            "website": website,
-            "location": location,
-            "_detail_url": detail_url,
+            "_detail_url": requests.compat.urljoin("https://www.goldenpages.ie/", detail_href) if detail_href else "",
         })
     return parsed, total_count, None
 
 
-def scrape_goldenpages_page(query, page_num=1):
-    """Scrape exactly one goldenpages.ie business-results page (20 listings).
+def _digits(text):
+    return re.sub(r"\D", "", text or "")
 
-    goldenpages.ie's search form POSTs to /q/business/ and redirects to
-    /q/business/advanced/where/<where>/what/<what>/[page]. Email addresses
-    are only shown on each listing's own detail page, so this page's ~20
-    listings are resolved in parallel. Returns (results, total_count, error).
-    """
-    what, where = split_query(query)
-    if not what:
-        return [], None, "search query is empty"
 
+def _norm_name(text):
+    text = re.sub(r"\b(ltd|limited|t/a|the|electrical|services|contractors?)\b", " ", (text or "").lower())
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def goldenpages_email_for(lead):
+    """Find this business's Golden Pages listing (same phone number, or a
+    name similarity over 0.7) and return the email from its detail page."""
     session = requests.Session()
-    results, total_count, error = fetch_results_page(session, what, where, page_num)
-    if error:
-        return [], None, error
-
-    def resolve_email(lead):
-        if lead["_detail_url"]:
-            lead["email"] = fetch_detail_email(session, lead["_detail_url"])
-        return lead
-
-    with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as pool:
-        futures = [pool.submit(resolve_email, lead) for lead in results]
-        for future in as_completed(futures):
-            future.result()
-
-    for lead in results:
-        lead.pop("_detail_url", None)
-
-    return results, total_count, None
-
-
-def scrape_google_maps(query):
-    """Google Places Text Search API. Returns (leads, total_count, error),
-    matching scrape_goldenpages_page's signature. Phone numbers aren't
-    included in a Text Search result — that needs a separate Place Details
-    call per result (using each result's "place_id"), not yet wired up
-    here."""
-    if not GOOGLE_MAPS_API_KEY:
-        return [], None, "GOOGLE_MAPS_API_KEY not set"
-
-    url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-    params = {"query": query + " Ireland", "key": GOOGLE_MAPS_API_KEY}
-
-    resp = requests.get(url, params=params, timeout=15)
-    results = resp.json().get("results", [])
-
-    leads = []
+    where = lead.get("town") or lead.get("county") or ""
+    results, _, error = fetch_results_page(session, lead.get("name", ""), where, 1)
+    if error or not results:
+        return ""
+    phone_tail = _digits(lead.get("phone"))[-7:]
+    target = _norm_name(lead.get("name"))
+    match = None
     for r in results:
-        leads.append({
-            "name": r.get("name", ""),
-            "phone": "",  # needs Place Details call
-            "email": "",
-            "website": r.get("website", ""),
-            "location": r.get("formatted_address", ""),
-            "score": 0,
-        })
-    return leads, len(results), None
+        if phone_tail and len(phone_tail) == 7 and _digits(r["phone"]).endswith(phone_tail):
+            match = r
+            break
+        if match is None and SequenceMatcher(None, target, _norm_name(r["name"])).ratio() > 0.7:
+            match = r
+    if match and match.get("_detail_url"):
+        return fetch_detail_email(session, match["_detail_url"])
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# Google Places API (New) search
+# ---------------------------------------------------------------------------
+
+PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+# Kept minimal on purpose: every field in the mask is billed, and the
+# phone/website fields push the call into a pricier tier.
+PLACES_FIELD_MASK = ",".join([
+    "places.id", "places.displayName", "places.formattedAddress",
+    "places.nationalPhoneNumber", "places.websiteUri", "places.rating",
+    "places.userRatingCount", "places.location", "places.businessStatus",
+    "places.googleMapsUri", "nextPageToken",
+])
+CACHE_TTL_SECONDS = 30 * 24 * 3600  # Google allows caching Places content for 30 days
+PLACES_CACHE_DIR = BASE_DIR / "cache" / "places"
+QUERY_CACHE_DIR = BASE_DIR / "cache" / "queries"
+LOGOS_DIR = BASE_DIR / "static" / "logos"
+COUNTIES = json.loads((BASE_DIR / "data" / "ireland_counties.json").read_text(encoding="utf-8"))
+TRADE_PRESETS = ["Electrician", "Plumber", "Roofer", "Heating Engineer", "Painter", "Landscaper", "Builder"]
+_PLACE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,300}$")
+
+
+class PlacesError(Exception):
+    pass
+
+
+def _cache_read(path):
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if time.time() - data.get("cached_at", 0) > CACHE_TTL_SECONDS:
+        return None
+    return data
+
+
+def _cache_write(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(data), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _place_cache_path(place_id):
+    return PLACES_CACHE_DIR / f"{place_id}.json"
+
+
+def _save_place(place):
+    """Cache a place's search data, keeping any enrichment already stored."""
+    path = _place_cache_path(place["id"])
+    existing = _cache_read(path) or {}
+    existing["place"] = place
+    existing["cached_at"] = time.time()
+    _cache_write(path, existing)
+
+
+def places_text_search(text_query, center):
+    """Every page (Google stops at ~60 results) for one query. A repeat of
+    the same query within 30 days is served entirely from cache.
+    Returns (places, api_calls)."""
+    qkey = hashlib.sha1(text_query.lower().encode("utf-8")).hexdigest()
+    cached = _cache_read(QUERY_CACHE_DIR / f"{qkey}.json")
+    if cached:
+        places = []
+        for pid in cached["ids"]:
+            entry = _cache_read(_place_cache_path(pid))
+            if not entry:
+                break
+            places.append(entry["place"])
+        else:
+            return places, 0
+
+    places, calls, token = [], 0, None
+    for _ in range(3):
+        body = {"textQuery": text_query, "regionCode": "IE", "pageSize": 20}
+        if center:
+            body["locationBias"] = {"circle": {
+                "center": {"latitude": center[0], "longitude": center[1]}, "radius": 15000.0,
+            }}
+        if token:
+            body["pageToken"] = token
+        try:
+            resp = requests.post(PLACES_SEARCH_URL, json=body, timeout=15, headers={
+                "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY, "X-Goog-FieldMask": PLACES_FIELD_MASK,
+            })
+        except requests.RequestException as exc:
+            raise PlacesError(f"Could not reach Google Places ({exc.__class__.__name__})")
+        calls += 1
+        data = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            message = (data.get("error") or {}).get("message") or f"HTTP {resp.status_code}"
+            raise PlacesError(f"Google Places error: {message}")
+        for place in data.get("places", []):
+            places.append(place)
+            _save_place(place)
+        token = data.get("nextPageToken")
+        if not token:
+            break
+
+    _cache_write(QUERY_CACHE_DIR / f"{qkey}.json",
+                 {"query": text_query, "ids": [p["id"] for p in places], "cached_at": time.time()})
+    return places, calls
+
+
+_ALL_TOWNS = {t[0].lower(): t[0] for c in COUNTIES.values() for t in c["towns"]}
+_NOT_A_TOWN_RE = re.compile(
+    r"\b(park|estate|road|rd|street|business|centre|center|unit|industrial|lane|avenue|ave|"
+    r"court|house|drive|way|square|place|close|grove|green|terrace)\b", re.I)
+
+
+def _infer_town(address, county, fallback):
+    """A known town in the address, else the segment just before "Co. X"
+    (if it doesn't look like a street/estate/business park), else the town
+    we searched."""
+    parts = [p.strip() for p in (address or "").split(",")]
+    for part in parts:
+        if part.lower() in _ALL_TOWNS:
+            return _ALL_TOWNS[part.lower()]
+        if re.fullmatch(r"Dublin \d{1,2}[Ww]?", part):
+            return part
+    for i, part in enumerate(parts):
+        if part.lower().startswith("co. ") and i > 0:
+            candidate = parts[i - 1]
+            if not _NOT_A_TOWN_RE.search(candidate) and not re.search(r"\d", candidate):
+                return candidate
+            break
+    return fallback
+
+
+def place_to_lead(place, county, town_hint):
+    return {
+        "place_id": place["id"],
+        "name": (place.get("displayName") or {}).get("text", ""),
+        "phone": place.get("nationalPhoneNumber", ""),
+        "email": "",
+        "website": place.get("websiteUri", ""),
+        "location": place.get("formattedAddress", ""),
+        "town": _infer_town(place.get("formattedAddress"), county, town_hint),
+        "county": county,
+        "rating": place.get("rating"),
+        "review_count": place.get("userRatingCount") or 0,
+        "maps_url": place.get("googleMapsUri", ""),
+        "business_status": place.get("businessStatus", ""),
+        "logo_path": "",
+        "brand_colors": [],
+        "quality": {},
+        "enrich_status": "pending",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Enrichment — website email / logo / brand colours / quality signals, or a
+# Golden Pages email for leads with no site. Runs in the background.
+# ---------------------------------------------------------------------------
+
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+ROLE_EMAIL_PREFIXES = ("info", "contact", "hello", "enquiries", "enquiry", "office", "admin", "sales", "bookings", "mail")
+JUNK_EMAIL_HINTS = ("example.", "sentry", "wixpress", "domain.com", "email.com", "yourname", "yourdomain",
+                    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", "@2x", "godaddy", "schema.org")
+HEX_COLOR_RE = re.compile(r"#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
+BRAND_VAR_RE = re.compile(r"--[\w-]*(?:brand|primary|accent)[\w-]*\s*:\s*(#[0-9a-fA-F]{3,6})\b", re.I)
+COPYRIGHT_RE = re.compile(r"(?:©|&copy;|copyright)\s*(?:\d{4}\s*[-–]\s*)?(\d{4})", re.I)
+CONSTRUCTION_RE = re.compile(r"under construction|coming soon|site is being (?:built|updated)", re.I)
+BUILDER_SIGNATURES = {"wix": ("wix.com", "wixstatic.com"), "webador": ("webador",),
+                      "godaddysites": ("godaddysites", "wsimg.com"), "weebly": ("weebly",)}
+ENRICH_POOL = ThreadPoolExecutor(max_workers=6)
+
+
+def _fetch_page(url, max_bytes=2_000_000):
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True, stream=True)
+        if resp.status_code >= 400:
+            return None, None
+        content = resp.raw.read(max_bytes, decode_content=True)
+        encoding = resp.encoding or "utf-8"
+        return content.decode(encoding, errors="ignore"), resp.url
+    except (requests.RequestException, OSError):
+        return None, None
+
+
+def pick_email(candidates):
+    seen, clean = set(), []
+    for raw in candidates:
+        email = raw.strip().strip(".").lower()
+        if not EMAIL_RE.fullmatch(email) or any(h in email for h in JUNK_EMAIL_HINTS) or email in seen:
+            continue
+        seen.add(email)
+        clean.append(email)
+    for email in clean:
+        if email.split("@")[0] in ROLE_EMAIL_PREFIXES:
+            return email
+    return clean[0] if clean else ""
+
+
+def _hex_rgb(hex_):
+    h = hex_.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _is_neutral(rgb):
+    r, g, b = rgb
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return lum > 235 or lum < 22 or (max(rgb) - min(rgb)) < 28
+
+
+# Site-builder UI colours that leak into every site built with them.
+BUILDER_UI_COLORS = {"#116DFF", "#3899EC", "#0070F3"}
+
+
+def _distinct_colors(hexes, limit=4):
+    picked = []
+    for hex_ in hexes:
+        rgb = _hex_rgb(hex_)
+        if _is_neutral(rgb) or "#{:02X}{:02X}{:02X}".format(*rgb) in BUILDER_UI_COLORS:
+            continue
+        if all(sum((a - b) ** 2 for a, b in zip(rgb, _hex_rgb(p))) ** 0.5 > 48 for p in picked):
+            picked.append("#{:02X}{:02X}{:02X}".format(*rgb))
+        if len(picked) == limit:
+            break
+    return picked
+
+
+def logo_colors(img):
+    """Dominant colours of a logo via quantize(8), ignoring transparent,
+    near-white, near-black and low-saturation pixels."""
+    rgba = img.convert("RGBA")
+    rgba.thumbnail((128, 128))
+    pixels = [p[:3] for p in rgba.getdata() if p[3] > 128 and not _is_neutral(p[:3])]
+    if not pixels:
+        return []
+    flat = Image.new("RGB", (len(pixels), 1))
+    flat.putdata(pixels)
+    quant = flat.quantize(colors=8)
+    palette = quant.getpalette()
+    counts = sorted(quant.getcolors() or [], reverse=True)
+    return ["#{:02X}{:02X}{:02X}".format(*palette[i * 3:i * 3 + 3]) for _, i in counts]
+
+
+def find_logo_candidates(soup, base_url):
+    touch, logo_imgs, og, icons = [], [], [], []
+    for link in soup.find_all("link", href=True):
+        rels = [r.lower() for r in (link.get("rel") or [])]
+        if any(r.startswith("apple-touch-icon") for r in rels):
+            touch.append(link["href"])
+        elif "icon" in rels:
+            icons.append(link["href"])
+    for img in soup.find_all("img"):
+        attrs = " ".join([img.get("src", ""), img.get("alt", ""), " ".join(img.get("class", [])), img.get("id", "")])
+        if "logo" in attrs.lower():
+            src = img.get("src") or img.get("data-src") or (img.get("srcset") or "").split(" ")[0]
+            if src:
+                logo_imgs.append(src)
+    meta = soup.find("meta", property="og:image")
+    if meta and meta.get("content"):
+        og.append(meta["content"])
+    urls = []
+    for c in touch + logo_imgs + og + icons:
+        if c and not c.startswith("data:"):
+            urls.append(requests.compat.urljoin(base_url, c))
+    return urls
+
+
+def download_logo(candidates, place_id):
+    """First candidate that's a real raster image (SVGs can't be read by
+    Pillow) is saved as static/logos/<place_id>.png. Returns (url, image)."""
+    for url in candidates:
+        if urlparse(url).path.lower().endswith(".svg"):
+            continue
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=8, stream=True)
+            if resp.status_code >= 400:
+                continue
+            data = resp.raw.read(3_000_000, decode_content=True)
+            img = Image.open(io.BytesIO(data))
+            img.load()
+        except (requests.RequestException, OSError, Image.DecompressionBombError):
+            continue
+        if min(img.size) < 16:
+            continue
+        img = img.convert("RGBA")
+        img.thumbnail((256, 256))
+        LOGOS_DIR.mkdir(parents=True, exist_ok=True)
+        img.save(LOGOS_DIR / f"{place_id}.png", "PNG")
+        return f"/static/logos/{place_id}.png", img
+    return "", None
+
+
+def analyse_site(website, place_id):
+    """Fetch the homepage + /contact (8s timeout each) and pull email, logo,
+    brand colours and site-quality signals."""
+    home_html, final_url = _fetch_page(website)
+    if home_html is None:
+        return {"email": "", "logo_path": "", "brand_colors": [], "quality": {"reachable": False}}
+    contact_html, _ = _fetch_page(requests.compat.urljoin(final_url, "/contact"))
+    soup = BeautifulSoup(home_html, "html.parser")
+
+    emails = []
+    for html in (home_html, contact_html or ""):
+        page = BeautifulSoup(html, "html.parser") if html is not home_html else soup
+        emails += [a["href"][7:].split("?")[0] for a in page.select("a[href^='mailto:']")]
+    email = pick_email(emails) or pick_email(EMAIL_RE.findall(home_html + " " + (contact_html or "")))
+
+    logo_path, logo_img = download_logo(find_logo_candidates(soup, final_url), place_id)
+
+    css_text = "\n".join(s.get_text() for s in soup.find_all("style"))
+    css_text += "\n" + "\n".join(el.get("style", "") for el in soup.find_all(style=True))
+    for link in [l for l in soup.find_all("link", href=True) if "stylesheet" in [r.lower() for r in (l.get("rel") or [])]][:2]:
+        sheet, _ = _fetch_page(requests.compat.urljoin(final_url, link["href"]), max_bytes=1_000_000)
+        css_text += "\n" + (sheet or "")
+    theme = soup.find("meta", attrs={"name": "theme-color"})
+    ordered = []
+    if theme and HEX_COLOR_RE.fullmatch((theme.get("content") or "").strip()):
+        ordered.append(theme["content"].strip())
+    ordered += BRAND_VAR_RE.findall(css_text)
+    if logo_img is not None:
+        ordered += logo_colors(logo_img)
+    ordered += [c for c, _ in Counter(h.upper() for h in HEX_COLOR_RE.findall(css_text)).most_common(20)]
+
+    text = soup.get_text(" ", strip=True)
+    years = [int(y) for y in COPYRIGHT_RE.findall(home_html) if 1995 <= int(y) <= time.gmtime().tm_year + 1]
+    headline = " ".join(el.get_text(" ", strip=True) for el in soup.find_all(["title", "h1"]))
+    haystack = (final_url + home_html[:200_000]).lower()
+    quality = {
+        "reachable": True,
+        "https": final_url.startswith("https://"),
+        "viewport": soup.find("meta", attrs={"name": "viewport"}) is not None,
+        "copyright_year": max(years) if years else None,
+        "builder": next((name for name, sigs in BUILDER_SIGNATURES.items() if any(s in haystack for s in sigs)), None),
+        "under_construction": bool(CONSTRUCTION_RE.search(headline) or (len(text) < 800 and CONSTRUCTION_RE.search(text))),
+    }
+    return {"email": email, "logo_path": logo_path, "brand_colors": _distinct_colors(ordered), "quality": quality}
+
+
+def score_place_lead(lead):
+    """10 no site + email · 9 no site, phone only · 8 free builder or under
+    construction · 7 copyright before 2020 or no viewport meta · 5 current
+    site · 0 closed, or custom-domain email with a modern site."""
+    if lead.get("business_status") and lead["business_status"] != "OPERATIONAL":
+        return 0
+    email = (lead.get("email") or "").lower()
+    if not lead.get("website"):
+        return 10 if email else 9
+    q = lead.get("quality") or {}
+    if not q.get("reachable", True):
+        return 5  # couldn't load it — don't guess either way
+    if q.get("builder") or q.get("under_construction"):
+        return 8
+    outdated = (q.get("copyright_year") and q["copyright_year"] < 2020) or q.get("viewport") is False
+    if outdated:
+        return 7
+    site_host = (urlparse(lead["website"]).hostname or "").lower().removeprefix("www.")
+    email_domain = email.split("@")[-1] if "@" in email else ""
+    if email_domain and site_host and email_domain.endswith(site_host) and q.get("https"):
+        return 0
+    return 5
+
+
+def enrich_lead(lead):
+    """Returns the fields to merge into a lead. Results are cached with the
+    place for 30 days, so re-running a search doesn't re-scrape anything."""
+    path = _place_cache_path(lead["place_id"])
+    entry = _cache_read(path) or {"place": {}, "cached_at": time.time()}
+    cached = entry.get("enrichment")
+    if cached and time.time() - cached.get("enriched_at", 0) < CACHE_TTL_SECONDS:
+        result = dict(cached)
+    else:
+        if lead.get("website"):
+            result = analyse_site(lead["website"], lead["place_id"])
+        else:
+            result = {"email": goldenpages_email_for(lead), "logo_path": "", "brand_colors": [], "quality": {}}
+        result["enriched_at"] = time.time()
+        entry["enrichment"] = result
+        _cache_write(path, entry)
+    result.pop("enriched_at", None)
+    result["brand_colors"] = _distinct_colors(result.get("brand_colors") or [])
+    if result.get("logo_path") and not (LOGOS_DIR / f"{lead['place_id']}.png").exists():
+        result["logo_path"] = ""
+    merged = {**lead, **result}
+    result["score"] = score_place_lead(merged)
+    result["enrich_status"] = "done"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Search jobs: results return immediately, enrichment streams in via polling
+# ---------------------------------------------------------------------------
+
+SEARCH_JOBS = {}  # job_id -> {"leads": {place_id: lead}, "total", "done", "created"}
+_jobs_lock = threading.Lock()
+
+
+def _prune_jobs():
+    cutoff = time.time() - 3600
+    for job_id in [j for j, job in SEARCH_JOBS.items() if job["created"] < cutoff]:
+        SEARCH_JOBS.pop(job_id, None)
+
+
+def _pipeline_index():
+    leads = read_leads()
+    return {l["place_id"] for l in leads if l.get("place_id")}, {l["slug"] for l in leads}
+
+
+def _run_enrichment(job_id, place_id):
+    with _jobs_lock:
+        job = SEARCH_JOBS.get(job_id)
+        lead = dict(job["leads"][place_id]) if job else None
+    if lead is None:
+        return
+    try:
+        updates = enrich_lead(lead)
+    except Exception as exc:  # noqa: BLE001 - one bad site must not stall the rest
+        print(f"[enrich] {lead.get('name')}: {exc}", flush=True)
+        updates = {"enrich_status": "failed", "score": score_place_lead(lead)}
+    with _jobs_lock:
+        job = SEARCH_JOBS.get(job_id)
+        if job:
+            job["leads"][place_id].update(updates)
+            job["done"] += 1
+    _sync_enrichment_to_pipeline(place_id, updates)
+
+
+def _sync_enrichment_to_pipeline(place_id, updates):
+    """If this lead was added to the pipeline before enrichment finished,
+    fill in what we found (never overwriting anything already there)."""
+    if not any(updates.get(k) for k in ("email", "logo_path", "brand_colors")):
+        return
+    with leads_transaction() as leads:
+        lead = next((l for l in leads if l.get("place_id") == place_id), None)
+        if not lead:
+            return
+        if updates.get("email") and not lead.get("email"):
+            lead["email"] = updates["email"]
+        if updates.get("logo_path") and not lead.get("logo_path"):
+            lead["logo_path"] = updates["logo_path"]
+            if not lead.get("use_logo"):
+                lead["use_logo"] = "Yes"
+        if updates.get("brand_colors") and not lead.get("brand_colors"):
+            lead["brand_colors"] = ",".join(updates["brand_colors"])
+        if "score" in updates:
+            lead["score"] = str(updates["score"])
 
 
 @app.route("/")
@@ -898,42 +1274,110 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/regions", methods=["GET"])
+def api_regions():
+    return jsonify({
+        "trades": TRADE_PRESETS,
+        "provinces": ["Leinster", "Munster", "Connacht", "Ulster"],
+        "counties": {name: {"province": c["province"], "towns": [t[0] for t in c["towns"]]}
+                     for name, c in sorted(COUNTIES.items())},
+    })
+
+
 @app.route("/api/search", methods=["POST"])
 def api_search():
+    if not GOOGLE_MAPS_API_KEY:
+        return jsonify({"error": "GOOGLE_MAPS_API_KEY is not set in .env"}), 500
     data = request.get_json(force=True) or {}
-    query = (data.get("query") or "").strip()
+    trade = (data.get("trade") or "").strip()
+    counties = [c for c in (data.get("counties") or []) if c in COUNTIES]
+    town = (data.get("town") or "").strip()
+    no_website_only = bool(data.get("no_website_only"))
     try:
-        page = max(1, int(data.get("page", 1) or 1))
+        min_rating = float(data.get("min_rating") or 0)
     except (TypeError, ValueError):
-        page = 1
-    if not query:
-        return jsonify({"error": "query is required"}), 400
+        min_rating = 0
+    if not trade:
+        return jsonify({"error": "Enter a trade to search for"}), 400
+    if not counties and not town:
+        return jsonify({"error": "Pick at least one county, or type a town"}), 400
 
-    results, total_count, error = scrape_goldenpages_page(query, page)
-    if error and not results:
-        return jsonify({"error": error}), 502
-    scanned = len(results)
+    # (text query, county, town name, lat/lng centre) — Google caps each query
+    # at ~60 results, so a county-wide search runs one query per main town.
+    queries = []
+    if town:
+        county = counties[0] if counties else ""
+        match = next((t for c in ([county] if county else COUNTIES) for t in COUNTIES[c]["towns"]
+                      if t[0].lower() == town.lower()), None)
+        if not county and match:
+            county = next(c for c in COUNTIES if match in COUNTIES[c]["towns"])
+        where = f"{town}, {county}, Ireland" if county else f"{town}, Ireland"
+        queries.append((f"{trade} in {where}", county, town, (match[1], match[2]) if match else None))
+    else:
+        for county in counties:
+            for name, lat, lng in COUNTIES[county]["towns"]:
+                queries.append((f"{trade} in {name}, {county}, Ireland", county, name, (lat, lng)))
 
-    for r in results:
-        r["score"] = score_lead(r.get("name"), r.get("website"), r.get("email"))
+    api_calls, errors, found = 0, [], {}
 
-    results = [r for r in results if r["score"] > 0]
-    results.sort(key=lambda r: r["score"], reverse=True)
+    def run(q):
+        return q, places_text_search(q[0], q[3])
 
-    total_pages = None
-    if total_count:
-        total_pages = -(-total_count // RESULTS_PER_PAGE)  # ceil division
-    has_more = scanned > 0 and (total_pages is None or page < total_pages)
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = [pool.submit(run, q) for q in queries]
+        for future in as_completed(futures):
+            try:
+                (text_query, county, town_name, _), (places, calls) = future.result()
+            except PlacesError as exc:
+                errors.append(str(exc))
+                continue
+            api_calls += calls
+            for place in places:
+                if place.get("businessStatus", "OPERATIONAL") != "OPERATIONAL" or place["id"] in found:
+                    continue
+                found[place["id"]] = place_to_lead(place, county, town_name)
+
+    print(f"[search] '{trade}' {counties or town}: {len(queries)} queries, {api_calls} Places API calls, "
+          f"{len(found)} unique places", flush=True)
+    if not found and errors:
+        return jsonify({"error": errors[0]}), 502
+
+    leads = list(found.values())
+    if no_website_only:
+        leads = [l for l in leads if not l["website"]]
+    if min_rating:
+        leads = [l for l in leads if (l["rating"] or 0) >= min_rating]
+
+    pipeline_ids, pipeline_slugs = _pipeline_index()
+    for lead in leads:
+        lead["in_pipeline"] = lead["place_id"] in pipeline_ids or slugify(lead["name"]) in pipeline_slugs
+        lead["score"] = score_place_lead(lead)
+
+    job_id = uuid.uuid4().hex
+    with _jobs_lock:
+        _prune_jobs()
+        SEARCH_JOBS[job_id] = {"leads": {l["place_id"]: l for l in leads}, "total": len(leads),
+                               "done": 0, "created": time.time()}
+    for lead in leads:
+        ENRICH_POOL.submit(_run_enrichment, job_id, lead["place_id"])
 
     return jsonify({
-        "results": results,
-        "scanned": scanned,
-        "page": page,
-        "total_pages": total_pages,
-        "total_count": total_count,
-        "has_more": has_more,
-        "warning": error,
+        "job_id": job_id,
+        "results": leads,
+        "queries": len(queries),
+        "api_calls": api_calls,
+        "warning": errors[0] if errors else None,
     })
+
+
+@app.route("/api/search/status/<job_id>", methods=["GET"])
+def api_search_status(job_id):
+    with _jobs_lock:
+        job = SEARCH_JOBS.get(job_id)
+        if not job:
+            return jsonify({"error": "search expired — run it again"}), 404
+        return jsonify({"results": list(job["leads"].values()), "done": job["done"],
+                        "total": job["total"], "finished": job["done"] >= job["total"]})
 
 
 @app.route("/api/pipeline", methods=["GET"])
@@ -949,26 +1393,48 @@ def api_pipeline_add():
     added = 0
     with leads_transaction() as leads:
         existing_keys = {(l["name"], l["email"]) for l in leads}
+        existing_place_ids = {l["place_id"] for l in leads if l.get("place_id")}
+        existing_slugs = {l["slug"] for l in leads}
         for lead in new_rows:
             key = (lead.get("name", ""), lead.get("email", ""))
-            if key in existing_keys:
+            place_id = lead.get("place_id") or ""
+            if key in existing_keys or (place_id and place_id in existing_place_ids):
                 continue
+            # Two different businesses can share a name; keep slugs unique.
+            base_slug = slugify(lead.get("name", ""))
+            slug, n = base_slug, 2
+            while slug in existing_slugs:
+                slug, n = f"{base_slug}-{n}", n + 1
+            colors = lead.get("brand_colors") or []
+            logo_path = lead.get("logo_path", "")
             leads.append({
                 "name": lead.get("name", ""),
                 "phone": lead.get("phone", ""),
                 "email": lead.get("email", ""),
                 "website": lead.get("website", ""),
                 "location": lead.get("location", ""),
-                "score": lead.get("score", ""),
+                "score": str(lead.get("score", "")),
                 "years": lead.get("years", ""),
-                "slug": slugify(lead.get("name", "")),
+                "slug": slug,
                 "demo_built": "No",
                 "demo_url": "",
                 "email_sent": "No",
                 "replied": "No",
                 "sold": "No",
+                "place_id": place_id,
+                "logo_path": logo_path,
+                "brand_colors": ",".join(colors) if isinstance(colors, list) else str(colors),
+                "rating": "" if lead.get("rating") is None else str(lead.get("rating")),
+                "review_count": str(lead.get("review_count") or ""),
+                "maps_url": lead.get("maps_url", ""),
+                "town": lead.get("town", ""),
+                "county": lead.get("county", ""),
+                "use_logo": "Yes" if logo_path else "No",
             })
             existing_keys.add(key)
+            existing_slugs.add(slug)
+            if place_id:
+                existing_place_ids.add(place_id)
             added += 1
         result_leads = list(leads)
 
@@ -1010,9 +1476,13 @@ def api_build_site():
     except Exception as exc:
         return jsonify({"step": "geocode", "error": f"Could not look up the town's location: {exc}"}), 500
 
+    # Google Places leads carry a clean town; a full postal address reads
+    # badly in copy ("Unit W3F1, ... W91 K2PK's electrician"). The full
+    # address is still used for geocoding above, where precision helps.
+    town_name = lead.get("town") or lead.get("location", "") or "Ireland"
     replacements = {
         "{{BUSINESS_NAME}}": lead.get("name", "") or "Your Business",
-        "{{TOWN}}": lead.get("location", "") or "Ireland",
+        "{{TOWN}}": town_name,
         "{{EMAIL}}": lead.get("email", "") or "",
         "{{OWNER_FIRST_NAME}}": owner_first_name(lead.get("name", "")),
         "{{SLUG}}": lead["slug"],
@@ -1022,7 +1492,7 @@ def api_build_site():
         "{{PHONE_WA}}": phone["wa"],
         "{{LAT}}": repr(lat),
         "{{LNG}}": repr(lng),
-        "{{HERO_HEADLINE}}": hero_headline(lead.get("location", ""), lead.get("years", "")),
+        "{{HERO_HEADLINE}}": hero_headline(town_name, lead.get("years", "")),
     }
 
     try:
@@ -1038,9 +1508,15 @@ def api_build_site():
         return jsonify({"step": "personalize", "error": f"Could not write the personalized site files: {exc}"}), 500
 
     try:
+        # Their brand colour is the starting accent; an explicitly saved
+        # theme (from the Theme panel) takes precedence over it.
+        brand_accent = first_usable_brand_color(lead.get("brand_colors"))
+        if brand_accent and not lead.get("accent"):
+            apply_accent(dest, brand_accent)
         apply_saved_theme(dest, lead)
+        apply_brand_logo(dest, lead)
     except (ThemeError, OSError) as exc:
-        return jsonify({"step": "theme", "error": f"Could not re-apply the saved theme: {exc}"}), 500
+        return jsonify({"step": "theme", "error": f"Could not apply the theme/logo: {exc}"}), 500
 
     log_path = dest / "npm-install.log"
     if not run_npm_install(dest, log_path):
@@ -2170,6 +2646,35 @@ def sync_saved_theme_from_files(site_dir):
         lead["radius"] = "" if theme["radius"] is None else str(theme["radius"])
 
 
+def first_usable_brand_color(brand_colors):
+    """First brand colour that works as a button accent — not so light or
+    dark that it'd disappear against the site's backgrounds."""
+    colors = brand_colors.split(",") if isinstance(brand_colors, str) else (brand_colors or [])
+    for c in colors:
+        c = c.strip()
+        if _HEX6_RE.match(c) and 25 < _luminance(c) < 225:
+            return c.upper()
+    return None
+
+
+def apply_brand_logo(site_dir, lead):
+    """Copy the lead's logo into public/ and point src/brand.ts at it when
+    "Use their logo" is on; otherwise clear it. Sites built before the
+    template had brand.ts are left alone (returns False)."""
+    brand_ts = site_dir / "src" / "brand.ts"
+    if not brand_ts.exists():
+        return False
+    logo_src = LOGOS_DIR / f"{lead.get('place_id')}.png" if lead.get("place_id") else None
+    use = lead.get("use_logo") == "Yes" and logo_src is not None and logo_src.exists()
+    if use:
+        shutil.copy2(logo_src, site_dir / "public" / "brand-logo.png")
+    value = '"/brand-logo.png"' if use else "null"
+    text = brand_ts.read_text(encoding="utf-8")
+    brand_ts.write_text(re.sub(r"BRAND_LOGO: string \| null = [^;]+;", f"BRAND_LOGO: string | null = {value};", text),
+                        encoding="utf-8")
+    return True
+
+
 def _resolve_site_dir(slug):
     """SITES_DIR/<slug>, refusing anything that would resolve outside it."""
     site_dir = (SITES_DIR / (slug or "")).resolve()
@@ -2504,6 +3009,29 @@ def api_update_status():
             return jsonify({"error": "lead not found"}), 404
         lead[field] = value
     return jsonify({"lead": lead})
+
+
+@app.route("/api/pipeline/use_logo", methods=["POST"])
+def api_use_logo():
+    """Toggle "Use their logo". If the site's already built from the
+    current template, the change is applied straight away (snapshotted
+    first); otherwise it takes effect on the next build."""
+    data = request.get_json(force=True) or {}
+    slug = data.get("slug")
+    value = "Yes" if data.get("value") else "No"
+    with leads_transaction() as leads:
+        lead = find_lead(leads, slug)
+        if not lead:
+            return jsonify({"error": "lead not found"}), 404
+        lead["use_logo"] = value
+        lead = dict(lead)
+
+    applied = False
+    site_dir = _resolve_site_dir(slug)
+    if site_dir and (site_dir / "src" / "brand.ts").exists():
+        snapshot_site(site_dir, f"logo: {'on' if value == 'Yes' else 'off'}", "logo")
+        applied = apply_brand_logo(site_dir, lead)
+    return jsonify({"lead": lead, "applied": applied})
 
 
 def open_browser(port):

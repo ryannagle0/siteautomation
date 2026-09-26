@@ -11,3 +11,5 @@ sites/derek-doyle-electrical/node_modules/
 sites/derek-doyle-electrical/.next/
 leads.csv
 leads.db
+cache/
+static/logos/
