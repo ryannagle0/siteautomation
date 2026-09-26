@@ -10,7 +10,7 @@ const LINKS = [
 
 export function Footer() {
   return (
-    <footer className="bg-ink px-6 py-10 lg:px-16">
+    <footer data-slot="footer" className="bg-ink px-6 py-10 lg:px-16">
       <div className="mx-auto flex max-w-content flex-col items-center gap-8 text-center lg:flex-row lg:justify-between lg:text-left">
         <div className="flex items-center gap-2.5">
           <Image

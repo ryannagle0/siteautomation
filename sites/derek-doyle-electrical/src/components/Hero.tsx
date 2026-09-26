@@ -14,6 +14,7 @@ const STATS = [
 export function Hero() {
   return (
     <section
+      data-slot="hero"
       id="top"
       className="relative flex min-h-screen flex-col overflow-hidden bg-base pt-20"
     >
@@ -39,7 +40,7 @@ export function Hero() {
           <div className="mt-9 flex flex-col gap-3.5 sm:flex-row">
             <a
               href="tel:{{PHONE_TEL}}"
-              className="flex items-center justify-center gap-2.5 rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-blue-dark"
+              className="flex items-center justify-center gap-2.5 rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-accent-foreground transition-colors hover:bg-blue-dark"
             >
               <PhoneIcon width={18} height={18} />
               Call {{PHONE_DISPLAY}}

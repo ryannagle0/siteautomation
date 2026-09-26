@@ -8,6 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        "accent-foreground": "#FFFFFF",
         base: "#FAFAF8",
         navy: {
           DEFAULT: "#0A1628",
@@ -28,10 +29,10 @@ const config: Config = {
         "muted-foreground": "#8A93A3",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-body)", "system-ui", "sans-serif"],
       },
       borderRadius: {
-        sharp: "4px",
+        sharp: "var(--radius)",
       },
       letterSpacing: {
         tightest: "-0.02em",

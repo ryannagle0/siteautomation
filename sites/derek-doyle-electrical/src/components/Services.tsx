@@ -49,7 +49,7 @@ const SERVICES = [
 
 export function Services() {
   return (
-    <section id="services" className="bg-base px-6 py-24 lg:px-16 lg:py-36">
+    <section data-slot="services" id="services" className="bg-base px-6 py-24 lg:px-16 lg:py-36">
       <div className="mx-auto max-w-content">
         <FadeUp className="max-w-xl">
           <p className="text-[13px] font-semibold uppercase tracking-wide text-blue">

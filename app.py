@@ -31,6 +31,7 @@ TEMPLATE_SITE = SITES_DIR / "derek-doyle-electrical"
 CSV_FIELDS = [
     "name", "phone", "email", "website", "location", "score", "years",
     "slug", "demo_built", "demo_url", "email_sent", "replied", "sold",
+    "accent", "font", "radius",  # saved theme, re-applied on rebuild
 ]
 
 app = Flask(__name__)
@@ -92,6 +93,12 @@ def ensure_db():
     try:
         columns_sql = ", ".join(f'"{f}" TEXT NOT NULL DEFAULT \'\'' for f in CSV_FIELDS)
         conn.execute(f"CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns_sql})")
+        # CREATE TABLE IF NOT EXISTS won't add columns to an existing table,
+        # so add any field that's newer than the database.
+        existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}
+        for f in CSV_FIELDS:
+            if f not in existing_cols:
+                conn.execute(f'ALTER TABLE leads ADD COLUMN "{f}" TEXT NOT NULL DEFAULT \'\'')
         conn.commit()
         existing = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
     finally:
@@ -208,6 +215,170 @@ def clear_site_dir(dest):
     except OSError:
         pass
     rmtree_retry(dest, attempts=20, delay=1.5)
+
+
+# ---------------------------------------------------------------------------
+# Version history — a lightweight snapshot before every AI/manual edit, so
+# any change (hotbar instruction, 21st.dev component add, etc.) can be
+# undone. Only ever copies the specific things an edit can touch (src/,
+# tailwind.config.ts, sections.json) — never node_modules, .next, or
+# .history itself, since those aren't part of any snapshot's source paths.
+# ---------------------------------------------------------------------------
+
+HISTORY_DIRNAME = ".history"
+MAX_SNAPSHOTS = 25
+SNAPSHOT_PATHS = ["src", "tailwind.config.ts", "sections.json"]
+_SNAPSHOT_TS_RE = re.compile(r"^\d{8}T\d{9}Z$")
+
+
+def _new_snapshot_timestamp():
+    return time.strftime("%Y%m%dT%H%M%S", time.gmtime()) + f"{int((time.time() % 1) * 1000):03d}Z"
+
+
+def snapshot_site(site_dir, label, source):
+    """Copy the current src/, tailwind.config.ts and sections.json (if
+    present) into sites/[slug]/.history/[timestamp]/, with a meta.json
+    describing the snapshot. Best-effort: a snapshot failure must never
+    block the edit it's guarding, so filesystem errors are swallowed."""
+    try:
+        timestamp = _new_snapshot_timestamp()
+        snap_dir = site_dir / HISTORY_DIRNAME / timestamp
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        for rel in SNAPSHOT_PATHS:
+            src_path = site_dir / rel
+            if not src_path.exists():
+                continue
+            dest_path = snap_dir / rel
+            if src_path.is_dir():
+                shutil.copytree(src_path, dest_path)
+            else:
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_path, dest_path)
+        (snap_dir / "meta.json").write_text(
+            json.dumps({"timestamp": timestamp, "label": (label or "")[:200], "source": source}),
+            encoding="utf-8",
+        )
+        _prune_snapshots(site_dir)
+        return timestamp
+    except OSError:
+        return None
+
+
+def _prune_snapshots(site_dir):
+    history_dir = site_dir / HISTORY_DIRNAME
+    if not history_dir.exists():
+        return
+    snapshots = sorted((p for p in history_dir.iterdir() if p.is_dir()), key=lambda p: p.name)
+    excess = len(snapshots) - MAX_SNAPSHOTS
+    for old in snapshots[:max(excess, 0)]:
+        rmtree_retry(old, attempts=3, delay=0.5)
+
+
+def list_snapshots(site_dir):
+    history_dir = site_dir / HISTORY_DIRNAME
+    if not history_dir.exists():
+        return []
+    snapshots = []
+    for snap_dir in history_dir.iterdir():
+        if not snap_dir.is_dir():
+            continue
+        meta_path = snap_dir / "meta.json"
+        if not meta_path.exists():
+            continue
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        snapshots.append(meta)
+    snapshots.sort(key=lambda m: m.get("timestamp", ""), reverse=True)
+    return snapshots
+
+
+def _sync_dir_exact(snap_dir, live_dir):
+    """Make live_dir's contents exactly match snap_dir's by writing/deleting
+    individual files in place — NOT by removing and recreating live_dir.
+
+    Next.js dev's file watcher can lose track of a directory that gets
+    swapped out and back in (confirmed live: it kept 404ing on '/' after a
+    rename+recreate here, compiling '/_not-found' instead and never
+    recovering without a manual dev-server restart). Every other edit path
+    in this app already writes files in place one at a time and that's
+    proven to trigger a clean recompile via wait_for_preview_ready, so
+    restore follows the same shape instead of a directory-level swap.
+    """
+    snap_files = {}
+    if snap_dir.exists():
+        for p in snap_dir.rglob("*"):
+            if p.is_file():
+                snap_files[p.relative_to(snap_dir)] = p
+
+    live_files = set()
+    if live_dir.exists():
+        for p in live_dir.rglob("*"):
+            if p.is_file():
+                live_files.add(p.relative_to(live_dir))
+
+    for rel, src_path in snap_files.items():
+        dest_path = live_dir / rel
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_path, dest_path)
+
+    for rel in live_files - set(snap_files.keys()):
+        try:
+            (live_dir / rel).unlink()
+        except OSError:
+            pass
+
+    if live_dir.exists():
+        leftover_dirs = sorted(
+            (p for p in live_dir.rglob("*") if p.is_dir()),
+            key=lambda p: len(p.parts), reverse=True,
+        )
+        for d in leftover_dirs:
+            try:
+                d.rmdir()  # only succeeds if now empty
+            except OSError:
+                pass
+
+
+def restore_snapshot(site_dir, timestamp):
+    """Snapshot the current state (so restoring is itself undoable), then
+    copy the chosen snapshot's files back over the live site. Returns
+    (restored_label, error)."""
+    if not _SNAPSHOT_TS_RE.match(timestamp or ""):
+        return None, "invalid snapshot timestamp"
+    snap_dir = site_dir / HISTORY_DIRNAME / timestamp
+    meta_path = snap_dir / "meta.json"
+    if not snap_dir.exists() or not meta_path.exists():
+        return None, "snapshot not found"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None, "snapshot metadata is corrupt"
+
+    snapshot_site(site_dir, "before restore", "restore")
+
+    try:
+        for rel in SNAPSHOT_PATHS:
+            snap_path = snap_dir / rel
+            live_path = site_dir / rel
+            if rel == "src":
+                _sync_dir_exact(snap_path, live_path)
+            else:
+                if snap_path.exists():
+                    live_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(snap_path, live_path)
+                elif live_path.exists():
+                    live_path.unlink()
+    except OSError as exc:
+        return None, f"Could not restore snapshot: {exc}"
+
+    slug = site_dir.name
+    preview = RUNNING_PREVIEWS.get(slug)
+    if preview:
+        wait_for_preview_ready(preview["port"], timeout=60)
+
+    return meta.get("label", ""), None
 
 
 def phone_variants(raw):
@@ -866,6 +1037,11 @@ def api_build_site():
     except OSError as exc:
         return jsonify({"step": "personalize", "error": f"Could not write the personalized site files: {exc}"}), 500
 
+    try:
+        apply_saved_theme(dest, lead)
+    except (ThemeError, OSError) as exc:
+        return jsonify({"step": "theme", "error": f"Could not re-apply the saved theme: {exc}"}), 500
+
     log_path = dest / "npm-install.log"
     if not run_npm_install(dest, log_path):
         tail = ""
@@ -976,18 +1152,32 @@ def extract_json_array(text):
     return None
 
 
-def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_image_media_type=None):
+def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_image_media_type=None,
+                            history_label=None, history_source="edit", scope_files=None):
     """Send the site's content files + an instruction to Claude and write
     back whatever files it changes. Returns (changed_files, error).
 
     layout_image: optional base64-encoded screenshot/mockup used as a literal
     layout reference (e.g. colour-coded boxes the user explains in
-    `instruction`, like "blue box = hero, green box = services")."""
+    `instruction`, like "blue box = hero, green box = services").
+
+    history_label/history_source: describe this edit for version history —
+    a snapshot of the site's current state is taken right before writing,
+    so this edit (whatever triggered it: hotbar instruction, component add,
+    etc.) can be undone. Defaults to the instruction text itself.
+
+    scope_files: when given (e.g. a selected section's file + shared design
+    tokens/icons), ONLY these files are sent to Claude and ONLY these paths
+    may be written back — anything else in the response is rejected. This
+    is what makes a section-scoped edit actually cheaper: fewer input
+    tokens, and no risk of a scoped edit accidentally touching an unrelated
+    file. Defaults to the full CONTENT_FILES bundle."""
     if not _client:
         return None, "ANTHROPIC_API_KEY not configured"
 
+    allowed_files = scope_files or CONTENT_FILES
     bundle = []
-    for rel in CONTENT_FILES:
+    for rel in allowed_files:
         fp = site_dir / rel
         if fp.exists():
             bundle.append(f"--- FILE: {rel} ---\n{fp.read_text(encoding='utf-8')}")
@@ -1022,12 +1212,13 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "component code exactly as received. Only adapt its className values to match the site's "
         "existing Tailwind color tokens (e.g. replace hardcoded hex colors with the named token "
         "like 'text-blue' or 'bg-navy').\n\n"
+        + ("" if scope_files else
         "You MAY create a brand-new file (e.g. splitting a section into its own "
         "src/components/SomeName.tsx) if that's the cleanest way to do the change — just make "
         "sure you also include and fully write that new file in your response, not only the file "
         "that imports it. An import with no corresponding file breaks the build "
-        "('Module not found'). New files must be under src/components/.\n\n"
-        "Some components (e.g. Reviews.tsx) are async Server Components that `await` server-side "
+        "('Module not found'). New files must be under src/components/.\n\n")
+        + "Some components (e.g. Reviews.tsx) are async Server Components that `await` server-side "
         "data (like `getGoogleReviews()`) — they have NO 'use client' directive. A Client Component "
         "(one marked 'use client') CANNOT be async/use await; adding 'use client' to one of these "
         "breaks the page with a blank render and a 'component was suspended by an uncached promise' "
@@ -1099,7 +1290,14 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
             if layout_image else ""
         )
         + f"Requested change: {instruction}\n\n"
-        "Respond with ONLY a JSON array (no markdown fences, no commentary) of objects "
+        + (
+            "The user selected a single section to edit, so you are ONLY shown that section's "
+            "file plus the shared color tokens (tailwind.config.ts) and icon set (icons.tsx) — "
+            "not the rest of the site. Only respond with changes to these exact files; you "
+            "cannot create new files or touch any other component in a scoped edit like this.\n\n"
+            if scope_files else ""
+        )
+        + "Respond with ONLY a JSON array (no markdown fences, no commentary) of objects "
         '{"path": "<path, existing or new under src/components/>", "content": "<full new file content>"} '
         "for every file you changed OR created. Do not include unchanged files. Preserve all "
         "other code, imports and structure exactly except for what the instruction asks for.\n\n"
@@ -1128,6 +1326,11 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
             block.text for block in message.content if getattr(block, "type", "") == "text"
         ).strip()
         truncated = message.stop_reason == "max_tokens"
+        usage = getattr(message, "usage", None)
+        if usage:
+            scope_note = f"scoped to {scope_files}" if scope_files else "full site"
+            print(f"[apply_edit_instruction] input tokens: {usage.input_tokens} "
+                  f"(output: {usage.output_tokens}) — {scope_note}", flush=True)
     except Exception as exc:
         return None, str(exc)
 
@@ -1138,13 +1341,20 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
                            "Try a more targeted edit, e.g. one section at a time.")
         return None, "Claude returned invalid JSON"
 
+    # Snapshot the pre-edit state now, right before it's overwritten — this
+    # is what an Undo restores back to.
+    snapshot_site(site_dir, history_label or instruction, history_source)
+
     written = []
     for item in changed_files:
         rel = item.get("path", "")
         content = item.get("content")
         if content is None:
             continue
-        if rel not in CONTENT_FILES and not is_safe_new_component_path(rel):
+        if scope_files is not None:
+            if rel not in scope_files:
+                continue
+        elif rel not in CONTENT_FILES and not is_safe_new_component_path(rel):
             continue
         target = site_dir / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -1169,6 +1379,22 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
     return written, None
 
 
+# Maps a clicked-in-preview slot name (from EditBridge's data-slot attribute)
+# to its component file, for section-scoped edits.
+SLOT_FILE_MAP = {
+    "nav": "src/components/Nav.tsx",
+    "hero": "src/components/Hero.tsx",
+    "trust": "src/components/TrustBar.tsx",
+    "services": "src/components/Services.tsx",
+    "about": "src/components/About.tsx",
+    "process": "src/components/Process.tsx",
+    "reviews": "src/components/Reviews.tsx",
+    "contact": "src/components/Contact.tsx",
+    "footer": "src/components/Footer.tsx",
+}
+SLOT_SCOPE_EXTRA_FILES = ["tailwind.config.ts", "src/components/icons.tsx"]
+
+
 @app.route("/api/pipeline/edit_site", methods=["POST"])
 def api_edit_site():
     data = request.get_json(force=True) or {}
@@ -1176,6 +1402,7 @@ def api_edit_site():
     instruction = (data.get("instruction") or "").strip()
     image = data.get("image")  # optional base64 layout reference (no data: prefix)
     image_media_type = data.get("image_media_type") or "image/png"
+    slot = (data.get("slot") or "").strip().lower()
     if not instruction:
         return jsonify({"error": "instruction is required"}), 400
 
@@ -1183,10 +1410,114 @@ def api_edit_site():
     if not site_dir.exists():
         return jsonify({"error": "site not found"}), 404
 
-    written, error = apply_edit_instruction(site_dir, instruction, image, image_media_type)
+    scope_files = None
+    label = instruction
+    if slot:
+        slot_file = SLOT_FILE_MAP.get(slot)
+        if not slot_file:
+            return jsonify({"error": f"unknown slot: {slot}"}), 400
+        scope_files = [slot_file] + SLOT_SCOPE_EXTRA_FILES
+        label = f"[{slot}] {instruction}"
+
+    written, error = apply_edit_instruction(
+        site_dir, instruction, image, image_media_type,
+        history_label=label, history_source="hotbar edit",
+        scope_files=scope_files,
+    )
     if error:
         return jsonify({"error": error}), 500
     return jsonify({"ok": True, "changed_files": written})
+
+
+# rel path -> (root JSX tag, slot name), for both the initial template edit
+# and backfilling already-built sites.
+SLOT_ROOT_TAG = {
+    "src/components/Nav.tsx": ("header", "nav"),
+    "src/components/Hero.tsx": ("section", "hero"),
+    "src/components/TrustBar.tsx": ("section", "trust"),
+    "src/components/Services.tsx": ("section", "services"),
+    "src/components/About.tsx": ("section", "about"),
+    "src/components/Process.tsx": ("section", "process"),
+    "src/components/Reviews.tsx": ("section", "reviews"),
+    "src/components/Contact.tsx": ("section", "contact"),
+    "src/components/Footer.tsx": ("footer", "footer"),
+}
+EDIT_BRIDGE_SOURCE_PATH = TEMPLATE_SITE / "src" / "components" / "EditBridge.tsx"
+
+
+def _inject_data_slot(content, tag, slot):
+    """Add data-slot="<slot>" to the first <tag ...> that doesn't already
+    have one. Returns (new_content, changed)."""
+    if f'data-slot="{slot}"' in content:
+        return content, False
+    pattern = re.compile(rf"<{tag}\b(?![^>]*\bdata-slot=)")
+    new_content, n = pattern.subn(f'<{tag} data-slot="{slot}"', content, count=1)
+    return new_content, n > 0
+
+
+def backfill_slot_markers(site_dir):
+    """Apply the data-slot / EditBridge template changes to an
+    already-built site so section-scoped editing works there too.
+    Idempotent — safe to run repeatedly or on a site that already has it.
+    Returns the list of relative paths it changed."""
+    changed = []
+
+    for rel, (tag, slot) in SLOT_ROOT_TAG.items():
+        fp = site_dir / rel
+        if not fp.exists():
+            continue
+        try:
+            content = fp.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        new_content, did_change = _inject_data_slot(content, tag, slot)
+        if did_change:
+            fp.write_text(new_content, encoding="utf-8")
+            changed.append(rel)
+
+    edit_bridge_dest = site_dir / "src" / "components" / "EditBridge.tsx"
+    if not edit_bridge_dest.exists() and EDIT_BRIDGE_SOURCE_PATH.exists():
+        edit_bridge_dest.write_text(
+            EDIT_BRIDGE_SOURCE_PATH.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        changed.append("src/components/EditBridge.tsx")
+
+    layout_path = site_dir / "src" / "app" / "layout.tsx"
+    if layout_path.exists():
+        layout = layout_path.read_text(encoding="utf-8")
+        if "EditBridge" not in layout:
+            import_line = 'import { EditBridge } from "@/components/EditBridge";\n'
+            last_import = None
+            for m in re.finditer(r'^import .+;$', layout, re.MULTILINE):
+                last_import = m
+            if last_import:
+                insert_at = last_import.end()
+                layout = layout[:insert_at] + "\n" + import_line.rstrip("\n") + layout[insert_at:]
+            else:
+                layout = import_line + layout
+
+            layout, n = re.subn(r"(<body[^>]*>)", r"\1\n        <EditBridge />", layout, count=1)
+            if n:
+                layout_path.write_text(layout, encoding="utf-8")
+                changed.append("src/app/layout.tsx")
+
+    return changed
+
+
+@app.route("/api/admin/backfill_slots", methods=["POST"])
+def api_backfill_slots():
+    """Apply data-slot markers + EditBridge to every already-built site
+    (the master template is edited directly, not through this route, but
+    re-running it there too is harmless since it's idempotent)."""
+    results = {}
+    for site_dir in SITES_DIR.iterdir():
+        if not site_dir.is_dir() or not (site_dir / "src").exists():
+            continue
+        try:
+            results[site_dir.name] = backfill_slot_markers(site_dir)
+        except OSError as exc:
+            results[site_dir.name] = [f"error: {exc}"]
+    return jsonify({"results": results})
 
 
 TWENTYFIRST_MCP_URL = "https://21st.dev/api/mcp"
@@ -1309,6 +1640,7 @@ def api_component_apply():
     data = request.get_json(force=True) or {}
     slug = data.get("slug")
     component_id = data.get("component_id")
+    component_name = (data.get("component_name") or "").strip()
     section = (data.get("section") or "the most appropriate section").strip()
     if not component_id:
         return jsonify({"error": "component_id is required"}), 400
@@ -1417,13 +1749,521 @@ def api_component_apply():
         f"--- COMPONENT SOURCE (reproduce this structure faithfully; the raw code as given, "
         f"substituting only per requirement 5) ---\n{code}"
     )
-    written, error = apply_edit_instruction(site_dir, instruction)
+    written, error = apply_edit_instruction(
+        site_dir, instruction,
+        history_label=f"add: {component_name or section}", history_source="component",
+    )
     if error:
         return jsonify({"error": error}), 500
     return jsonify({"ok": True, "changed_files": written})
 
 
-DEPLOY_IGNORE_DIRS = {"node_modules", ".next", ".git", ".vercel"}
+@app.route("/api/history/<slug>", methods=["GET"])
+def api_history_list(slug):
+    site_dir = SITES_DIR / slug
+    if not site_dir.exists():
+        return jsonify({"error": "site not found"}), 404
+    return jsonify({"snapshots": list_snapshots(site_dir)})
+
+
+@app.route("/api/history/<slug>/restore", methods=["POST"])
+def api_history_restore(slug):
+    data = request.get_json(force=True) or {}
+    timestamp = data.get("timestamp")
+    site_dir = SITES_DIR / slug
+    if not site_dir.exists():
+        return jsonify({"error": "site not found"}), 404
+    if not timestamp:
+        return jsonify({"error": "timestamp is required"}), 400
+
+    label, error = restore_snapshot(site_dir, timestamp)
+    if error:
+        return jsonify({"error": error}), 400
+
+    sync_saved_theme_from_files(site_dir)
+
+    slug_preview = RUNNING_PREVIEWS.get(slug)
+    return jsonify({"ok": True, "label": label, "preview_port": slug_preview["port"] if slug_preview else None})
+
+
+# ---------------------------------------------------------------------------
+# Theme panel — colours / fonts / corners as direct, instant file edits.
+# Deliberately never calls Claude: every change is a precise rewrite of one
+# value in a known place.
+# ---------------------------------------------------------------------------
+
+class ThemeError(Exception):
+    pass
+
+
+PALETTE_PRESETS = {
+    "Electric": "#1D4ED8",
+    "Flame": "#FF5200",
+    "Forest": "#16A34A",
+    "Slate": "#475569",
+    "Crimson": "#C41E3A",
+    "Gold": "#D4A017",
+}
+# Tokens that are structural (backgrounds, text, lines), never the accent.
+NEUTRAL_COLOR_TOKENS = {
+    "base", "navy", "ink", "grey", "gray", "background", "foreground",
+    "muted-foreground", "accent-foreground", "white", "black",
+}
+_HEX6_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_COLOR_ENTRY_RE = re.compile(
+    r"""(?P<key>[A-Za-z_][\w-]*|"[^"]+"|'[^']+')\s*:\s*"""
+    r"""(?P<val>\{|["'](?P<hex>#[0-9A-Fa-f]{3,8})["'])"""
+)
+
+
+def _next_font_preset(key, import_name):
+    return (
+        "// Written by SiteForge's theme panel — choose a different font there to replace this file.\n"
+        f'import {{ {import_name} }} from "next/font/google";\n\n'
+        f'const font = {import_name}({{ subsets: ["latin"], variable: "--font-body", display: "swap" }});\n\n'
+        f'export const FONT_PRESET = "{key}";\n'
+        "export const fontClassName = font.variable;\n"
+        "export const fontStyle: Record<string, string> = {};\n"
+        "export const fontStylesheet: string | null = null;\n"
+    )
+
+
+# key -> (label, complete src/fonts.ts). Every preset exports the same four
+# names, which is the whole contract layout.tsx relies on.
+FONT_PRESETS = {
+    "geist": ("Geist", (
+        "// Written by SiteForge's theme panel — choose a different font there to replace this file.\n"
+        "// Geist isn't in Next 14.2's next/font/google list, so it's loaded straight from Google Fonts.\n\n"
+        'export const FONT_PRESET = "geist";\n'
+        'export const fontClassName = "";\n'
+        "export const fontStyle: Record<string, string> = {\n"
+        "  \"--font-body\": \"'Geist', system-ui, sans-serif\",\n"
+        "};\n"
+        "export const fontStylesheet: string | null =\n"
+        '  "https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap";\n'
+    )),
+    "inter": ("Inter", _next_font_preset("inter", "Inter")),
+    "plus-jakarta-sans": ("Plus Jakarta Sans", _next_font_preset("plus-jakarta-sans", "Plus_Jakarta_Sans")),
+    "dm-sans": ("DM Sans", _next_font_preset("dm-sans", "DM_Sans")),
+}
+DEFAULT_FONT_PRESET = "inter"
+
+
+def _match_brace(text, open_idx):
+    depth = 0
+    for i in range(open_idx, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _expand_hex(hex_):
+    h = hex_.lstrip("#")
+    if len(h) in (3, 4):
+        h = "".join(c * 2 for c in h[:3])
+    return "#" + h[:6].upper()
+
+
+def parse_color_tokens(config_text):
+    """Every hex colour in tailwind.config.ts's `colors` object, as
+    {path, label, hex, start, end}. start/end are the offsets of the hex
+    literal itself, so a change rewrites exactly that value and nothing
+    else in the file."""
+    m = re.search(r"\bcolors\s*:\s*\{", config_text)
+    if not m:
+        return []
+    open_idx = m.end() - 1
+    close_idx = _match_brace(config_text, open_idx)
+    if close_idx == -1:
+        return []
+
+    tokens = []
+    pos = open_idx + 1
+    while True:
+        em = _COLOR_ENTRY_RE.search(config_text, pos, close_idx)
+        if not em:
+            break
+        key = em.group("key").strip("\"'")
+        if em.group("val") != "{":
+            tokens.append({"path": key, "label": key, "hex": em.group("hex"),
+                           "start": em.start("hex"), "end": em.end("hex")})
+            pos = em.end()
+            continue
+        sub_open = em.end() - 1
+        sub_close = _match_brace(config_text, sub_open)
+        if sub_close == -1:
+            break
+        spos = sub_open + 1
+        while True:
+            sm = _COLOR_ENTRY_RE.search(config_text, spos, sub_close)
+            if not sm:
+                break
+            if sm.group("val") == "{":  # nested deeper than token.shade — not a swatch
+                deeper = _match_brace(config_text, sm.end() - 1)
+                spos = deeper + 1 if deeper != -1 else sub_close
+                continue
+            sub = sm.group("key").strip("\"'")
+            tokens.append({
+                "path": f"{key}.{sub}",
+                "label": key if sub == "DEFAULT" else f"{key}-{sub}",
+                "hex": sm.group("hex"), "start": sm.start("hex"), "end": sm.end("hex"),
+            })
+            spos = sm.end()
+        pos = sub_close + 1
+    return tokens
+
+
+def detect_accent_token(site_dir, tokens):
+    """The accent is whichever non-neutral colour token the components use
+    most as a background — `blue` in the template, but a re-themed site
+    (e.g. one switched to `orange`) is detected correctly too."""
+    candidates = []
+    for t in tokens:
+        name = t["path"].split(".")[0]
+        if name not in NEUTRAL_COLOR_TOKENS and name not in candidates:
+            candidates.append(name)
+    if not candidates:
+        return None
+    corpus = "".join(
+        p.read_text(encoding="utf-8", errors="ignore") for p in (site_dir / "src").rglob("*.tsx")
+    )
+
+    def usage(name):
+        return len(re.findall(rf"(?<![\w-])bg-{re.escape(name)}(?![\w-])", corpus))
+
+    return max(candidates, key=usage)
+
+
+def _luminance(hex_):
+    h = hex_.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
+def _darken(hex_, factor=0.78):
+    h = hex_.lstrip("#")
+    r, g, b = (max(0, min(255, round(int(h[i:i + 2], 16) * factor))) for i in (0, 2, 4))
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def _config_path(site_dir):
+    return site_dir / "tailwind.config.ts"
+
+
+def _set_token_hex(site_dir, path, hex_):
+    cfg = _config_path(site_dir)
+    text = cfg.read_text(encoding="utf-8")
+    token = next((t for t in parse_color_tokens(text) if t["path"] == path), None)
+    if not token:
+        raise ThemeError(f"colour token '{path}' not found in tailwind.config.ts")
+    cfg.write_text(text[:token["start"]] + hex_.upper() + text[token["end"]:], encoding="utf-8")
+
+
+def _accent_info(site_dir):
+    tokens = parse_color_tokens(_config_path(site_dir).read_text(encoding="utf-8"))
+    accent = detect_accent_token(site_dir, tokens)
+    if not accent:
+        raise ThemeError("couldn't find an accent colour token in tailwind.config.ts")
+    paths = {t["path"] for t in tokens}
+    default_path = f"{accent}.DEFAULT" if f"{accent}.DEFAULT" in paths else accent
+    dark_path = f"{accent}.dark" if f"{accent}.dark" in paths else None
+    return accent, default_path, dark_path, paths
+
+
+def ensure_accent_foreground(site_dir, accent, fg_hex):
+    """Make sure an `accent-foreground` token exists (set to fg_hex), and
+    that text sitting directly on an accent-filled element uses it instead
+    of a hard-coded text-white — so auto-contrast actually reaches buttons."""
+    cfg = _config_path(site_dir)
+    text = cfg.read_text(encoding="utf-8")
+    if any(t["path"] == "accent-foreground" for t in parse_color_tokens(text)):
+        _set_token_hex(site_dir, "accent-foreground", fg_hex)
+    else:
+        new_text, n = re.subn(
+            r"(\bcolors\s*:\s*\{)(\s*\n)([ \t]*)",
+            rf'\1\2\3"accent-foreground": "{fg_hex}",\n\3',
+            text, count=1,
+        )
+        if not n:
+            raise ThemeError("couldn't add accent-foreground to tailwind.config.ts")
+        cfg.write_text(new_text, encoding="utf-8")
+
+    # Only unprefixed classes: a plain bg-<accent> fill with plain text-white
+    # on the same element. Hover/group-hover variants are left alone.
+    bg_re = re.compile(rf"(?<![\w:/-])bg-{re.escape(accent)}(?![\w/-])")
+    white_re = re.compile(r"(?<![\w:/-])text-white(?![\w/-])")
+
+    def fix_class(match):
+        classes = match.group(1)
+        if bg_re.search(classes) and white_re.search(classes):
+            return f'className="{white_re.sub("text-accent-foreground", classes)}"'
+        return match.group(0)
+
+    for path in (site_dir / "src").rglob("*.tsx"):
+        src = path.read_text(encoding="utf-8")
+        new_src = re.sub(r'className="([^"]*)"', fix_class, src)
+        if new_src != src:
+            path.write_text(new_src, encoding="utf-8")
+
+
+def apply_accent(site_dir, hex_):
+    accent, default_path, dark_path, _ = _accent_info(site_dir)
+    _set_token_hex(site_dir, default_path, hex_)
+    if dark_path:  # keep hover states (bg-<accent>-dark) in the same family
+        _set_token_hex(site_dir, dark_path, _darken(hex_))
+    fg = "#111111" if _luminance(hex_) > 150 else "#FFFFFF"
+    ensure_accent_foreground(site_dir, accent, fg)
+    return accent
+
+
+def ensure_radius_scaffolding(site_dir):
+    """Route the `rounded-sharp` radius (used by every button and card)
+    through a --radius CSS variable in globals.css."""
+    cfg = _config_path(site_dir)
+    text = cfg.read_text(encoding="utf-8")
+    current_px = "4"
+    if "var(--radius)" not in text:
+        m = re.search(r"""(sharp\s*:\s*)["'](\d+(?:\.\d+)?)px["']""", text)
+        if not m:
+            raise ThemeError("this site's tailwind.config.ts has no rounded-sharp radius to control")
+        current_px = m.group(2)
+        cfg.write_text(text[:m.start()] + m.group(1) + '"var(--radius)"' + text[m.end():], encoding="utf-8")
+
+    css_path = site_dir / "src" / "app" / "globals.css"
+    css = css_path.read_text(encoding="utf-8")
+    if "--radius:" not in css:
+        new_css, n = re.subn(r":root\s*\{", f":root {{\n  --radius: {current_px}px;", css, count=1)
+        if not n:
+            new_css = css + f"\n:root {{\n  --radius: {current_px}px;\n}}\n"
+        css_path.write_text(new_css, encoding="utf-8")
+
+
+def apply_radius(site_dir, px):
+    ensure_radius_scaffolding(site_dir)
+    css_path = site_dir / "src" / "app" / "globals.css"
+    css = css_path.read_text(encoding="utf-8")
+    css_path.write_text(re.sub(r"--radius:\s*[^;]+;", f"--radius: {px}px;", css, count=1), encoding="utf-8")
+
+
+def ensure_font_scaffolding(site_dir):
+    """Move layout.tsx from importing its font directly to importing it
+    from src/fonts.ts, so switching fonts is just overwriting that one file.
+    Everything is validated before anything is written, so a customised
+    layout fails cleanly instead of being half-migrated."""
+    fonts_path = site_dir / "src" / "fonts.ts"
+    layout_path = site_dir / "src" / "app" / "layout.tsx"
+    layout = layout_path.read_text(encoding="utf-8")
+    if "@/fonts" in layout and fonts_path.exists():
+        return
+
+    new_layout = re.sub(r'import\s*\{\s*Inter\s*\}\s*from\s*"next/font/google";\s*\n', "", layout, count=1)
+    new_layout, n_const = re.subn(r"const inter = Inter\(\{[\s\S]*?\}\);\s*\n", "", new_layout, count=1)
+    new_layout, n_cls = re.subn(
+        r"className=\{inter\.variable\}",
+        "className={fontClassName} style={fontStyle as React.CSSProperties}",
+        new_layout, count=1,
+    )
+    new_layout, n_imp = re.subn(
+        r'(import "\./globals\.css";)',
+        r'\1' + '\nimport { fontClassName, fontStyle, fontStylesheet } from "@/fonts";',
+        new_layout, count=1,
+    )
+    new_layout, n_head = re.subn(
+        r"<head>",
+        "<head>\n        {fontStylesheet && <link rel=\"stylesheet\" href={fontStylesheet} />}",
+        new_layout, count=1,
+    )
+    if not (n_const and n_cls and n_imp and n_head):
+        raise ThemeError("this site's layout.tsx has been customised, so fonts can't be switched automatically")
+
+    cfg = _config_path(site_dir)
+    cfg_text = cfg.read_text(encoding="utf-8").replace("var(--font-inter)", "var(--font-body)")
+
+    css_path = site_dir / "src" / "app" / "globals.css"
+    css = css_path.read_text(encoding="utf-8")
+    if "--font-heading" not in css:
+        css += (
+            "\n@layer base {\n"
+            "  h1, h2, h3, h4, h5, h6 {\n"
+            "    font-family: var(--font-heading, var(--font-body)), system-ui, sans-serif;\n"
+            "  }\n"
+            "}\n"
+        )
+
+    layout_path.write_text(new_layout, encoding="utf-8")
+    cfg.write_text(cfg_text, encoding="utf-8")
+    css_path.write_text(css, encoding="utf-8")
+    if not fonts_path.exists():
+        fonts_path.write_text(FONT_PRESETS[DEFAULT_FONT_PRESET][1], encoding="utf-8")
+
+
+def apply_font(site_dir, key):
+    ensure_font_scaffolding(site_dir)
+    (site_dir / "src" / "fonts.ts").write_text(FONT_PRESETS[key][1], encoding="utf-8")
+
+
+def read_theme(site_dir):
+    cfg_text = _config_path(site_dir).read_text(encoding="utf-8")
+    tokens = parse_color_tokens(cfg_text)
+    accent = detect_accent_token(site_dir, tokens)
+
+    font = None
+    fonts_path = site_dir / "src" / "fonts.ts"
+    if fonts_path.exists():
+        m = re.search(r'FONT_PRESET\s*=\s*"([\w-]+)"', fonts_path.read_text(encoding="utf-8"))
+        font = m.group(1) if m else None
+
+    radius = None
+    css_path = site_dir / "src" / "app" / "globals.css"
+    m = re.search(r"--radius:\s*(\d+(?:\.\d+)?)px", css_path.read_text(encoding="utf-8")) if css_path.exists() else None
+    if not m:
+        m = re.search(r"""sharp\s*:\s*["'](\d+(?:\.\d+)?)px["']""", cfg_text)
+    if m:
+        radius = round(float(m.group(1)))
+
+    return {
+        "tokens": [{"path": t["path"], "label": t["label"], "hex": _expand_hex(t["hex"])} for t in tokens],
+        "accent": accent,
+        "accent_path": (f"{accent}.DEFAULT" if any(t["path"] == f"{accent}.DEFAULT" for t in tokens) else accent)
+        if accent else None,
+        "font": font,
+        "radius": radius,
+        "palettes": [{"name": k, "hex": v} for k, v in PALETTE_PRESETS.items()],
+        "fonts": [{"key": k, "label": v[0]} for k, v in FONT_PRESETS.items()],
+    }
+
+
+def apply_saved_theme(site_dir, lead):
+    """Re-apply a lead's saved theme to a freshly cloned site (rebuilds
+    start from the template, so without this they'd lose it)."""
+    accent = (lead.get("accent") or "").strip()
+    font = (lead.get("font") or "").strip()
+    radius = (lead.get("radius") or "").strip()
+    if _HEX6_RE.match(accent):
+        apply_accent(site_dir, accent)
+    if font in FONT_PRESETS:
+        apply_font(site_dir, font)
+    if radius.isdigit() and 0 <= int(radius) <= 20:
+        apply_radius(site_dir, int(radius))
+
+
+def sync_saved_theme_from_files(site_dir):
+    """After an undo/restore, make the lead's saved theme match what's on
+    disk again — otherwise a rebuild would re-apply a theme that was undone.
+    Only touches leads that have a saved theme; untouched leads stay on the
+    template defaults."""
+    try:
+        theme = read_theme(site_dir)
+    except OSError:
+        return
+    accent_hex = next((t["hex"] for t in theme["tokens"] if t["path"] == theme["accent_path"]), "")
+    with leads_transaction() as leads:
+        lead = find_lead(leads, site_dir.name)
+        if not lead or not any(lead.get(k) for k in ("accent", "font", "radius")):
+            return
+        lead["accent"] = accent_hex
+        lead["font"] = theme["font"] or ""
+        lead["radius"] = "" if theme["radius"] is None else str(theme["radius"])
+
+
+def _resolve_site_dir(slug):
+    """SITES_DIR/<slug>, refusing anything that would resolve outside it."""
+    site_dir = (SITES_DIR / (slug or "")).resolve()
+    if site_dir.parent != SITES_DIR.resolve() or not site_dir.is_dir():
+        return None
+    return site_dir
+
+
+@app.route("/api/theme/<slug>", methods=["GET"])
+def api_theme_get(slug):
+    site_dir = _resolve_site_dir(slug)
+    if not site_dir:
+        return jsonify({"error": "site not found"}), 404
+    try:
+        return jsonify(read_theme(site_dir))
+    except OSError as exc:
+        return jsonify({"error": f"couldn't read theme: {exc}"}), 500
+
+
+@app.route("/api/theme/<slug>", methods=["POST"])
+def api_theme_set(slug):
+    site_dir = _resolve_site_dir(slug)
+    if not site_dir:
+        return jsonify({"error": "site not found"}), 404
+    data = request.get_json(force=True) or {}
+    kind = data.get("kind")
+
+    # Validate fully before snapshotting, so a bad request leaves no trace.
+    saved = {}
+    if kind in ("accent", "color"):
+        hex_ = (data.get("hex") or "").strip()
+        if not _HEX6_RE.match(hex_):
+            return jsonify({"error": "hex must look like #RRGGBB"}), 400
+        hex_ = hex_.upper()
+    if kind == "accent":
+        preset_name = next((k for k, v in PALETTE_PRESETS.items() if v.upper() == hex_), None)
+        label = f"theme: {preset_name or hex_}"
+    elif kind == "color":
+        path = data.get("path") or ""
+        try:
+            _, accent_default_path, _, paths = _accent_info(site_dir)
+        except ThemeError as exc:
+            return jsonify({"error": str(exc)}), 400
+        if path not in paths:
+            return jsonify({"error": f"unknown colour token '{path}'"}), 400
+        label = f"theme: {path} {hex_}"
+    elif kind == "font":
+        key = data.get("font")
+        if key not in FONT_PRESETS:
+            return jsonify({"error": "unknown font preset"}), 400
+        label = f"theme: font {FONT_PRESETS[key][0]}"
+    elif kind == "radius":
+        try:
+            px = int(data.get("radius"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "radius must be a number"}), 400
+        if not 0 <= px <= 20:
+            return jsonify({"error": "radius must be 0-20px"}), 400
+        label = f"theme: corners {px}px"
+    else:
+        return jsonify({"error": "kind must be accent, color, font or radius"}), 400
+
+    snapshot_site(site_dir, label, "theme")
+    try:
+        if kind == "accent":
+            apply_accent(site_dir, hex_)
+            saved["accent"] = hex_
+        elif kind == "color":
+            if path == accent_default_path:  # picking the accent directly still gets auto-contrast
+                apply_accent(site_dir, hex_)
+                saved["accent"] = hex_
+            else:
+                _set_token_hex(site_dir, path, hex_)
+        elif kind == "font":
+            apply_font(site_dir, key)
+            saved["font"] = key
+        elif kind == "radius":
+            apply_radius(site_dir, px)
+            saved["radius"] = str(px)
+    except ThemeError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except OSError as exc:
+        return jsonify({"error": f"couldn't write theme files: {exc}"}), 500
+
+    if saved:
+        with leads_transaction() as leads:
+            lead = find_lead(leads, site_dir.name)
+            if lead:
+                lead.update(saved)
+
+    return jsonify({"ok": True, "label": label, "theme": read_theme(site_dir)})
+
+
+DEPLOY_IGNORE_DIRS = {"node_modules", ".next", ".git", ".vercel", HISTORY_DIRNAME}
 DEPLOY_IGNORE_FILES = {"npm-install.log", "dev-server.log", ".devserver.json"}
 DEPLOY_STATUS = {}  # slug -> {"stage": str, "detail": str, "done": bool, "error": str|None}
 

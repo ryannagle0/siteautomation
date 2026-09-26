@@ -29,7 +29,7 @@ export async function Reviews() {
   const { reviews, mapsUrl } = await getGoogleReviews();
 
   return (
-    <section id="reviews" className="bg-grey-section px-6 py-24 lg:px-16 lg:py-36">
+    <section data-slot="reviews" id="reviews" className="bg-grey-section px-6 py-24 lg:px-16 lg:py-36">
       <div className="mx-auto max-w-content">
         <FadeUp className="max-w-xl">
           <p className="text-[13px] font-semibold uppercase tracking-wide text-blue">
@@ -72,7 +72,7 @@ export async function Reviews() {
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-blue-dark"
+            className="inline-flex items-center gap-2 rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-accent-foreground transition-colors hover:bg-blue-dark"
           >
             Leave us a Google Review
             <ArrowRightIcon width={17} height={17} />

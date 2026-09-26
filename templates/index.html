@@ -87,7 +87,46 @@
   .modal-backdrop.open{display:flex;}
   .modal-outer{position:relative;width:95vw;height:94vh;}
   .modal{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:12px;width:100%;height:100%;overflow:hidden;padding:16px;display:flex;flex-direction:column;}
-  .modal h2{margin:0 0 10px;font-size:1.05rem;flex:none;}
+  .modal h2{margin:0;font-size:1.05rem;flex:none;}
+  .modal-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex:none;}
+  .modal-toolbar{display:flex;align-items:center;gap:6px;flex:none;}
+  .modal-toolbar-btn{width:30px;height:30px;padding:0;border-radius:8px;background:var(--panel2);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .modal-toolbar-btn:hover{background:#262c36;}
+  .modal-toolbar-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .history-dropdown-wrap{position:relative;}
+  .history-dropdown.theme-panel{width:320px;max-height:70vh;}
+  .theme-section{padding:12px 14px;border-bottom:1px solid #2a3038;}
+  .theme-section:last-child{border-bottom:none;}
+  .theme-section-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:8px;}
+  .theme-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .theme-chip{display:inline-flex;align-items:center;gap:6px;background:#25262a;border:1px solid #3a3d42;color:var(--text);padding:5px 10px;border-radius:14px;font-size:.76rem;cursor:pointer;font-family:inherit;}
+  .theme-chip:hover{border-color:#5b8cff;background:#2c2e33;}
+  .theme-chip.active{border-color:#5b8cff;background:rgba(91,140,255,.15);}
+  .theme-chip-dot{width:10px;height:10px;border-radius:50%;flex:none;}
+  .theme-swatches{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .theme-swatch{display:flex;align-items:center;gap:8px;background:#25262a;border:1px solid #3a3d42;border-radius:8px;padding:4px 8px 4px 4px;min-width:0;}
+  .theme-swatch.accent{border-color:#5b8cff;}
+  .theme-swatch input[type=color]{width:24px;height:24px;padding:0;border:none;border-radius:5px;background:none;cursor:pointer;flex:none;}
+  .theme-swatch input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+  .theme-swatch input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.2);border-radius:5px;}
+  .theme-swatch-label{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .theme-radius-row{display:flex;align-items:center;gap:10px;}
+  .theme-radius-row input[type=range]{flex:1;accent-color:#5b8cff;}
+  .theme-radius-value{font-size:.78rem;color:var(--muted);min-width:34px;text-align:right;font-variant-numeric:tabular-nums;}
+  .theme-panel.busy{opacity:.6;pointer-events:none;}
+  .history-dropdown{position:absolute;top:calc(100% + 6px);right:0;width:280px;max-height:340px;overflow-y:auto;background:#1F2023;border:1px solid #3a3d42;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:40;}
+  .history-dropdown-header{padding:10px 14px;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid #2a3038;}
+  .history-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid #2a3038;}
+  .history-row:last-child{border-bottom:none;}
+  .history-row-text{min-width:0;flex:1;}
+  .history-row-label{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .history-row-time{font-size:.7rem;color:var(--muted);margin-top:1px;}
+  .history-row-restore{flex:none;padding:5px 10px;font-size:.72rem;border-radius:7px;background:var(--accent);border:none;color:#fff;cursor:pointer;}
+  .history-row-restore:hover{background:var(--accent2);}
+  .history-empty{padding:16px 14px;font-size:.8rem;color:var(--muted);text-align:center;}
+  .toast-container{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+  .toast{background:#1F2023;border:1px solid #3a3d42;color:var(--text);padding:10px 18px;border-radius:10px;font-size:.85rem;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;}
+  .toast.show{opacity:1;transform:translateY(0);}
   .modal-close-circle{position:absolute;top:-14px;right:-14px;width:36px;height:36px;padding:0;margin:0;border-radius:50%;background:var(--panel2);border:1px solid var(--border);color:var(--text);font-size:1.1rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.4);flex-shrink:0;}
   .modal-close-circle:hover{background:#262c36;}
   .iframe-wrap{position:relative;flex:1 1 auto;min-height:0;border-radius:8px;overflow:hidden;}
@@ -102,6 +141,11 @@
   /* Prompt box — styled after a chat-style AI prompt input: dark rounded
      card, autosizing textarea, icon action row along the bottom. */
   .prompt-box{position:relative;background:#1F2023;border:1px solid #3a3d42;border-radius:24px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  .slot-chip-row{display:flex;justify-content:center;}
+  .slot-chip{display:inline-flex;align-items:center;gap:6px;background:#5b8cff;color:#fff;padding:5px 8px 5px 12px;border-radius:14px;font-size:.78rem;font-weight:600;}
+  .slot-chip #slotChipLabel{text-transform:capitalize;}
+  .slot-chip button{background:rgba(255,255,255,.25);border:none;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;line-height:1;padding:0;}
+  .slot-chip button:hover{background:rgba(255,255,255,.4);}
   .prompt-box-textarea{width:100%;background:transparent;border:none;color:#e8ebef;font-family:inherit;font-size:.92rem;line-height:1.5;padding:4px 4px 6px;resize:none;min-height:22px;max-height:160px;outline:none;}
   .prompt-box-textarea::placeholder{color:#7d8590;}
   .prompt-box-actions{display:flex;align-items:center;gap:6px;}
@@ -292,12 +336,39 @@
   <div id="actionLogList"></div>
 </div>
 
+<div class="toast-container" id="toastContainer"></div>
+
 <!-- Edit Site Modal -->
 <div class="modal-backdrop" id="editModal">
   <div class="modal-outer">
     <button class="modal-close-circle" id="closeModalBtn">&times;</button>
     <div class="modal">
-      <h2 id="editModalTitle">Edit Site</h2>
+      <div class="modal-header-row">
+        <h2 id="editModalTitle">Edit Site</h2>
+        <div class="modal-toolbar">
+          <div class="history-dropdown-wrap" id="themePanelWrap">
+            <button type="button" class="modal-toolbar-btn" id="themeBtn" title="Theme">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5c0-4.4-4-8.6-9-8.6Z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/></svg>
+            </button>
+            <div class="history-dropdown theme-panel" id="themePanel" style="display:none;">
+              <div class="history-dropdown-header">Theme</div>
+              <div id="themePanelBody"></div>
+            </div>
+          </div>
+          <button type="button" class="modal-toolbar-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+          </button>
+          <div class="history-dropdown-wrap" id="historyWrap">
+            <button type="button" class="modal-toolbar-btn" id="historyBtn" title="Version history">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </button>
+            <div class="history-dropdown" id="historyDropdown" style="display:none;">
+              <div class="history-dropdown-header">Version history</div>
+              <div id="historyList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="iframe-wrap">
         <iframe id="editIframe" src="about:blank"></iframe>
         <div class="iframe-loading-overlay" id="iframeLoadingOverlay">
@@ -306,6 +377,12 @@
         </div>
         <div class="edit-overlay-scrim"></div>
         <div class="edit-overlay-controls">
+          <div class="slot-chip-row" id="slotChipRow" style="display:none;">
+            <span class="slot-chip">
+              Editing: <span id="slotChipLabel"></span>
+              <button type="button" id="slotChipClear" title="Clear selection">&times;</button>
+            </span>
+          </div>
           <div class="prompt-box" id="promptBox">
             <div id="componentResultsWrap" class="component-results-wrap" style="display:none;">
               <button type="button" class="component-results-close" id="componentCloseBtn" title="Close">&times;</button>
@@ -676,6 +753,7 @@ function renderPipeline(){
 // ---------- Edit Site Modal ----------
 let currentEditSlug = null;
 let currentPreviewPort = null;
+let selectedSlot = null; // section clicked in the preview, scopes hotbar edits to it
 
 function setIframeLoading(show, text){
   if (text) document.getElementById('iframeLoadingText').textContent = text;
@@ -695,10 +773,12 @@ function resetPreviewIframe(){
 function loadPreviewUrl(url){
   const gen = ++previewLoadGen;
   const iframe = document.getElementById('editIframe');
+  const urlObj = new URL(url);
+  urlObj.searchParams.set('edit', '1'); // lets EditBridge activate section-click-to-scope
   iframe.onload = () => {
     if (gen === previewLoadGen) setIframeLoading(false);
   };
-  iframe.src = url;
+  iframe.src = urlObj.toString();
 }
 
 let buildMessageTimer = null;
@@ -723,6 +803,8 @@ function stopBuildMessageRotation(){
 async function openPreviewModal(slug, build){
   currentEditSlug = slug;
   currentPreviewPort = null;
+  clearSlotSelection(false);
+  closeThemePanel();
   const lead = state.pipeline.find(l => l.slug === slug);
   document.getElementById('editModalTitle').textContent = (build ? 'Building: ' : 'Edit Site: ') + (lead ? lead.name : slug);
   resetPreviewIframe();
@@ -769,6 +851,9 @@ async function openPreviewModal(slug, build){
 document.getElementById('closeModalBtn').addEventListener('click', () => {
   document.getElementById('editModal').classList.remove('open');
   stopBuildMessageRotation();
+  closeHistoryDropdown();
+  clearSlotSelection(false);
+  closeThemePanel();
 });
 
 // ---------- Hotbar: 21st.dev component search ----------
@@ -834,7 +919,7 @@ async function applyComponent(component, sectionHint){
   try {
     const res = await fetch('/api/pipeline/component_apply', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ slug: currentEditSlug, component_id: component.id, section: sectionHint })
+      body: JSON.stringify({ slug: currentEditSlug, component_id: component.id, component_name: component.name, section: sectionHint })
     });
     const data = await res.json();
     if (data.error) { setStatus('editStatus', data.error, true); logAction('Add component', false, data.error); return; }
@@ -851,6 +936,282 @@ async function applyComponent(component, sectionHint){
     logAction('Add component', false, e.message);
   }
 }
+
+// ---------- Version history (undo / restore) ----------
+function showToast(message){
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 2500);
+}
+
+function parseSnapshotTimestamp(ts){
+  const y = +ts.slice(0, 4), mo = +ts.slice(4, 6) - 1, d = +ts.slice(6, 8);
+  const h = +ts.slice(9, 11), mi = +ts.slice(11, 13), s = +ts.slice(13, 15), ms = +ts.slice(15, 18);
+  return new Date(Date.UTC(y, mo, d, h, mi, s, ms));
+}
+
+function formatRelativeTime(ts){
+  const diffSec = Math.max(0, Math.round((Date.now() - parseSnapshotTimestamp(ts).getTime()) / 1000));
+  if (diffSec < 3) return 'just now';
+  if (diffSec < 60) return `${diffSec} sec ago`;
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hr ago`;
+  const diffDay = Math.round(diffHr / 24);
+  return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+}
+
+async function fetchHistory(){
+  if (!currentEditSlug) return [];
+  try {
+    const res = await fetch(`/api/history/${currentEditSlug}`);
+    const data = await res.json();
+    return data.snapshots || [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function renderHistoryList(snapshots){
+  const el = document.getElementById('historyList');
+  if (!snapshots.length) {
+    el.innerHTML = `<div class="history-empty">No history yet — make an edit first.</div>`;
+    return;
+  }
+  el.innerHTML = snapshots.map(s => `
+    <div class="history-row">
+      <div class="history-row-text">
+        <div class="history-row-label">${escapeHtml(s.label || '(edit)')}</div>
+        <div class="history-row-time">${formatRelativeTime(s.timestamp)}</div>
+      </div>
+      <button type="button" class="history-row-restore" data-ts="${escapeHtml(s.timestamp)}">Restore</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('.history-row-restore').forEach(btn => {
+    btn.addEventListener('click', () => restoreSnapshot(btn.dataset.ts));
+  });
+}
+
+async function openHistoryDropdown(){
+  closeThemePanel();
+  document.getElementById('historyDropdown').style.display = 'block';
+  document.getElementById('historyList').innerHTML = `<div class="history-empty">Loading...</div>`;
+  renderHistoryList(await fetchHistory());
+}
+
+function closeHistoryDropdown(){
+  document.getElementById('historyDropdown').style.display = 'none';
+}
+
+document.getElementById('historyBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const dropdown = document.getElementById('historyDropdown');
+  if (dropdown.style.display === 'block') closeHistoryDropdown();
+  else openHistoryDropdown();
+});
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('historyWrap');
+  if (wrap && !wrap.contains(e.target)) closeHistoryDropdown();
+});
+
+async function restoreSnapshot(timestamp){
+  if (!currentEditSlug) return;
+  closeHistoryDropdown();
+  setLoading('editStatus', 'Restoring previous version...');
+  try {
+    const res = await fetch(`/api/history/${currentEditSlug}/restore`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ timestamp })
+    });
+    const data = await res.json();
+    if (data.error) { setStatus('editStatus', data.error, true); logAction('Restore', false, data.error); return; }
+    const label = data.label || 'previous version';
+    setStatus('editStatus', 'Restored: ' + label);
+    logAction('Restore', true, label);
+    showToast('Restored: ' + label);
+    if (currentPreviewPort) {
+      setIframeLoading(true, 'Reloading preview...');
+      loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
+    }
+  } catch(e) {
+    setStatus('editStatus', 'Restore failed: ' + e.message, true);
+    logAction('Restore', false, e.message);
+  }
+}
+
+async function performUndo(){
+  if (!currentEditSlug) return;
+  const snapshots = await fetchHistory();
+  if (!snapshots.length) { setStatus('editStatus', 'Nothing to undo yet.'); return; }
+  restoreSnapshot(snapshots[0].timestamp);
+}
+document.getElementById('undoBtn').addEventListener('click', performUndo);
+
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
+  const modal = document.getElementById('editModal');
+  if (!modal.classList.contains('open')) return;
+  const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+  e.preventDefault();
+  performUndo();
+});
+
+// ---------- Theme panel (direct file edits, no Claude call) ----------
+let themeState = null;
+
+function closeThemePanel(){
+  document.getElementById('themePanel').style.display = 'none';
+}
+
+async function openThemePanel(){
+  closeHistoryDropdown();
+  document.getElementById('themePanel').style.display = 'block';
+  document.getElementById('themePanelBody').innerHTML = `<div class="history-empty">Loading...</div>`;
+  try {
+    const res = await fetch(`/api/theme/${currentEditSlug}`);
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('themePanelBody').innerHTML = `<div class="history-empty">${escapeHtml(data.error)}</div>`;
+      return;
+    }
+    themeState = data;
+    renderThemePanel();
+  } catch(e) {
+    document.getElementById('themePanelBody').innerHTML = `<div class="history-empty">Couldn't load theme: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderThemePanel(){
+  const t = themeState;
+  const body = document.getElementById('themePanelBody');
+  const accentHex = (t.tokens.find(x => x.path === t.accent_path) || {}).hex || '';
+  body.innerHTML = `
+    <div class="theme-section">
+      <div class="theme-section-title">Accent presets</div>
+      <div class="theme-chips">
+        ${t.palettes.map(p => `
+          <button type="button" class="theme-chip${p.hex.toUpperCase() === accentHex.toUpperCase() ? ' active' : ''}" data-accent="${escapeHtml(p.hex)}">
+            <span class="theme-chip-dot" style="background:${escapeHtml(p.hex)}"></span>${escapeHtml(p.name)}
+          </button>`).join('')}
+      </div>
+    </div>
+    <div class="theme-section">
+      <div class="theme-section-title">Colours</div>
+      <div class="theme-swatches">
+        ${t.tokens.map(tok => `
+          <label class="theme-swatch${tok.path === t.accent_path ? ' accent' : ''}" title="${escapeHtml(tok.path)}${tok.path === t.accent_path ? ' (accent)' : ''}">
+            <input type="color" value="${escapeHtml(tok.hex)}" data-path="${escapeHtml(tok.path)}">
+            <span class="theme-swatch-label">${escapeHtml(tok.label)}</span>
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="theme-section">
+      <div class="theme-section-title">Font</div>
+      <div class="theme-chips">
+        ${t.fonts.map(f => `
+          <button type="button" class="theme-chip${f.key === (t.font || 'inter') ? ' active' : ''}" data-font="${escapeHtml(f.key)}">${escapeHtml(f.label)}</button>`).join('')}
+      </div>
+    </div>
+    <div class="theme-section">
+      <div class="theme-section-title">Corners</div>
+      <div class="theme-radius-row">
+        <input type="range" min="0" max="20" step="1" value="${t.radius ?? 4}" id="themeRadius">
+        <span class="theme-radius-value" id="themeRadiusValue">${t.radius ?? 4}px</span>
+      </div>
+    </div>
+  `;
+  body.querySelectorAll('[data-accent]').forEach(btn =>
+    btn.addEventListener('click', () => applyTheme({ kind: 'accent', hex: btn.dataset.accent })));
+  body.querySelectorAll('input[type=color]').forEach(input =>
+    // 'change' fires once when the picker closes, not on every drag tick —
+    // otherwise each drag would create dozens of snapshots.
+    input.addEventListener('change', () => applyTheme({ kind: 'color', path: input.dataset.path, hex: input.value })));
+  body.querySelectorAll('[data-font]').forEach(btn =>
+    btn.addEventListener('click', () => applyTheme({ kind: 'font', font: btn.dataset.font })));
+  const radius = document.getElementById('themeRadius');
+  radius.addEventListener('input', () => {
+    document.getElementById('themeRadiusValue').textContent = radius.value + 'px';
+  });
+  radius.addEventListener('change', () => applyTheme({ kind: 'radius', radius: Number(radius.value) }));
+}
+
+async function applyTheme(payload){
+  if (!currentEditSlug) return;
+  const panel = document.getElementById('themePanel');
+  panel.classList.add('busy');
+  try {
+    const res = await fetch(`/api/theme/${currentEditSlug}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.error) {
+      showToast('Theme: ' + data.error);
+      logAction('Theme', false, data.error);
+      return;
+    }
+    themeState = data.theme;
+    renderThemePanel();
+    showToast(data.label.replace(/^theme: /, 'Theme: '));
+    logAction('Theme', true, data.label);
+  } catch(e) {
+    showToast('Theme change failed: ' + e.message);
+    logAction('Theme', false, e.message);
+  } finally {
+    panel.classList.remove('busy');
+  }
+}
+
+document.getElementById('themeBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (document.getElementById('themePanel').style.display === 'block') closeThemePanel();
+  else openThemePanel();
+});
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('themePanelWrap');
+  if (wrap && !wrap.contains(e.target)) closeThemePanel();
+});
+
+// ---------- Section-scoped editing (click a section in the preview) ----------
+function renderSlotChip(){
+  const row = document.getElementById('slotChipRow');
+  if (!selectedSlot) {
+    row.style.display = 'none';
+    return;
+  }
+  row.style.display = 'flex';
+  document.getElementById('slotChipLabel').textContent = selectedSlot;
+}
+
+function clearSlotSelection(notifyIframe){
+  selectedSlot = null;
+  renderSlotChip();
+  if (notifyIframe !== false) {
+    const iframe = document.getElementById('editIframe');
+    try { iframe.contentWindow.postMessage({ type: 'clear-selection' }, '*'); } catch(e) {}
+  }
+}
+
+document.getElementById('slotChipClear').addEventListener('click', () => clearSlotSelection());
+
+window.addEventListener('message', (e) => {
+  if (!e.data || e.data.type !== 'slot-selected') return;
+  // Only accept messages from our own preview iframe, not an arbitrary embed.
+  const iframe = document.getElementById('editIframe');
+  if (iframe.contentWindow !== e.source) return;
+  selectedSlot = e.data.slot;
+  renderSlotChip();
+  logAction('Select section', true, selectedSlot);
+});
 
 // ---------- Full 21st.dev component browser ----------
 // Built against the REAL 21st.dev MCP `search` tool (verified live), which
@@ -1220,9 +1581,10 @@ async function submitEditInstruction(){
 
   hideComponentResults();
   const hasImage = !!pendingLayoutImage;
+  const scopeNote = selectedSlot ? ` to the ${selectedSlot} section` : '';
   setLoading('editStatus', hasImage
-    ? 'Applying edit from your layout reference (Claude is editing the site source)...'
-    : 'Applying edit (Claude is editing the site source)...');
+    ? `Applying edit from your layout reference${scopeNote} (Claude is editing the site source)...`
+    : `Applying edit${scopeNote} (Claude is editing the site source)...`);
   try {
     const res = await fetch('/api/pipeline/edit_site', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1231,6 +1593,7 @@ async function submitEditInstruction(){
         instruction,
         image: pendingLayoutImage,
         image_media_type: pendingLayoutImageType,
+        slot: selectedSlot,
       })
     });
     const data = await res.json();

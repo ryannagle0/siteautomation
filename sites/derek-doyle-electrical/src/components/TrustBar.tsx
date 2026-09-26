@@ -16,7 +16,7 @@ const ITEMS = [
 
 export function TrustBar() {
   return (
-    <section className="bg-grey-section">
+    <section data-slot="trust" className="bg-grey-section">
       <div className="mx-auto flex max-w-content flex-wrap items-center justify-center gap-x-10 gap-y-5 px-6 py-8 lg:flex-nowrap lg:justify-between lg:px-16">
         {ITEMS.map((item) => (
           <div key={item.label} className="flex items-center gap-2.5">

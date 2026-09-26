@@ -85,7 +85,7 @@ export function Contact() {
   }
 
   return (
-    <section id="contact" className="bg-navy px-6 py-24 lg:px-16 lg:py-36">
+    <section data-slot="contact" id="contact" className="bg-navy px-6 py-24 lg:px-16 lg:py-36">
       <div className="mx-auto max-w-content">
         <div className="grid grid-cols-1 items-stretch gap-12 lg:grid-cols-2">
         <FadeUp>
@@ -225,7 +225,7 @@ export function Contact() {
                 <button
                   type="submit"
                   disabled={status === "submitting"}
-                  className="mt-1 flex items-center justify-center rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-blue-dark disabled:opacity-60"
+                  className="mt-1 flex items-center justify-center rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-accent-foreground transition-colors hover:bg-blue-dark disabled:opacity-60"
                 >
                   {status === "submitting" ? (
                     <MorphingSquare className="h-4 w-4 bg-white" />

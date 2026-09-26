@@ -18,7 +18,7 @@ const STATS = [
 
 export function About() {
   return (
-    <section id="about" className="bg-navy px-6 py-24 lg:px-16 lg:py-36">
+    <section data-slot="about" id="about" className="bg-navy px-6 py-24 lg:px-16 lg:py-36">
       <div className="mx-auto grid max-w-content gap-14 lg:grid-cols-2 lg:gap-20">
         <FadeUp>
           <div className="relative h-[340px] overflow-hidden rounded-sharp lg:h-full lg:min-h-[520px]">
@@ -73,7 +73,7 @@ export function About() {
 
           <a
             href="tel:{{PHONE_TEL}}"
-            className="mt-10 inline-flex items-center gap-2.5 rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-blue-dark"
+            className="mt-10 inline-flex items-center gap-2.5 rounded-sharp bg-blue px-7 py-4 text-[15px] font-semibold text-accent-foreground transition-colors hover:bg-blue-dark"
           >
             <PhoneIcon width={18} height={18} />
             Call {{OWNER_FIRST_NAME}} — {{PHONE_DISPLAY}}

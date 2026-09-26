@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+import { fontClassName, fontStyle, fontStylesheet } from "@/fonts";
+import { EditBridge } from "@/components/EditBridge";
 
 const SITE_URL = "https://{{SLUG}}.vercel.app";
 
@@ -58,14 +53,18 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en-IE" className={inter.variable}>
+    <html lang="en-IE" className={fontClassName} style={fontStyle as React.CSSProperties}>
       <head>
+        {fontStylesheet && <link rel="stylesheet" href={fontStylesheet} />}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <EditBridge />
+        {children}
+      </body>
     </html>
   );
 }

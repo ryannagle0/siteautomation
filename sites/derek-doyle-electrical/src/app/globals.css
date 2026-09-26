@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  --radius: 4px;
   --background: #FAFAF8;
   --foreground: #0A1628;
   color-scheme: light;
@@ -43,4 +44,10 @@ body {
 ::selection {
   background: #1D4ED8;
   color: #FAFAF8;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading, var(--font-body)), system-ui, sans-serif;
+  }
 }

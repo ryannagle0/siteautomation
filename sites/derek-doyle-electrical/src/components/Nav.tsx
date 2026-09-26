@@ -33,6 +33,7 @@ export function Nav() {
   return (
     <>
       <header
+        data-slot="nav"
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
           scrolled || open
             ? "bg-base/95 backdrop-blur border-b border-grey-line"
@@ -71,7 +72,7 @@ export function Nav() {
             </a>
             <a
               href="#contact"
-              className="rounded-sharp bg-blue px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-dark"
+              className="rounded-sharp bg-blue px-4 py-2.5 text-[13px] font-semibold text-accent-foreground transition-colors hover:bg-blue-dark"
             >
               Free Quote
             </a>
@@ -115,7 +116,7 @@ export function Nav() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.35 }}
-              className="mt-4 inline-block w-fit rounded-sharp bg-blue px-6 py-3 text-sm font-semibold text-white"
+              className="mt-4 inline-block w-fit rounded-sharp bg-blue px-6 py-3 text-sm font-semibold text-accent-foreground"
             >
               Call {{PHONE_DISPLAY}}
             </motion.a>
