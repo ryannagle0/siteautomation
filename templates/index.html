@@ -204,6 +204,7 @@
   .component-results-empty{padding:18px 10px;color:#9CA3AF;font-size:.82rem;text-align:center;width:100%;}
   .component-results-loading{display:flex;align-items:center;gap:8px;padding:18px 10px;color:#9CA3AF;font-size:.82rem;width:100%;}
   .edit-overlay-controls .status{margin:0;font-size:.78rem;text-align:center;}
+  .build-log-tail{margin:8px 0 0;max-height:180px;overflow:auto;text-align:left;white-space:pre-wrap;word-break:break-word;background:#0a0a0a;border:1px solid #3a3d42;border-radius:8px;padding:8px 10px;font-size:.7rem;color:#c9ced6;}
   /* Full component browser — sidebar categories + searchable/sortable grid.
      Covers the whole preview area while open (the modal itself is already
      near-fullscreen). */
@@ -1049,6 +1050,12 @@ async function openPreviewModal(slug, build){
       setIframeLoading(false);
       const stepLabel = data.step ? `[${data.step}] ` : '';
       setStatus('editStatus', stepLabel + data.error, true);
+      if (data.log_tail) {
+        const pre = document.createElement('pre');
+        pre.className = 'build-log-tail';
+        pre.textContent = data.log_tail.trim().split('\n').slice(-15).join('\n');
+        document.getElementById('editStatus').appendChild(pre);
+      }
       logAction(build ? 'Build site' : 'Open preview', false, data.error);
       return;
     }
