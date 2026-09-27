@@ -6,17 +6,17 @@ colors:
   heritage-limestone: "#F2F0EB"
   heritage-ink: "#1C1E1B"
   heritage-muted: "#595C55"
-  heritage-rule: "#D6D2C8"
-  industrial-ground: "#0E1012"
-  industrial-plate: "#16191C"
-  industrial-text: "#ECEEF0"
-  industrial-muted: "#9BA3AB"
-  industrial-rule: "#2B3036"
+  heritage-rule: "#D5D3CF"
+  industrial-ground: "#101010"
+  industrial-plate: "#1C1C1C"
+  industrial-text: "#EDEDED"
+  industrial-muted: "#A3A3A3"
+  industrial-rule: "#333333"
   clean-white: "#FFFFFF"
-  clean-mist: "#F3F5F4"
+  clean-mist: "#F4F4F4"
   clean-ink: "#15201C"
   clean-muted: "#52605A"
-  clean-rule: "#DCE2DF"
+  clean-rule: "#DEDEDE"
   bold-paper: "#FFFFFF"
   bold-black: "#0B0B0B"
   bold-muted: "#454543"
@@ -105,15 +105,19 @@ Each preset owns its neutrals. The accent is the only colour that comes from the
 - **Accent foreground** (`--accent-fg`): black or white, whichever reads on the accent.
 
 ### Neutral (per preset)
-- **heritage:** Limestone ground (#F2F0EB), white surfaces, Near-Black Ink (#1C1E1B), Moss Grey muted (#595C55), Stone rule (#D6D2C8). The "fascia" band is the accent sunk into near-black (`color-mix(in oklab, accent 26%, #121411)`), like a painted shopfront board.
-- **industrial:** Asphalt ground (#0E1012), Steel plates (#16191C, #1E2226), Chalk text (#ECEEF0), Concrete muted (#9BA3AB), Seam lines (#2B3036). The band is near-black (#08090A).
-- **clean-local:** White ground, Mist surfaces (#F3F5F4, #E8EDEA), Deep Green-Black ink (#15201C), Sage muted (#52605A), Soft rule (#DCE2DF). The band is the accent itself.
-- **bold:** Paper white, Bone surface (#F0F0EC), True Black (#0B0B0B) for text, rules and band, Graphite muted (#454543). Rules are 2px black.
+- **heritage:** Limestone ground (#F2F0EB), white surfaces, Near-Black Ink (#1C1E1B), Moss Grey muted (#595C55), Stone rule (#D5D3CF). The "fascia" band is the accent sunk into near-black (`color-mix(in oklab, accent 26%, #121411)`), like a painted shopfront board.
+- **industrial:** Charcoal ground (#101010), Plates (#1C1C1C, #262626), Chalk text (#EDEDED), Concrete muted (#A3A3A3), Seam lines (#333333), all true neutral (R=G=B). The band is near-black (#08090A).
+- **clean-local:** White ground, Mist surfaces (#F4F4F4, #EAEAEA), Deep Green-Black ink (#15201C), Sage muted (#52605A), Soft rule (#DEDEDE). The band is the accent itself.
+- **bold:** Paper white, Bone surface (#F0F0F0), True Black (#0B0B0B) for text, rules and band, Graphite muted (#454543). Rules are 2px black.
 
 ### Named Rules
 **The Readable Accent Rule.** Never set text in raw `--accent`. Text uses `--accent-ink` on the ground or `--accent-fg` on an accent fill. `--accent-ink` is computed to clear 4.5:1 against both the preset's ground and its surface.
 
 **The No Muted On Brand Rule.** On accent-filled sections (and the clean-local band, which is the accent), secondary text uses the full `--accent-fg`. A mid-tone brand colour leaves no contrast headroom for a muted shade; hierarchy comes from size and weight instead.
+
+**The Neutral Surface Rule.** Surfaces, cards and rules are greys derived from the preset's own ground (shifted toward black on light presets, toward white on industrial). They never carry a hue of their own: no blue-grey "tech" plates. The brand accent is the only colour on the page.
+
+**The Display Face Rule.** `--font-display` sets headings and big numbers (the phone, rating and step numerals), plus the logo and the display-size town list. Paragraphs, quotes, labels, buttons, links and form text always use `--font-body`. globals.css enforces this with a guard rule.
 
 **The One Brand Rule.** No second brand colour, no gradients between colours. Depth comes from the preset's neutrals.
 
@@ -164,6 +168,9 @@ Flat by default. Depth comes from tone changes between sections and 1px (bold: 2
 - **Sticky call bar (mobile):** two equal halves, Call (accent fill) and WhatsApp (surface, only when the number is a mobile). If there's no phone, the bar becomes a single "Get a quote" link.
 - **Review:** stars in accent-ink with the text as body, and the author as a label with a "Google review" source. It only renders from real review data. The overall rating appears once near the top: the hero proof line, or trust-rating, never both.
 - **Lists instead of icon cards:** services and trust promises are ruled lists and spec-sheet rows (title + one line). `services-list-icons` is the single icon-led variant. There are no icon-tile card grids.
+- **Photos:** a real Google Places photo (best landscape at least 1200px) always gets an image hero, and a second one goes in About. Every Places photo shows its "Photo: … on Google" credit (a Google requirement). With no photo, the typographic hero draws the trade's icon as an oversized hairline outline in the brand colour (`.hero-mark`, 9–12% opacity) so the first screen is never an empty wash.
+- **One container:** every section's content starts on the nav logo's left edge (`.wrap`). There are no centred or offset content columns; the centred-logo nav centres the name on the header's own centre line.
+- **Hero quote:** at most 25 words with an ellipsis, taken from the review whose first sentence stands alone (`hero.quote`, chosen at build).
 - **Tap targets:** every standalone link is at least 44px tall on phones (nav, footer, contact details, `.link`).
 - **The page ends once:** one phone moment at the close (a CTA band, contact details *or* the big-phone footer), never two in a row. `catalogue.json` rules and `site_library.normalize_sections` enforce this.
 

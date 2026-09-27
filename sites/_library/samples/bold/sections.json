@@ -5,7 +5,7 @@
   },
   {
     "slot": "hero",
-    "variant": "hero-image-grid"
+    "variant": "hero-review-led"
   },
   {
     "slot": "trust",

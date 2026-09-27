@@ -19,7 +19,7 @@ sampleContent.ui = { ...uiDefaults, ...(sampleContent.ui || {}) };
 writeFileSync(join("src", "content.json"), JSON.stringify(sampleContent, null, 2) + "\n");
 
 // accent-ink must read on each preset's ground AND its surface tone.
-const PRESET_BG = { heritage: ["#f2f0eb", "#e8e5de"], industrial: ["#0e1012", "#1e2226"], "clean-local": ["#ffffff", "#e8edea"], bold: ["#ffffff", "#e2e2dc"] };
+const PRESET_BG = { heritage: ["#f2f0eb", "#e7e5e1"], industrial: ["#101010", "#262626"], "clean-local": ["#ffffff", "#eaeaea"], bold: ["#ffffff", "#e3e3e3"] };
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const toHex = (rgb) => "#" + rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
 const lum = (h) => {

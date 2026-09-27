@@ -1,4 +1,5 @@
 import { HeroProof } from "@/components/HeroProof";
+import { PhotoCredit } from "@/components/Img";
 import { Section, type Tone } from "@/components/Section";
 import { T } from "@/components/T";
 import { Actions, Coverage } from "@/components/parts";
@@ -21,11 +22,12 @@ export default function HeroFullBleed({ tone = "band" }: { tone?: Tone }) {
             className="absolute inset-0 -z-20 h-full w-full object-cover" />
           {/* Legibility scrim: darkest where the text sits. */}
           <div aria-hidden="true" className="absolute inset-0 -z-10"
-            style={{ background: "linear-gradient(to top, rgb(0 0 0 / 0.82) 0%, rgb(0 0 0 / 0.55) 45%, rgb(0 0 0 / 0.15) 100%)" }} />
+            style={{ background: "linear-gradient(to top, var(--scrim-strong) 0%, var(--scrim-mid) 45%, var(--scrim-soft) 100%)" }} />
+          {img.credit && <PhotoCredit text={img.credit} />}
         </>
       )}
       <div className={cn("wrap flex flex-col justify-end", img ? "min-h-[min(88svh,760px)] pb-12 pt-40 md:pb-20" : "py-20 md:py-28")}
-        style={img ? { ["--text" as string]: "#fff", ["--muted" as string]: "rgb(255 255 255 / 0.82)", ["--accent-ink" as string]: "#fff" } : undefined}>
+        style={img ? { ["--text" as string]: "var(--on-scrim)", ["--muted" as string]: "var(--on-scrim-muted)", ["--accent-ink" as string]: "var(--on-scrim)" } : undefined}>
         <div className="hero-rise max-w-4xl">
           <T k="hero.headline" as="h1" className="t-display text-ink" />
           <T k="hero.subhead" as="p" className="t-lead mt-5 max-w-2xl" />

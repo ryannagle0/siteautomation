@@ -217,6 +217,19 @@ export function EditBridge() {
       }
     }
 
+    // H (outside text editing) asks the dashboard to hide/show its hotbar,
+    // so the shortcut works while the preview has keyboard focus too.
+    function onKeyDown(e: KeyboardEvent) {
+      if (editing || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        window.parent.postMessage({ type: "toggle-hotbar" }, "*");
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
     document.addEventListener("mouseover", onMouseOver);
     document.addEventListener("mouseout", onMouseOut);
     document.addEventListener("click", onClickCapture, true);
@@ -226,6 +239,7 @@ export function EditBridge() {
     return () => {
       finishEdit(false);
       highlightSlot(null);
+      document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("mouseover", onMouseOver);
       document.removeEventListener("mouseout", onMouseOut);
       document.removeEventListener("click", onClickCapture, true);

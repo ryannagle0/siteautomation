@@ -260,12 +260,17 @@ def vision_layout(client, model, img):
     prompt = (
         f"This is a business logo, {view.width}x{view.height} pixels. Reply with JSON only, no other text:\n"
         '{"type": "emblem_and_text" | "emblem_only" | "text_only", "emblem_bbox": [x, y, w, h], '
-        '"text": "text found in logo"}\n'
+        '"text": "text found in logo", "generic_symbol": true | false, "confidence": 0.0-1.0}\n'
         "The emblem is the graphic mark or icon, not the lettering. emblem_bbox is in pixels of this "
         "image and must not include any lettering; use null for text_only. If a letter is drawn as "
         "the graphic mark itself (a monogram), that counts as the emblem. If this is a photograph or a "
         'website screenshot rather than a logo, reply {"type": "text_only", "emblem_bbox": null, '
-        '"text": "", "not_a_logo": true}.'
+        '"text": "", "not_a_logo": true}.\n'
+        "generic_symbol is true when the graphic mark is a generic stock or clip-art symbol rather "
+        "than something made for this business: recycling arrows, a globe, a check mark/tick, a "
+        "generic swoosh, a plain house outline, a stock lightning bolt or lightbulb, a stock tree. "
+        "confidence is how sure you are that this image is the business's own logo AND that the "
+        "emblem_bbox is right."
     )
     resp = client.messages.create(
         model=model, max_tokens=300,
@@ -293,8 +298,13 @@ def vision_layout(client, model, img):
             if kind != "emblem_only":
                 raise ValueError("no usable emblem_bbox")
             bbox = (0, 0, img.width, img.height)
+    try:
+        confidence = max(0.0, min(1.0, float(data.get("confidence"))))
+    except (TypeError, ValueError):
+        confidence = None
     return {"type": kind, "bbox": bbox, "text": str(data.get("text") or "")[:200],
-            "not_a_logo": bool(data.get("not_a_logo"))}
+            "not_a_logo": bool(data.get("not_a_logo")), "generic_symbol": bool(data.get("generic_symbol")),
+            "confidence": confidence}
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +439,9 @@ def extract_emblem(out_dir, client=None, model=None, force_vision=False, strict_
             layout["confidence"] = min(layout["confidence"], 0.6)
     meta["confidence"] = round(layout["confidence"], 2)
     result = {"type": layout["type"], "bbox": layout["bbox"], "text": "", "not_a_logo": layout.get("not_a_logo", False)}
-    if force_vision or layout["confidence"] < 0.7:
+    # Vision also runs on every detected emblem (not only uncertain crops),
+    # because only it can tell a real mark from a generic stock symbol.
+    if force_vision or layout["confidence"] < 0.7 or (layout["type"] != "text_only" and client is not None):
         if client is not None and model:
             try:
                 result = vision_layout(client, model, norm)
@@ -443,7 +455,13 @@ def extract_emblem(out_dir, client=None, model=None, force_vision=False, strict_
     if result["not_a_logo"]:  # a photo/screenshot has no emblem, whatever else was said
         result.update(type="text_only", bbox=None)
     meta.update(type=result["type"], text=result["text"], bbox=result["bbox"], not_a_logo=result["not_a_logo"])
-    meta["needs_check"] = meta["method"] == "heuristic" and meta["confidence"] < 0.5 and meta["vision_failed"]
+    if result.get("confidence") is not None:
+        meta["confidence"] = round(result["confidence"], 2)
+    meta["generic_symbol"] = bool(result.get("generic_symbol"))
+    # Suspect: a stock symbol, or low confidence it's their real logo. The
+    # site then defaults to the generated monogram and the card says "check".
+    meta["suspect"] = result["type"] != "text_only" and (meta["generic_symbol"] or meta["confidence"] < 0.6)
+    meta["needs_check"] = meta["suspect"] or (meta["method"] == "heuristic" and meta["confidence"] < 0.5 and meta["vision_failed"])
     if result["type"] != "text_only" and result["bbox"]:
         x, y, w, h = result["bbox"]
         emblem = square_pad(norm.crop((x, y, x + w, y + h)))

@@ -42,10 +42,10 @@ PRESET_LABELS = {
 # Ground + surface of each preset: --accent-ink must clear 4.5:1 on both.
 # Keep in step with src/tokens.css and scripts/use-sample.mjs.
 PRESET_GROUNDS = {
-    "heritage": ["#F2F0EB", "#E8E5DE"],
-    "industrial": ["#0E1012", "#1E2226"],
-    "clean-local": ["#FFFFFF", "#E8EDEA"],
-    "bold": ["#FFFFFF", "#E2E2DC"],
+    "heritage": ["#F2F0EB", "#E7E5E1"],
+    "industrial": ["#101010", "#262626"],
+    "clean-local": ["#FFFFFF", "#EAEAEA"],
+    "bold": ["#FFFFFF", "#E3E3E3"],
 }
 # next/font imports per preset: (import name, css variable, extra options).
 PRESET_FONTS = {
@@ -67,12 +67,24 @@ COPY_IGNORE = shutil.ignore_patterns(
     "npm-install.log", "dev-server.log", ".devserver.json", ".history", ".vercel", "README.md",
 )
 
+# Always removed: things no business data can back up on a demo site.
 _CLAIM_RE = re.compile(
-    r"safe electric|reci\b|rgii|seai|registered|certified|accredited|insured|insurance|guarantee|warranty|"
-    r"award|\b\d+\+?\s*years?\b|since \d{4}|established|est\.|decades?|generations?|cheapest|best in|"
-    r"no\.?\s*1|number one|\bonly \d+ |limited slots|book now before|€\s*\d|\d+\s*%",
+    r"guarantee|warranty|award|cheapest|best in|no\.?\s*1\b|number one|\bonly \d+ |limited slots|"
+    r"book now before|€\s*\d|\d+\s*%",
     re.I,
 )
+
+# Checked against the source data by claim_guard(): kept only when the facts
+# (name, trade, real reviews, Google opening hours, the lead's years) show it.
+CLAIM_KINDS = {
+    "24-hour": re.compile(r"\b24\s*(?:/|-|\s)?\s*(?:7|hours?|hrs?)\b|round[- ]the[- ]clock|around the clock|any time of (?:the )?(?:day|night)", re.I),
+    "emergency": re.compile(r"\bemergenc(?:y|ies)\b|\burgent call-?outs?\b", re.I),
+    "years in business": re.compile(r"\b\d+\+?\s*years?\b|\bsince\s+(?:19|20)\d{2}\b|\bestablished\b|\best\.\s*\d|\bdecades?\b|\bgenerations?\b", re.I),
+    "certification": re.compile(r"safe electric|\breci\b|\brgii\b|\bseai\b|\bregistered\b|\bcertified\b|\baccredited\b|"
+                                r"\bqualified\b|\blicen[cs]ed\b|\binsured\b|\binsurance\b|approved installer|\bcertificat", re.I),
+}
+# Never rewritten by the guard: real data, not generated copy.
+_GUARD_SKIP = {"business", "reviews", "ui", "area.towns", "hero.quote", "hero.image", "about.image", "gallery"}
 
 
 # ---------------------------------------------------------------------------
@@ -465,6 +477,12 @@ def _trade_key(trade):
     return ""
 
 
+TRADE_MARK_ICON = {
+    "electrician": "zap", "plumber": "droplets", "heating engineer": "flame", "roofer": "house",
+    "landscaper": "leaf", "painter": "paint-roller", "builder": "hammer", "cafe": "coffee",
+}
+
+
 def default_preset(trade):
     return TRADE_DEFAULTS.get(_trade_key(trade), ("clean-local", []))[0]
 
@@ -527,6 +545,24 @@ def normalize_sections(raw, facts, preset):
             chosen[slot] = {"slot": slot, "variant": vid}
     if "services" not in chosen:
         chosen["services"] = {"slot": "services", "variant": "services-grid"}
+
+    # Photos decide the hero: a real photo always gets an image hero; with
+    # none, the typographic hero (or the review-led one when reviews exist).
+    images = facts.get("images") or {}
+    hero = chosen["hero"]
+    photo_heroes = {"hero-split-image", "hero-full-bleed"} | ({"hero-image-grid"} if len(images) >= 3 else set())
+    if images.get("hero") and hero["variant"] not in photo_heroes:
+        hero["variant"] = "hero-full-bleed" if preset in ("industrial", "bold") else "hero-split-image"
+        hero.pop("tone", None)
+    elif not images.get("hero") and hero["variant"] in ("hero-split-image", "hero-full-bleed", "hero-image-grid"):
+        hero["variant"] = "hero-typographic"
+        hero.pop("tone", None)
+    # A second photo belongs in About, in a variant that shows it.
+    if images.get("about"):
+        if "about" not in chosen:
+            chosen["about"] = {"slot": "about", "variant": "about-split"}
+        elif chosen["about"]["variant"] == "about-facts":
+            chosen["about"]["variant"] = "about-split"
 
     # One phone moment at the end of the page.
     footer = chosen["footer"]
@@ -608,8 +644,12 @@ def sanitize_content(raw, facts):
         return res
 
     trust = raw.get("trust") if isinstance(raw.get("trust"), dict) else {}
-    out["trust"] = {"heading": s(trust.get("heading"), 60),
-                    "items": items(trust.get("items"), {"title": 40, "text": 110}, 4)}
+    # The rating already shows in the hero and the reviews section: trust
+    # items and about-facts carry other facts (area, hours, how to reach them).
+    rating_re = re.compile(r"\brat(ed|ing)\b|\breviews?\b|\bstars?\b|★|\b[1-5]\.\d\b", re.I)
+    trust_items = [t for t in items(trust.get("items"), {"title": 40, "text": 110}, 6)
+                   if not rating_re.search(f"{t.get('title', '')} {t.get('text', '')}")][:4]
+    out["trust"] = {"heading": s(trust.get("heading"), 60), "items": trust_items}
     services = raw.get("services") if isinstance(raw.get("services"), dict) else {}
     svc_items = items(services.get("items"), {"title": 48, "text": 200}, 8)
     for i, it in enumerate((services.get("items") or [])[:8]):
@@ -620,7 +660,8 @@ def sanitize_content(raw, facts):
                        "items": svc_items}
     about = raw.get("about") if isinstance(raw.get("about"), dict) else {}
     body = [s(p, 420) for p in (about.get("body") or [])[:3]] if isinstance(about.get("body"), list) else []
-    facts_rows = items(about.get("facts"), {"label": 20, "value": 60}, 4, need="label")
+    facts_rows = [f for f in items(about.get("facts"), {"label": 20, "value": 60}, 5, need="label")
+                  if not rating_re.search(f"{f.get('label', '')} {f.get('value', '')}")][:4]
     out["about"] = {"heading": s(about.get("heading"), 80), "body": [p for p in body if p],
                     "signoff": s(about.get("signoff"), 40), "facts": facts_rows}
     process = raw.get("process") if isinstance(raw.get("process"), dict) else {}
@@ -640,6 +681,105 @@ def sanitize_content(raw, facts):
     out["footer"] = obj("footer", {"blurb": 140})
     out["mobileBar"] = obj("mobileBar", {"call": 18, "whatsapp": 18, "quote": 18})
     return out
+
+
+_QUOTE_OPENERS = {"he", "she", "they", "it", "this", "that", "and", "but", "so", "also", "then", "which",
+                  "him", "them", "his", "her", "their", "as", "because", "plus"}
+
+
+def _first_sentence(text):
+    m = re.match(r"(.+?[.!?])(\s|$)", text.strip())
+    return (m.group(1) if m else text.strip()).strip()
+
+
+def hero_quote(reviews, max_words=25):
+    """The review whose opening stands alone best, as a hero quote of at
+    most `max_words` words (ellipsis when cut). A standalone opening is a
+    whole sentence of 6–25 words that doesn't lean on something before it
+    ("He was great…", "And the price…")."""
+    best, best_score = None, None
+    for r in reviews or []:
+        text = re.sub(r"\s+", " ", r.get("text") or "").strip()
+        if not text:
+            continue
+        first = _first_sentence(text)
+        words = first.split()
+        n = len(words)
+        score = 0.0
+        score += 3 if 6 <= n <= max_words else (1 if n < 6 else 0)
+        score -= 3 if words and words[0].lower().strip(",.") in _QUOTE_OPENERS else 0
+        score += 1 if first[-1:] in ".!" else 0
+        score += (r.get("rating") or 5) - 5  # 4-star reviews rank just below 5-star
+        score -= abs(n - 16) / 20  # a comfortable length reads best at display size
+        if best_score is None or score > best_score:
+            best, best_score = (r, first, words), score
+    if not best:
+        return None
+    r, first, words = best
+    if len(words) < 6:  # a very short opening borrows the next sentence
+        words = re.sub(r"\s+", " ", r["text"]).split()
+    quote = " ".join(words[:max_words])
+    if len(words) > max_words:
+        quote = quote.rstrip(",;:—-") + "…"
+    return {"text": quote, "author": r.get("author", ""), "rating": r.get("rating") or 5}
+
+
+def _source_text(facts):
+    parts = [facts.get("name"), facts.get("trade"), facts.get("hours"), facts.get("source_text")]
+    parts += [r.get("text") for r in facts.get("reviews") or []]
+    return " ".join(p for p in parts if p)
+
+
+def claim_guard(content, facts, log=print):
+    """Before content.json is written: remove any 24-hour / emergency /
+    years-in-business / certification claim that the source data doesn't
+    show, sentence by sentence (a list item left empty is dropped). Returns
+    the removals as [{path, kind, text}] and logs each one."""
+    source = _source_text(facts)
+    allowed = {kind for kind, rx in CLAIM_KINDS.items() if rx.search(source)}
+    if (facts.get("years") or "").strip():
+        allowed.add("years in business")
+    if re.search(r"open 24 hours", facts.get("hours") or "", re.I):
+        allowed.add("24-hour")
+    removed = []
+
+    def check(text, path):
+        sentences = re.split(r"(?<=[.?!])\s+", text)
+        kept = []
+        for sentence in sentences:
+            hit = next((k for k, rx in CLAIM_KINDS.items() if k not in allowed and rx.search(sentence)), None)
+            if hit:
+                removed.append({"path": path, "kind": hit, "text": sentence})
+            else:
+                kept.append(sentence)
+        return " ".join(kept).strip()
+
+    def walk(node, path):
+        if any(path == skip or path.startswith(skip + ".") for skip in _GUARD_SKIP):
+            return node
+        if isinstance(node, str):
+            return check(node, path)
+        if isinstance(node, list):
+            out = []
+            for i, item in enumerate(node):
+                new = walk(item, f"{path}.{i}")
+                # An item whose title/label was the claim goes entirely: its
+                # leftover one-liner means nothing without its heading.
+                lost_head = isinstance(item, dict) and any(item.get(k) and not new.get(k) for k in ("title", "label"))
+                empty = new == "" or lost_head or (isinstance(new, dict) and not (new.get("title") or new.get("text") or new.get("label")))
+                if not empty or not isinstance(item, (str, dict)):
+                    out.append(new)
+            return out
+        if isinstance(node, dict):
+            return {k: walk(v, f"{path}.{k}" if path else k) for k, v in node.items()}
+        return node
+
+    guarded = walk(content, "")
+    for r in removed:
+        log(f"[claim-guard] removed unverified {r['kind']} claim at {r['path']}: \"{r['text']}\"")
+    content.clear()
+    content.update(guarded)
+    return removed
 
 
 def fallback_content(facts):
@@ -709,8 +849,9 @@ def build_prompt(facts, catalogue):
         "of jobs. No fake urgency. If a claim isn't in the facts, don't make it.\n"
         "- Use the owner's first name only if owner_first_name is given; otherwise say 'we'.\n"
         "- Services: 4-6 things this trade typically does, each with a one-line description.\n"
-        "- Trust items: 3 plain promises about how the work is handled or facts from the data (local to the "
-        "town, the Google rating, you talk to the person doing the job). No credentials.\n"
+        "- Trust items: 3 plain promises about how the work is handled or facts from the data (the towns "
+        "covered, opening hours, call/WhatsApp direct, you talk to the person doing the job). NEVER the "
+        "rating or reviews (they appear elsewhere). No credentials. Years in business only if given.\n"
         "- Icons: pick from this list only: " + ", ".join(icon_names()) + "\n"
         "- Button labels: primaryCta like 'Call 087 123 4567' (use the phone), secondaryCta like "
         "'Get a free quote' or 'WhatsApp a photo' (only mention WhatsApp if whatsapp is true).\n\n"
@@ -782,6 +923,12 @@ def finalize_content(base, facts, sections, images):
         hero["note"] = f"Rated {facts['rating']:.1f} from {facts['review_count']} Google reviews"
     if images.get("hero"):
         hero["image"] = images["hero"]
+    quote = hero_quote(facts.get("reviews"))
+    if quote:
+        hero["quote"] = quote
+    mark = TRADE_MARK_ICON.get(_trade_key(trade))
+    if mark:
+        hero["icon"] = mark  # the typographic hero's oversized outline mark
     c["hero"] = hero
     for key in ("seo", "services", "contact", "footer", "process", "about", "trust", "cta", "area"):
         if not (c.get(key) or {}).get("items" if key in ("services",) else next(iter(fb.get(key, {})), "")):
@@ -848,6 +995,7 @@ def compose(facts, client=None, model=None, log=print):
     sections = normalize_sections(raw_sections or [{"variant": v} for v in FALLBACK_SECTIONS[preset]], facts, preset)
     content = sanitize_content(raw_content, facts) if raw_content else fallback_content(facts)
     content = finalize_content(content, facts, sections, facts.get("images") or {})
+    facts["claims_removed"] = claim_guard(content, facts, log=log)
     return preset, sections, content, source
 
 
@@ -911,7 +1059,7 @@ QA_PROMPT = (
 )
 
 
-def qa_image(client, model, image_bytes, subject):
+def qa_image(client, model, image_bytes, subject, prompt=None):
     from PIL import Image
     im = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     im.thumbnail((1024, 1024))
@@ -922,14 +1070,15 @@ def qa_image(client, model, image_bytes, subject):
         messages=[{"role": "user", "content": [
             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                          "data": base64.b64encode(buf.getvalue()).decode("ascii")}},
-            {"type": "text", "text": QA_PROMPT.format(subject=subject)},
+            {"type": "text", "text": (prompt or QA_PROMPT).format(subject=subject)},
         ]}],
     )
     text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     return _parse_json_object(text)
 
 
-def scene_images(facts, cache_dir, gemini_key, gemini_model, client, claude_model, log=print, min_score=7):
+def scene_images(facts, cache_dir, gemini_key, gemini_model, client, claude_model, log=print, min_score=7,
+                 slots=("hero", "about")):
     """{"hero": {src, alt, width, height}, "about": {...}} for images that
     passed QA. Cached per lead in cache_dir, so rebuilds cost nothing. With
     no Gemini key or no Claude client (nothing to check quality) → {}."""
@@ -941,7 +1090,7 @@ def scene_images(facts, cache_dir, gemini_key, gemini_model, client, claude_mode
         return {}
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    jobs = [("hero", scenes[0], "4:3"), ("about", scenes[1], "4:5")]
+    jobs = [job for job in (("hero", scenes[0], "4:3"), ("about", scenes[1], "4:5")) if job[0] in slots]
 
     def one(job):
         slot, scene, aspect = job
@@ -981,6 +1130,78 @@ def scene_images(facts, cache_dir, gemini_key, gemini_model, client, claude_mode
     return out
 
 
+PLACES_QA_PROMPT = (
+    "This is a photo a business uploaded to its Google listing. Could it be used, as is, as a large "
+    "photo on that business's own website ({subject})? Reject logos, flyers, business cards, "
+    "screenshots, text-heavy images, blurry or dark shots, close-up selfies, and anything unrelated. "
+    'Return ONLY JSON: {{"ok": true|false, "score": 1-10, "problems": ["..."], "alt": "plain one-sentence alt text"}}'
+)
+
+
+def _places_photo_bytes(api_key, name, max_width=1800):
+    resp = requests.get(f"https://places.googleapis.com/v1/{name}/media",
+                        params={"maxWidthPx": max_width, "key": api_key}, timeout=60)
+    resp.raise_for_status()
+    if not resp.headers.get("Content-Type", "").startswith("image/"):
+        raise ValueError("not an image")
+    return resp.content
+
+
+def places_photos(facts, cache_dir, api_key, client, claude_model, log=print):
+    """The lead's own Google Places photos: the best landscape photo at
+    least 1200px wide for the hero, a second good photo for About. Each is
+    checked by Claude vision when available (logos, flyers and screenshots
+    are common uploads). Keeps Google's required author attribution.
+    Cached per lead like the Gemini photos."""
+    photos = [p for p in (facts.get("place_photos") or []) if p.get("name")]
+    if not (api_key and photos):
+        return {}
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cached = read_json(cache_dir / "places.json")
+    if cached is not None and cached.get("names") == [p["name"] for p in photos]:
+        return {k: v for k, v in cached.get("chosen", {}).items() if (cache_dir / v["file"]).exists()}
+
+    def wide(p):
+        return int(p.get("widthPx") or 0), int(p.get("heightPx") or 0)
+
+    landscape = sorted((p for p in photos if wide(p)[0] >= 1200 and wide(p)[0] > wide(p)[1] * 1.15),
+                       key=lambda p: -(wide(p)[0] * wide(p)[1]))
+    others = sorted((p for p in photos if wide(p)[0] >= 800), key=lambda p: -(wide(p)[0] * wide(p)[1]))
+    chosen, used = {}, set()
+    subject = f"{facts.get('trade') or 'local business'} {facts.get('name', '')}"
+    for slot, pool in (("hero", landscape[:4]), ("about", others[:6])):
+        for p in pool:
+            if p["name"] in used:
+                continue
+            try:
+                raw = _places_photo_bytes(api_key, p["name"])
+                verdict = {"ok": True, "score": 7, "alt": ""}
+                if client is not None:
+                    verdict = qa_image(client, claude_model, raw, subject, prompt=PLACES_QA_PROMPT)
+            except Exception as exc:  # noqa: BLE001 - photos are optional
+                log(f"[places photos] {slot}: {exc}")
+                continue
+            if not verdict.get("ok") or int(verdict.get("score") or 0) < 6:
+                log(f"[places photos] {slot}: rejected {verdict.get('problems') or ''}")
+                used.add(p["name"])
+                continue
+            from PIL import Image
+            im = Image.open(io.BytesIO(raw)).convert("RGB")
+            im.thumbnail((1800, 1800))
+            fname = f"places-{slot}.webp"
+            im.save(cache_dir / fname, "WEBP", quality=82)
+            authors = ", ".join(a.get("displayName", "") for a in (p.get("authorAttributions") or []) if a.get("displayName"))
+            chosen[slot] = {"ok": True, "file": fname, "width": im.width, "height": im.height,
+                            "alt": _clean_str(verdict.get("alt"), 160) or f"{facts.get('name', '')} photo",
+                            "credit": f"Photo: {authors} on Google" if authors else "Photo: Google",
+                            "source": "google_places", "photo_name": p["name"]}
+            used.add(p["name"])
+            break
+    write_json(cache_dir / "places.json", {"names": [p["name"] for p in photos], "chosen": chosen, "created": time.time()})
+    return chosen
+
+
 def install_images(site_dir, cache_dir, metas):
     """Copy approved images into public/images and return content.json image objects."""
     dest = Path(site_dir) / "public" / "images"
@@ -990,6 +1211,8 @@ def install_images(site_dir, cache_dir, metas):
         shutil.copy2(Path(cache_dir) / meta["file"], dest / meta["file"])
         result[slot] = {"src": f"/images/{meta['file']}", "alt": meta.get("alt", ""),
                         "width": meta.get("width"), "height": meta.get("height")}
+        if meta.get("credit"):
+            result[slot]["credit"] = meta["credit"]
     return result
 
 

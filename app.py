@@ -1696,7 +1696,7 @@ def find_lead(leads, slug):
 # Building a site from the section library
 # ---------------------------------------------------------------------------
 
-PLACE_DETAILS_FIELDS = "rating,userRatingCount,reviews,googleMapsUri,location,regularOpeningHours.weekdayDescriptions"
+PLACE_DETAILS_FIELDS = "rating,userRatingCount,reviews,googleMapsUri,location,regularOpeningHours.weekdayDescriptions,photos"
 
 
 def fetch_place_details(place_id):
@@ -1708,7 +1708,9 @@ def fetch_place_details(place_id):
     path = _place_cache_path(place_id)
     entry = _cache_read(path) or {"place": {}, "cached_at": time.time()}
     cached = entry.get("details")
-    if cached and time.time() - cached.get("fetched_at", 0) < CACHE_TTL_SECONDS:
+    # Refetch when the field list grew since caching (e.g. photos were added).
+    if cached and time.time() - cached.get("fetched_at", 0) < CACHE_TTL_SECONDS \
+            and cached.get("field_mask", PLACE_DETAILS_FIELDS.replace(",photos", "")) == PLACE_DETAILS_FIELDS:
         return cached
     try:
         resp = requests.get(
@@ -1722,6 +1724,7 @@ def fetch_place_details(place_id):
         print(f"[details] {place_id}: {exc}", flush=True)
         return cached or {}
     details["fetched_at"] = time.time()
+    details["field_mask"] = PLACE_DETAILS_FIELDS
     entry["details"] = details
     _cache_write(path, entry)
     return details
@@ -1781,6 +1784,8 @@ def lead_facts(lead):
         "lat": lat,
         "lng": lng,
         "towns": lib.nearest_towns(COUNTIES, lead.get("county", ""), town, lat, lng),
+        "place_photos": details.get("photos") or [],
+        "years": lead.get("years", ""),
         "preset": lead.get("preset", ""),
     }
 
@@ -1833,8 +1838,13 @@ def api_build_site():
 
     image_cache = SITE_IMAGES_DIR / (logo_key(lead) or f"slug-{lead['slug']}")
     try:
-        metas = lib.scene_images(facts, image_cache, GEMINI_API_KEY, GEMINI_IMAGE_MODEL, _client, CLAUDE_MODEL,
-                                 log=lambda m: print(m, flush=True))
+        log = lambda m: print(m, flush=True)  # noqa: E731
+        # The business's own Google photos first; Gemini only fills slots left empty.
+        metas = lib.places_photos(facts, image_cache, GOOGLE_MAPS_API_KEY, _client, CLAUDE_MODEL, log=log)
+        need = [slot for slot in ("hero", "about") if slot not in metas]
+        if need:
+            metas.update(lib.scene_images(facts, image_cache, GEMINI_API_KEY, GEMINI_IMAGE_MODEL, _client, CLAUDE_MODEL,
+                                          log=log, slots=need))
         facts["images"] = lib.install_images(dest, image_cache, metas)
     except Exception as exc:  # noqa: BLE001 - photos are optional
         print(f"[images] skipped: {exc}", flush=True)
@@ -1899,7 +1909,8 @@ def api_build_site():
             lead["preset"] = preset
 
     return jsonify({"lead": lead, "preview_port": port, "preview_ready": ready,
-                    "preset": preset, "copy_source": source})
+                    "preset": preset, "copy_source": source,
+                    "claims_removed": facts.get("claims_removed") or []})
 
 
 @app.route("/api/pipeline/preview/<slug>", methods=["GET"])
@@ -3438,6 +3449,10 @@ def resolve_logo_choice(lead, meta=None):
         return choice
     if choice.startswith("ai:") and _LOGO_CHOICE_RE.match(choice) and d and (d / "generated" / f"ai-{choice[3:]}.svg").exists():
         return choice
+    if meta and meta.get("suspect"):
+        # A stock symbol or low-confidence crop is never used by default: the
+        # initials monogram is, until someone picks "extracted" on purpose.
+        return "gen:1"
     if lead.get("use_logo") == "Yes" and _has_emblem(d, meta):
         return "extracted"
     return f"gen:{logo_lib.default_variant(lead.get('trade'), lead.get('name'))}"
@@ -3454,7 +3469,7 @@ def logo_choice_path(lead, choice):
 
 def logo_tag(meta, choice):
     if meta and meta.get("needs_check"):
-        return "needs check"
+        return "check"
     return "extracted" if choice == "extracted" else "generated"
 
 
@@ -3486,7 +3501,7 @@ def extracted_logo_summary(lead):
     if _has_emblem(d, meta):
         png = d / "emblem.png"
         return {"emblem_url": logo_url(png), "logo_tag": logo_tag(meta, "extracted")}
-    return {"emblem_url": "", "logo_tag": "needs check" if meta.get("needs_check") else ""}
+    return {"emblem_url": "", "logo_tag": "check" if meta.get("needs_check") else ""}
 
 
 @app.route("/logos/<path:rel>")

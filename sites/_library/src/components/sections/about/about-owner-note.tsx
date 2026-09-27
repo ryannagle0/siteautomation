@@ -23,7 +23,7 @@ export default function AboutOwnerNote({ tone = "base" }: { tone?: Tone }) {
             {about.signoff && (
               <p className="mt-10 flex items-center gap-4">
                 <span aria-hidden="true" className="h-px w-10 bg-accent" />
-                <T k="about.signoff" className="font-display text-step-2 text-ink" />
+                <T k="about.signoff" className="text-step-1 font-semibold text-ink" />
               </p>
             )}
           </div>

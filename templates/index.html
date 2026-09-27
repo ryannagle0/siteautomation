@@ -8,6 +8,8 @@
   :root{
     --bg:#0d0f12; --panel:#161a20; --panel2:#1d222a; --border:#2a3038;
     --text:#e8ebef; --muted:#8b93a1; --accent:#5b8cff; --accent2:#7c9cff;
+    /* Fills under white text: darker than --accent so labels clear 4.5:1. */
+    --accent-fill:#3d6be0; --accent-fill-hover:#3360d0;
     --green:#1f7a4d; --blue:#1f5f9e; --yellow:#8a6d1f; --red:#7a2626;
   }
   *{box-sizing:border-box;}
@@ -18,10 +20,10 @@
   header h1 .app-version{font-size:.72rem;font-weight:500;color:var(--muted);margin-left:8px;letter-spacing:.02em;}
   .tabs{display:flex;gap:8px;padding:14px 4%;border-bottom:1px solid var(--border);}
   .tab-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.95rem;}
-  .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .tab-btn.active{background:var(--accent-fill);color:#fff;border-color:var(--accent-fill);}
   main{padding:20px 4% 140px;}
   .action-log-panel{position:fixed;left:0;right:0;bottom:0;max-height:130px;overflow-y:auto;background:var(--panel2);border-top:1px solid var(--border);padding:8px 4%;font-size:.78rem;z-index:30;}
-  .action-log-header{color:var(--muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;font-size:.68rem;letter-spacing:.04em;}
+  .action-log-header{color:var(--muted);font-weight:600;margin-bottom:4px;text-transform:uppercase;font-size:.72rem;letter-spacing:.04em;}
   .log-entry{display:flex;gap:8px;padding:2px 0;align-items:baseline;}
   .log-entry.log-ok .log-icon{color:#3dbd6e;}
   .log-entry.log-fail .log-icon{color:#e05252;}
@@ -35,8 +37,10 @@
   input[type=text]{flex:1;min-width:220px;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-size:1rem;font-family:inherit;}
   select{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-size:.95rem;font-family:inherit;}
   textarea{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.5;resize:vertical;}
-  button{background:var(--accent);border:none;color:#fff;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:.95rem;font-weight:600;font-family:inherit;}
-  button:hover{background:var(--accent2);}
+  button{background:var(--accent-fill);border:none;color:#fff;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:.95rem;font-weight:600;font-family:inherit;}
+  button:hover{background:var(--accent-fill-hover);}
+  /* Muted-label buttons brighten on hover instead of turning blue (keeps their text readable). */
+  .tab-btn:not(.active):hover,.subtab-btn:not(.active):hover,.lf-chip:not(.active):hover{background:var(--panel2);color:var(--text);}
   button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
   button.secondary:hover{background:#262c36;}
   button:disabled{opacity:.5;cursor:not-allowed;}
@@ -102,7 +106,7 @@
   .open-demo-link{color:var(--accent);text-decoration:none;font-size:.88rem;overflow-wrap:anywhere;word-break:break-word;}
   .open-demo-link:hover{text-decoration:underline;}
   .table-wrap{overflow-x:auto;border-radius:10px;}
-  .score-badge{display:inline-block;min-width:26px;text-align:center;padding:2px 8px;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;}
+  .score-badge{display:inline-block;min-width:26px;text-align:center;padding:2px 8px;border-radius:12px;background:var(--accent-fill);color:#fff;font-weight:700;font-size:.8rem;}
   .actions{display:flex;gap:6px;flex-wrap:wrap;}
   .actions button{padding:7px 12px;font-size:.82rem;}
   .empty{color:var(--muted);padding:40px;text-align:center;}
@@ -159,8 +163,8 @@
   .history-row-text{min-width:0;flex:1;}
   .history-row-label{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .history-row-time{font-size:.7rem;color:var(--muted);margin-top:1px;}
-  .history-row-restore{flex:none;padding:5px 10px;font-size:.72rem;border-radius:7px;background:var(--accent);border:none;color:#fff;cursor:pointer;}
-  .history-row-restore:hover{background:var(--accent2);}
+  .history-row-restore{flex:none;padding:5px 10px;font-size:.72rem;border-radius:7px;background:var(--accent-fill);border:none;color:#fff;cursor:pointer;}
+  .history-row-restore:hover{background:var(--accent-fill-hover);}
   .history-empty{padding:16px 14px;font-size:.8rem;color:var(--muted);text-align:center;}
   .toast-container{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
   .toast{background:#1F2023;border:1px solid #3a3d42;color:var(--text);padding:10px 18px;border-radius:10px;font-size:.85rem;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;}
@@ -170,7 +174,12 @@
   .iframe-wrap{position:relative;flex:1 1 auto;min-height:0;border-radius:8px;overflow:hidden;}
   .modal iframe{width:100%;height:100%;border:1px solid var(--border);border-radius:8px;background:#fff;}
   .iframe-loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--panel);border:1px solid var(--border);border-radius:8px;z-index:5;}
-  .edit-overlay-scrim{position:absolute;left:0;right:0;bottom:0;height:38%;z-index:8;pointer-events:none;background:linear-gradient(to top, rgba(6,7,9,.92) 0%, rgba(6,7,9,.75) 45%, rgba(6,7,9,0) 100%);}
+  /* A light fade only under the hotbar (max 120px), so the site can still be judged behind it. */
+  .edit-overlay-scrim{position:absolute;left:0;right:0;bottom:0;height:min(120px,22%);z-index:8;pointer-events:none;background:linear-gradient(to top, rgba(6,7,9,.34) 0%, rgba(6,7,9,.14) 55%, rgba(6,7,9,0) 100%);}
+  /* Hotbar hidden (toolbar button or H): nothing over the preview but a small pill to bring it back. */
+  .iframe-wrap.hotbar-hidden .edit-overlay-scrim,.iframe-wrap.hotbar-hidden .edit-overlay-controls{display:none;}
+  .hotbar-show-pill{display:none;position:absolute;right:14px;bottom:14px;z-index:11;padding:6px 12px;border-radius:14px;background:rgba(20,21,24,.82);border:1px solid #3a3d42;color:#e8ebef;font-size:.76rem;font-weight:600;cursor:pointer;}
+  .iframe-wrap.hotbar-hidden .hotbar-show-pill{display:inline-flex;align-items:center;gap:6px;}
   .edit-overlay-controls{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:10;width:min(640px,92%);display:flex;flex-direction:column;align-items:stretch;gap:8px;}
   .layout-image-preview{display:flex;align-items:center;gap:8px;margin:0 0 8px;background:rgba(255,255,255,.05);border:1px solid #333638;border-radius:10px;padding:6px 10px;}
   .layout-image-preview img{width:36px;height:36px;object-fit:cover;border-radius:4px;flex:none;}
@@ -180,12 +189,12 @@
      card, autosizing textarea, icon action row along the bottom. */
   .prompt-box{position:relative;background:#1F2023;border:1px solid #3a3d42;border-radius:24px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
   .slot-chip-row{display:flex;justify-content:center;}
-  .slot-chip{display:inline-flex;align-items:center;gap:6px;background:#5b8cff;color:#fff;padding:5px 8px 5px 12px;border-radius:14px;font-size:.78rem;font-weight:600;}
+  .slot-chip{display:inline-flex;align-items:center;gap:6px;background:#3d6be0;color:#fff;padding:5px 8px 5px 12px;border-radius:14px;font-size:.78rem;font-weight:600;}
   .slot-chip #slotChipLabel{text-transform:capitalize;}
   .slot-chip button{background:rgba(255,255,255,.25);border:none;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;line-height:1;padding:0;}
   .slot-chip button:hover{background:rgba(255,255,255,.4);}
   .prompt-box-textarea{width:100%;background:transparent;border:none;color:#e8ebef;font-family:inherit;font-size:.92rem;line-height:1.5;padding:4px 4px 6px;resize:none;min-height:22px;max-height:160px;outline:none;}
-  .prompt-box-textarea::placeholder{color:#7d8590;}
+  .prompt-box-textarea::placeholder{color:#8a929c;}
   .prompt-box-actions{display:flex;align-items:center;gap:6px;}
   .prompt-box-spacer{flex:1;}
   .prompt-icon-btn{flex:none;width:32px;height:32px;border-radius:50%;background:transparent;border:none;color:#9CA3AF;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
@@ -236,7 +245,7 @@
   .cb-chip-row::-webkit-scrollbar{display:none;}
   .cb-chip{flex:none;margin:0;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#9CA3AF;padding:3px 9px;border-radius:12px;font-size:11px;font-family:inherit;cursor:pointer;white-space:nowrap;}
   .cb-chip:hover{background:rgba(255,255,255,.1);color:#D1D5DB;}
-  .cb-chip.active,.cb-chip.active:hover{background:#5b8cff;border-color:#5b8cff;color:#fff;}
+  .cb-chip.active,.cb-chip.active:hover{background:#3d6be0;border-color:#3d6be0;color:#fff;}
   .cb-chip-sep{flex:none;width:1px;height:14px;background:rgba(255,255,255,.12);margin:0 2px;}
   .cb-body{flex:1;display:flex;min-height:0;}
   .cb-sidebar,.cb-main{overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent;}
@@ -246,7 +255,7 @@
   .cb-sidebar{width:150px;flex:none;border-right:1px solid rgba(255,255,255,.08);padding:8px 6px;}
   .cb-cat-btn{display:block;width:100%;height:32px;margin:0 0 1px;text-align:left;background:transparent;border:none;color:#9CA3AF;padding:0 10px;border-radius:16px;font-size:13px;line-height:32px;cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cb-cat-btn:hover{background:rgba(255,255,255,.06);color:#D1D5DB;}
-  .cb-cat-btn.active,.cb-cat-btn.active:hover{background:#5b8cff;color:#fff;}
+  .cb-cat-btn.active,.cb-cat-btn.active:hover{background:#3d6be0;color:#fff;}
   .cb-cat-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 4px 7px;}
   .cb-main{flex:1;min-width:0;position:relative;}
   .cb-target-row{position:sticky;top:0;z-index:3;padding:10px 12px 0;}
@@ -278,7 +287,7 @@
   .cb-popover-item{display:block;width:100%;margin:0;text-align:left;background:transparent;border:none;color:#D1D5DB;padding:7px 9px;border-radius:7px;font-size:.82rem;font-family:inherit;cursor:pointer;text-transform:capitalize;}
   .cb-popover-item:hover{background:rgba(255,255,255,.08);color:#fff;}
   .cb-popover-item.auto{text-transform:none;color:#9CA3AF;border-top:1px solid #2a3038;border-radius:0 0 7px 7px;margin-top:3px;}
-  .modal-toolbar-btn.active{background:#5b8cff;border-color:#5b8cff;color:#fff;}
+  .modal-toolbar-btn.active{background:#3d6be0;border-color:#3d6be0;color:#fff;}
   .modal-toolbar-btn.active:hover{background:#4a7bef;}
   /* Logo editor — small floating glass panel next to the clicked logo. */
   .logo-panel{position:absolute;z-index:30;width:330px;max-height:calc(100% - 16px);overflow-y:auto;background:rgba(10,10,10,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:12px;color:#e8ebef;font-size:.8rem;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent;}
@@ -298,7 +307,7 @@
   .lp-thumb img{max-width:100%;max-height:100%;object-fit:contain;}
   .lp-thumb:hover{border-color:rgba(91,140,255,.6);}
   .lp-thumb.active{border-color:#5b8cff;box-shadow:0 0 0 2px rgba(91,140,255,.35);}
-  .lp-thumb .lp-thumb-tag{position:absolute;left:-2px;right:-2px;bottom:-9px;font-size:8.5px;line-height:1.2;font-weight:700;color:#fff;background:#5b8cff;border-radius:4px;text-align:center;}
+  .lp-thumb .lp-thumb-tag{position:absolute;left:-2px;right:-2px;bottom:-9px;font-size:8.5px;line-height:1.2;font-weight:700;color:#fff;background:#3d6be0;border-radius:4px;text-align:center;}
   .lp-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
   .lp-btn{margin:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#D1D5DB;padding:5px 10px;border-radius:8px;font-size:.74rem;font-family:inherit;cursor:pointer;}
   .lp-btn:hover{background:rgba(255,255,255,.12);color:#fff;}
@@ -317,13 +326,14 @@
   .logo-tag.extracted{background:rgba(34,197,94,.15);color:#4ade80;}
   .logo-tag.generated{background:rgba(148,163,184,.15);color:#cbd5e1;}
   .logo-tag.needs-check{background:rgba(245,158,11,.18);color:#fbbf24;}
+  .logo-tag.check{background:rgba(245,158,11,.18);color:#fbbf24;}
   .email-card label{font-size:.8rem;color:var(--muted);display:block;margin:10px 0 4px;}
   .email-card input[type=text]{width:100%;margin-bottom:0;}
   .email-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
   .checkbox-cell{text-align:center;}
   .subtabs{display:flex;gap:8px;margin-bottom:16px;}
   .subtab-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:7px 16px;border-radius:20px;cursor:pointer;font-size:.85rem;}
-  .subtab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .subtab-btn.active{background:var(--accent-fill);color:#fff;border-color:var(--accent-fill);}
   .email-row{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;}
   .email-row-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;gap:12px;}
   .email-row-header .name{font-weight:600;}
@@ -481,6 +491,9 @@
       <div class="modal-header-row">
         <h2 id="editModalTitle">Edit Site</h2>
         <div class="modal-toolbar">
+          <button type="button" class="modal-toolbar-btn" id="hotbarToggleBtn" title="Hide editor bar to see the whole site (H)" aria-pressed="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
           <button type="button" class="modal-toolbar-btn" id="cbToolbarBtn" title="Components (C)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           </button>
@@ -514,6 +527,7 @@
           <div class="loading-text" id="iframeLoadingText">Building...</div>
         </div>
         <div class="edit-overlay-scrim"></div>
+        <button type="button" class="hotbar-show-pill" id="hotbarShowPill" title="Show the editor bar (H)">Show editor bar <kbd>H</kbd></button>
         <div class="edit-overlay-controls">
           <div class="slot-chip-row" id="slotChipRow" style="display:none;">
             <span class="slot-chip">
@@ -1184,6 +1198,9 @@ async function openPreviewModal(slug, build){
     setIframeLoading(true, 'Loading preview...');
     loadPreviewUrl(previewUrl('/'));
     logAction(build ? 'Build site' : 'Open preview', true, slug);
+    // Claims the copy made that the lead's data doesn't back up were removed.
+    (data.claims_removed || []).forEach(c =>
+      logAction('Claim guard', true, `removed unverified ${c.kind} claim (${c.path}): "${String(c.text).slice(0, 70)}"`));
     if (build) loadPipeline();
   } catch(e) {
     stopBuildMessageRotation();
@@ -1603,6 +1620,8 @@ window.addEventListener('message', (e) => {
     else { closeLogoPanel(); cbTargetSection(selectedSlot); }
   } else if (e.data.type === 'slots') {
     if (cbSlotsResolver) cbSlotsResolver(e.data.slots);
+  } else if (e.data.type === 'toggle-hotbar') {
+    toggleHotbar();
   } else if (e.data.type === 'text-edit') {
     saveTextEdit(String(e.data.slot || ''), String(e.data.oldText || ''), String(e.data.newText || ''), String(e.data.path || ''));
   }
@@ -1679,6 +1698,19 @@ const CB_NOT_READY_TERMS = [
   'checkbox', 'input', 'icon', 'playground',
 ].map(t => [t, new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(e?s)?\\b`, 'i')]);
 
+// Local-business curation. Results about AI/SaaS/startup tooling never fit a
+// tradesperson's site, so they're hidden outright; the "Local business" chip
+// floats components that match what these sites are made of to the top.
+const CB_BLOCK_RE = /\b(ai|saas|start-?ups?|apps?|dashboards?|pricing plans?|crypto|developers?)\b/i;
+const CB_LOCAL_TERMS = ['service', 'contact', 'testimonial', 'review', 'gallery', 'map', 'location', 'booking', 'appointment', 'footer', 'cta', 'call to action', 'quote']
+  .map(t => new RegExp(`\\b${t}(e?s)?\\b`, 'i'));
+const CB_LOCAL_KEYWORDS = ['services section', 'contact section', 'testimonials section', 'image gallery', 'map location section', 'booking form', 'footer', 'call to action section'];
+function cbBlocked(c){ return CB_BLOCK_RE.test(`${c.name || ''} ${c.description || ''}`); }
+function cbLocalScore(c){
+  const text = `${c.name || ''} ${c.description || ''}`;
+  return CB_LOCAL_TERMS.reduce((n, re) => n + (re.test(text) ? 1 : 0), 0);
+}
+
 // Preview section -> the category whose components can replace it.
 const SLOT_TO_CB_CATEGORY = {
   nav: 'Headers/Nav', hero: 'Hero', trust: 'Features', services: 'Features', about: 'Features',
@@ -1704,6 +1736,7 @@ const cbState = {
   sort: 'popular', // 'popular' (API relevance order, default) | 'az'
   theme: 'all',    // 'all' | 'light' | 'dark'
   ready: true,
+  local: lsGet('sf.cb.local', true), // "Local business" prioritising
   // topic key -> { items: [...], seenIds: Set, keywordIndex: number }
   cache: new Map(),
   revealCount: CB_PAGE_SIZE,
@@ -1789,7 +1822,9 @@ function renderCbChips(){
     + chip('theme', 'dark', 'Dark', cbState.theme === 'dark', themeTip)
     + '<span class="cb-chip-sep"></span>'
     + chip('ready', 'toggle', (cbState.ready ? '✓ ' : '') + 'Ready to use', cbState.ready,
-        'Hide results with no preview, and effects/primitives (cursors, shaders, loaders, buttons…) that aren\'t a drop-in section');
+        'Hide results with no preview, and effects/primitives (cursors, shaders, loaders, buttons…) that aren\'t a drop-in section')
+    + chip('local', 'toggle', (cbState.local ? '✓ ' : '') + 'Local business', cbState.local,
+        'Put services, contact, testimonials, gallery, map, booking, footer and CTA components first');
 }
 
 document.getElementById('cbChipRow').addEventListener('click', (e) => {
@@ -1798,18 +1833,24 @@ document.getElementById('cbChipRow').addEventListener('click', (e) => {
   const { group, key } = chip.dataset;
   if (group === 'sort') cbState.sort = key;
   else if (group === 'theme') cbState.theme = key;
+  else if (group === 'local') { cbState.local = !cbState.local; lsSet('sf.cb.local', cbState.local); }
   else cbState.ready = !cbState.ready;
   renderCbChips();
-  if (group === 'theme') runCbSearch(); // different query words, so a different result set
+  // theme changes the query words; "local" does too when browsing All
+  if (group === 'theme' || (group === 'local' && !cbState.searchText && cbState.category === 'All')) runCbSearch();
   else { cbRenderList(true); cbCheckSentinel(); }
 });
 
+function cbLocalBrowse(){ return cbState.local && !cbState.searchText && cbState.category === 'All'; }
+
 function cbTopicKey(){
-  return `${(cbState.searchText || cbState.category || 'all').toLowerCase()}|${cbState.theme}`;
+  return `${(cbState.searchText || cbState.category || 'all').toLowerCase()}|${cbState.theme}${cbLocalBrowse() ? '|local' : ''}`;
 }
 
 function cbTopicKeywords(){
-  const base = cbState.searchText ? cbFreeTextVariants(cbState.searchText) : (CB_CATEGORY_KEYWORDS[cbState.category] || [cbState.category]);
+  const base = cbState.searchText ? cbFreeTextVariants(cbState.searchText)
+    : cbLocalBrowse() ? CB_LOCAL_KEYWORDS
+    : (CB_CATEGORY_KEYWORDS[cbState.category] || [cbState.category]);
   return cbState.theme === 'all' ? base : base.map(k => `${cbState.theme} ${k}`);
 }
 
@@ -1876,11 +1917,14 @@ function cbSourceItems(){
 
 function cbVisibleItems(){
   let items = cbSourceItems().slice();
+  if (!cbIsSpecial()) items = items.filter(c => !cbBlocked(c));
   if (cbState.ready && !cbIsSpecial()) {
     const topicText = cbTopicText();
     items = items.filter(c => cbIsReady(c, topicText));
   }
   if (cbState.sort === 'az') items.sort((a, b) => a.name.localeCompare(b.name));
+  // Local business first; Array.sort is stable, so ties keep the order above.
+  if (cbState.local && !cbIsSpecial()) items.sort((a, b) => cbLocalScore(b) - cbLocalScore(a));
   return items;
 }
 
@@ -2277,8 +2321,25 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === 'c' || e.key === 'C') {
     e.preventDefault();
     toggleComponentBrowser();
+  } else if (e.key === 'h' || e.key === 'H') {
+    e.preventDefault();
+    toggleHotbar();
   }
 });
+
+// Hide the hotbar (and its fade) so the whole site can be judged. H toggles,
+// from the dashboard or from inside the preview (EditBridge forwards it).
+function toggleHotbar(force){
+  const wrap = document.querySelector('#editModal .iframe-wrap');
+  const hidden = typeof force === 'boolean' ? force : !wrap.classList.contains('hotbar-hidden');
+  wrap.classList.toggle('hotbar-hidden', hidden);
+  const btn = document.getElementById('hotbarToggleBtn');
+  btn.classList.toggle('active', hidden);
+  btn.setAttribute('aria-pressed', String(hidden));
+  btn.title = hidden ? 'Show editor bar (H)' : 'Hide editor bar to see the whole site (H)';
+}
+document.getElementById('hotbarToggleBtn').addEventListener('click', () => toggleHotbar());
+document.getElementById('hotbarShowPill').addEventListener('click', () => toggleHotbar(false));
 
 // ---------- Logo editor (click the logo in the preview) ----------
 let logoState = null;
