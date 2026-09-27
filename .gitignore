@@ -2,17 +2,19 @@
 *.log
 __pycache__/
 *.pyc
-# All generated per-lead demo sites are excluded, EXCEPT the master
-# template (derek-doyle-electrical) that build_site clones from — that one
-# is real source the app can't run without, not generated output.
+# All generated per-lead demo sites are excluded, EXCEPT the section
+# library (sites/_library) that build_site composes every site from — that
+# one is real source the app can't run without, not generated output.
 sites/*
-!sites/derek-doyle-electrical
-sites/derek-doyle-electrical/node_modules/
-sites/derek-doyle-electrical/.next/
+!sites/_library/
+sites/_library/node_modules/
+sites/_library/.next/
+sites/_library/npm-install.log
 leads.csv
 leads.db
 cache/
 static/logos/
 
-# Per-lead logo files (extracted/generated emblems)
+# Per-lead logo files (extracted/generated emblems) and approved scene photos
 data/logos/
+data/images/

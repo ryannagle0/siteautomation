@@ -1,0 +1,196 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped.",
+  "business": {
+    "name": "Rapid Roofing",
+    "trade": "Roofer",
+    "town": "Cork",
+    "county": "Cork",
+    "ownerFirstName": "Kev",
+    "phone": {
+      "display": "086 402 7711",
+      "tel": "0864027711",
+      "intl": "+353864027711",
+      "wa": "353864027711"
+    },
+    "email": "rapidroofingcork@gmail.com",
+    "lat": 51.8985,
+    "lng": -8.4756
+  },
+  "seo": {
+    "title": "Rapid Roofing | Roofer in Cork: Repairs, Flat Roofs & Gutters",
+    "description": "Roof repairs, flat roofs, slates and gutters in Cork city, Ballincollig, Douglas and Carrigaline. Rated 5.0 on Google. Call Kev on 086 402 7711."
+  },
+  "nav": {
+    "links": [
+      {
+        "label": "Services",
+        "href": "#services"
+      },
+      {
+        "label": "Reviews",
+        "href": "#reviews"
+      },
+      {
+        "label": "Contact",
+        "href": "#contact"
+      }
+    ],
+    "cta": "Call Kev"
+  },
+  "hero": {
+    "headline": "Roof repairs across Cork, sorted this week.",
+    "subhead": "Slates, flat roofs, chimneys and gutters across Cork. Photos of the problem and a clear price before we go up.",
+    "primaryCta": "Call 086 402 7711",
+    "secondaryCta": "WhatsApp a photo",
+    "images": [
+      {
+        "src": "/_samples/roof-1.jpg",
+        "alt": "Slate roof being repaired",
+        "width": 1200,
+        "height": 1500
+      },
+      {
+        "src": "/_samples/roof-2.jpg",
+        "alt": "New flat roof membrane on an extension",
+        "width": 1200,
+        "height": 900
+      },
+      {
+        "src": "/_samples/roof-3.jpg",
+        "alt": "Gutter being cleared on a terraced house",
+        "width": 1200,
+        "height": 900
+      }
+    ]
+  },
+  "trust": {
+    "items": [
+      {
+        "icon": "timer",
+        "title": "Out this week",
+        "text": "Most repairs booked within days."
+      },
+      {
+        "icon": "receipt",
+        "title": "Price first",
+        "text": "You see photos and a price before work starts."
+      },
+      {
+        "icon": "umbrella",
+        "title": "Emergency cover-ups",
+        "text": "Storm damage made safe fast."
+      }
+    ]
+  },
+  "services": {
+    "heading": "Roofing, done right",
+    "items": [
+      {
+        "icon": "house",
+        "title": "Roof repairs",
+        "text": "Slipped slates, broken tiles, ridges and leaks found and fixed."
+      },
+      {
+        "icon": "layers",
+        "title": "Flat roofs",
+        "text": "Felt and rubber membrane roofs for extensions and garages."
+      },
+      {
+        "icon": "rain",
+        "title": "Gutters & fascia",
+        "text": "Cleaning, repairs and full uPVC replacements."
+      },
+      {
+        "icon": "brick-wall",
+        "title": "Chimneys & flashing",
+        "text": "Leadwork, flashing and chimney repairs."
+      }
+    ]
+  },
+  "process": {
+    "heading": "Three steps. No drama.",
+    "steps": [
+      {
+        "title": "Send a photo",
+        "text": "WhatsApp Kev a picture of the problem."
+      },
+      {
+        "title": "Get a price",
+        "text": "Clear and fixed, before we start."
+      },
+      {
+        "title": "Fixed",
+        "text": "Usually the same week."
+      }
+    ]
+  },
+  "reviews": {
+    "heading": "Cork rates Rapid",
+    "rating": 5,
+    "count": 41,
+    "source": "Google",
+    "link": "https://www.google.com/maps/search/?api=1&query=Rapid+Roofing+Cork",
+    "linkLabel": "See all 41 reviews",
+    "items": [
+      {
+        "author": "Ciara O'S.",
+        "rating": 5,
+        "text": "Kev came out the day after Storm Éowyn and had our roof sealed that afternoon. Fair price and sound lads.",
+        "when": "a month ago"
+      },
+      {
+        "author": "Brian T.",
+        "rating": 5,
+        "text": "New flat roof on the extension, finished in two days. Sent photos of every stage.",
+        "when": "4 months ago"
+      },
+      {
+        "author": "Maeve L.",
+        "rating": 5,
+        "text": "Gutters cleaned and a few slates replaced. Quick, tidy, and cheaper than I expected.",
+        "when": "6 months ago"
+      }
+    ]
+  },
+  "area": {
+    "heading": "All over Cork",
+    "towns": [
+      "Cork city",
+      "Ballincollig",
+      "Douglas",
+      "Carrigaline",
+      "Blarney",
+      "Glanmire",
+      "Midleton",
+      "Cobh"
+    ]
+  },
+  "cta": {
+    "heading": "Roof trouble? Send Kev a photo.",
+    "text": "He'll come back to you with a price, usually the same day.",
+    "primary": "Call 086 402 7711",
+    "secondary": "WhatsApp a photo"
+  },
+  "contact": {
+    "heading": "Get a price",
+    "intro": "Tell us what's going on and we'll get back to you today.",
+    "services": [
+      "Roof repair",
+      "Flat roof",
+      "Gutters",
+      "Chimney",
+      "Other"
+    ],
+    "submit": "Send",
+    "success": "Got it. Kev will be in touch today."
+  },
+  "footer": {
+    "blurb": "Roof repairs, flat roofs and gutters across Cork.",
+    "legal": "© Rapid Roofing"
+  },
+  "mobileBar": {
+    "call": "Call Kev",
+    "whatsapp": "WhatsApp",
+    "quote": "Get a price"
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped. Deliberately thin: no photos, no email, no reviews.",
+  "business": {
+    "name": "Aoife's Garden Care",
+    "trade": "Landscaper",
+    "town": "Oranmore",
+    "county": "Galway",
+    "ownerFirstName": "Aoife",
+    "phone": {
+      "display": "085 111 2233",
+      "tel": "0851112233",
+      "intl": "+353851112233",
+      "wa": "353851112233"
+    },
+    "email": "",
+    "lat": 53.2686,
+    "lng": -8.9281
+  },
+  "seo": {
+    "title": "Aoife's Garden Care | Gardener & Landscaper in Oranmore, Co. Galway",
+    "description": "Garden maintenance, hedge cutting and planting in Oranmore, Clarinbridge, Athenry and Galway city. Call or WhatsApp Aoife on 085 111 2233."
+  },
+  "nav": {
+    "links": [
+      {
+        "label": "Services",
+        "href": "#services"
+      },
+      {
+        "label": "How it works",
+        "href": "#process"
+      },
+      {
+        "label": "Areas",
+        "href": "#area"
+      },
+      {
+        "label": "Contact",
+        "href": "#contact"
+      }
+    ],
+    "cta": "Call Aoife"
+  },
+  "hero": {
+    "headline": "Garden care around Oranmore, done by Aoife.",
+    "subhead": "Regular maintenance, hedges, planting and tidy-ups around Oranmore and east Galway. Aoife does the work herself.",
+    "primaryCta": "Call Aoife",
+    "secondaryCta": "WhatsApp photos"
+  },
+  "trust": {
+    "items": [
+      {
+        "icon": "calendar",
+        "title": "Regular visits",
+        "text": "Weekly, fortnightly or monthly."
+      },
+      {
+        "icon": "leaf",
+        "title": "Green waste taken away",
+        "text": "Nothing left in a pile by the gate."
+      },
+      {
+        "icon": "message",
+        "title": "Easy to reach",
+        "text": "Call or WhatsApp, and you get Aoife."
+      }
+    ]
+  },
+  "services": {
+    "heading": "What Aoife can do for you",
+    "items": [
+      {
+        "icon": "scissors",
+        "title": "Lawns & hedges",
+        "text": "Cutting, edging and hedge trimming on a schedule that suits."
+      },
+      {
+        "icon": "sprout",
+        "title": "Planting & beds",
+        "text": "New beds dug, planted and mulched, or old ones brought back."
+      },
+      {
+        "icon": "shovel",
+        "title": "Garden tidy-ups",
+        "text": "One-off clear-outs before a sale, a party or the summer."
+      },
+      {
+        "icon": "tree",
+        "title": "Small tree & shrub work",
+        "text": "Pruning and shaping, and removal of smaller trees."
+      }
+    ]
+  },
+  "about": {
+    "heading": "Local, careful, and on time.",
+    "body": [
+      "Aoife lives in Oranmore and looks after gardens across the area, from small front lawns to bigger country gardens.",
+      "She keeps her round local so she can come back when she says she will."
+    ],
+    "facts": [
+      {
+        "label": "Based in",
+        "value": "Oranmore"
+      },
+      {
+        "label": "Visits",
+        "value": "Weekly to monthly"
+      },
+      {
+        "label": "Contact",
+        "value": "Call or WhatsApp"
+      }
+    ]
+  },
+  "process": {
+    "heading": "How it works",
+    "steps": [
+      {
+        "title": "Send a few photos",
+        "text": "WhatsApp is easiest. Tell Aoife what you'd like done."
+      },
+      {
+        "title": "Get a price",
+        "text": "For a one-off job or a regular visit."
+      },
+      {
+        "title": "Enjoy the garden",
+        "text": "She'll keep on top of it from there."
+      }
+    ]
+  },
+  "area": {
+    "heading": "Gardens we look after",
+    "intro": "Oranmore and the villages around it.",
+    "towns": [
+      "Oranmore",
+      "Clarinbridge",
+      "Carnmore",
+      "Claregalway",
+      "Athenry",
+      "Galway city (east)"
+    ]
+  },
+  "cta": {
+    "heading": "Want your weekends back?",
+    "text": "Send Aoife a few photos of the garden and she'll give you a price.",
+    "primary": "Call Aoife",
+    "secondary": "WhatsApp photos"
+  },
+  "contact": {
+    "heading": "Get a price",
+    "intro": "Leave your details and Aoife will call you back.",
+    "services": [
+      "Regular maintenance",
+      "Hedges",
+      "Planting",
+      "One-off tidy-up",
+      "Other"
+    ],
+    "submit": "Ask for a call back",
+    "success": "Thanks! Aoife will call you back soon."
+  },
+  "footer": {
+    "blurb": "Garden care in Oranmore and east Galway.",
+    "legal": "© Aoife's Garden Care"
+  },
+  "mobileBar": {
+    "call": "Call Aoife",
+    "whatsapp": "WhatsApp",
+    "quote": "Get a price"
+  }
+}

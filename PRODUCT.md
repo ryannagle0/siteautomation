@@ -33,7 +33,7 @@ A generic site builder or agency template can't copy two things:
 ## Operating Context
 
 - **Where the operator works:** in the dashboard, locally on Windows or hosted on Railway. Leads flow Leads → Pipeline → Edit Site → Deploy → Emails.
-- **Demo sites:** built per lead in `sites/<slug>` from the master template `sites/derek-doyle-electrical`. They are previewed live, edited, and deployed to `<slug>.vercel.app`.
+- **Demo sites:** built per lead in `sites/<slug>`, composed from the section library `sites/_library` (a style preset plus one variant per section, with copy in `content.json`). They are previewed live, edited, and deployed to `<slug>.vercel.app`.
 - **Outreach:** email first; the demo link is the pitch.
 
 ## Capabilities and Constraints

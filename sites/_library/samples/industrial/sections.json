@@ -1,0 +1,50 @@
+[
+  {
+    "slot": "nav",
+    "variant": "nav-phone-bar"
+  },
+  {
+    "slot": "hero",
+    "variant": "hero-full-bleed"
+  },
+  {
+    "slot": "trust",
+    "variant": "trust-grid"
+  },
+  {
+    "slot": "services",
+    "variant": "services-featured-grid"
+  },
+  {
+    "slot": "process",
+    "variant": "process-steps"
+  },
+  {
+    "slot": "gallery",
+    "variant": "gallery-grid"
+  },
+  {
+    "slot": "reviews",
+    "variant": "reviews-grid"
+  },
+  {
+    "slot": "about",
+    "variant": "about-facts"
+  },
+  {
+    "slot": "service-area",
+    "variant": "area-map"
+  },
+  {
+    "slot": "cta",
+    "variant": "cta-callout"
+  },
+  {
+    "slot": "contact",
+    "variant": "contact-details"
+  },
+  {
+    "slot": "footer",
+    "variant": "footer-columns"
+  }
+]

@@ -1,0 +1,121 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped.",
+  "business": {
+    "name": "MCR Electrical",
+    "trade": "Electrician",
+    "town": "Naas",
+    "county": "Kildare",
+    "ownerFirstName": "Mark",
+    "phone": { "display": "087 234 5678", "tel": "0872345678", "intl": "+353872345678", "wa": "353872345678" },
+    "email": "",
+    "hours": "Mon–Fri 7:30am–5:30pm",
+    "lat": 53.2159,
+    "lng": -6.6669
+  },
+  "seo": {
+    "title": "MCR Electrical | Commercial & Industrial Electrician, Naas, Co. Kildare",
+    "description": "Commercial and industrial electrical contractor in Naas. Fit-outs, three-phase supplies, EV charging and maintenance across Kildare and west Dublin. Call Mark on 087 234 5678."
+  },
+  "nav": {
+    "links": [
+      { "label": "Services", "href": "#services" },
+      { "label": "Projects", "href": "#gallery" },
+      { "label": "Reviews", "href": "#reviews" },
+      { "label": "Contact", "href": "#contact" }
+    ],
+    "cta": "Call Mark",
+    "note": "Commercial & industrial electrical contractor, Co. Kildare"
+  },
+  "hero": {
+    "headline": "Commercial electrical work across Kildare, done to spec and on programme.",
+    "subhead": "Fit-outs, three-phase supplies, EV charging and planned maintenance for offices, units and farms.",
+    "primaryCta": "Call 087 234 5678",
+    "secondaryCta": "WhatsApp a drawing",
+    "image": { "src": "/_samples/industrial-1.jpg", "alt": "Cable trays running along the ceiling of a warehouse unit", "width": 1920, "height": 1080 }
+  },
+  "trust": {
+    "heading": "Why site managers call us back",
+    "items": [
+      { "icon": "clipboard", "title": "Programme kept", "text": "We plan around your other trades, not the other way round." },
+      { "icon": "certificate", "title": "Paperwork done", "text": "Test results and certs handed over at completion." },
+      { "icon": "truck", "title": "Own crew, own vans", "text": "The same electricians from first fix to handover." },
+      { "icon": "timer", "title": "Fast response", "text": "Breakdowns on commercial sites prioritised." }
+    ]
+  },
+  "services": {
+    "heading": "Services",
+    "intro": "Commercial and light-industrial electrical work from design to handover.",
+    "items": [
+      { "icon": "building", "title": "Office & retail fit-outs", "text": "Lighting, small power, data containment and distribution boards, coordinated with the main contractor.", "points": ["Cat A and Cat B fit-outs", "LED lighting design", "Emergency lighting"] },
+      { "icon": "zap", "title": "Three-phase supplies", "text": "New supplies, upgrades and sub-mains for units, workshops and farms." },
+      { "icon": "ev-charger", "title": "EV charging", "text": "Workplace and fleet chargers, load management and grant paperwork." },
+      { "icon": "gauge", "title": "Testing & inspection", "text": "Periodic inspections, thermal imaging and remedial works." },
+      { "icon": "warehouse", "title": "Warehouse & industrial", "text": "High-bay lighting, machine supplies and containment at height." }
+    ]
+  },
+  "about": {
+    "heading": "Commercial work, without the runaround.",
+    "body": [
+      "MCR Electrical is Mark Ryan's firm, based in Naas and working across Kildare and west Dublin.",
+      "We take on jobs we can staff properly, give you one number to ring, and hand over the certs when we say we will."
+    ],
+    "facts": [
+      { "label": "Base", "value": "Naas, Co. Kildare" },
+      { "label": "Work", "value": "Commercial & industrial" },
+      { "label": "Hours", "value": "Mon–Fri, callouts by arrangement" }
+    ]
+  },
+  "process": {
+    "heading": "From enquiry to handover",
+    "steps": [
+      { "title": "Send the drawings", "text": "Or describe the job. WhatsApp is fine." },
+      { "title": "Site visit & price", "text": "A priced schedule, not a guess." },
+      { "title": "Install", "text": "Programmed around your other trades." },
+      { "title": "Test & hand over", "text": "Results, certs and a walk-through." }
+    ]
+  },
+  "reviews": {
+    "heading": "From people we've worked for",
+    "rating": 4.8,
+    "count": 19,
+    "source": "Google",
+    "link": "https://www.google.com/maps/search/?api=1&query=MCR+Electrical+Naas",
+    "linkLabel": "All reviews on Google",
+    "items": [
+      { "author": "Declan F.", "rating": 5, "text": "MCR did the full electrical fit-out on our new unit in Millennium Park. Finished a week early, which never happens. Mark kept us in the loop the whole way.", "when": "3 months ago" },
+      { "author": "Orla B.", "rating": 5, "text": "Installed four EV chargers at our office and sorted all the grant forms. Professional from start to finish.", "when": "8 months ago" }
+    ]
+  },
+  "gallery": {
+    "heading": "Recent projects",
+    "images": [
+      { "src": "/_samples/industrial-2.jpg", "alt": "New distribution board with labelled circuits", "caption": "Distribution board, Naas" },
+      { "src": "/_samples/industrial-3.jpg", "alt": "LED high-bay lights in a warehouse", "caption": "High-bay LED retrofit" },
+      { "src": "/_samples/industrial-4.jpg", "alt": "Two EV chargers mounted on a car park wall", "caption": "Workplace EV charging" },
+      { "src": "/_samples/industrial-1.jpg", "alt": "Cable tray along a warehouse ceiling", "caption": "Containment at height" }
+    ]
+  },
+  "area": {
+    "heading": "Where we work",
+    "intro": "Kildare and west Dublin, with larger jobs further afield.",
+    "towns": ["Naas", "Newbridge", "Kildare Town", "Sallins", "Clane", "Kill", "Johnstown", "Citywest"]
+  },
+  "cta": {
+    "heading": "Got a job coming up?",
+    "text": "Send the drawings or a few photos and Mark will come back to you with a price.",
+    "primary": "Call 087 234 5678",
+    "secondary": "WhatsApp Mark"
+  },
+  "contact": {
+    "heading": "Talk to Mark",
+    "intro": "The quickest way is a call or a WhatsApp. For tenders, send the drawings over WhatsApp and we'll price them.",
+    "services": ["Fit-out", "Three-phase supply", "EV charging", "Testing & inspection", "Other"],
+    "submit": "Send",
+    "success": "Thanks, Mark will be back to you shortly."
+  },
+  "footer": {
+    "blurb": "Commercial and industrial electrical contractor, Naas, Co. Kildare.",
+    "legal": "© MCR Electrical"
+  },
+  "mobileBar": { "call": "Call Mark", "whatsapp": "WhatsApp", "quote": "Get a price" }
+}

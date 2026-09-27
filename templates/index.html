@@ -1017,6 +1017,8 @@ function renderPipeline(){
           <div><span class="label">Replied</span><span class="value">${lead.replied}</span></div>
           <div><span class="label">Sold</span><span class="value">${lead.sold}</span></div>
           ${lead.demo_url ? `<div><span class="label">Demo</span><a class="open-demo-link" href="${escapeHtml(lead.demo_url)}" target="_blank" rel="noopener noreferrer">Open Demo &rarr;</a></div>` : ''}
+          ${lead.views ? `<div><span class="label">Demo views</span><span class="value" title="Last opened ${escapeHtml(lead.last_viewed || '')}">${escapeHtml(lead.views)} &middot; ${escapeHtml((lead.last_viewed || '').slice(0, 10))}</span></div>` : ''}
+          ${lead.preset ? `<div><span class="label">Style</span><span class="value">${escapeHtml(lead.preset)}</span></div>` : ''}
           ${lead.rating ? `<div><span class="label">Rating</span><span class="value">&#9733; ${escapeHtml(lead.rating)} (${escapeHtml(lead.review_count || '0')})</span></div>` : ''}
           <div>
             <span class="label">Logo</span>
@@ -1461,7 +1463,7 @@ function renderThemePanel(){
       </div>
     </div>
     <div class="theme-section">
-      <div class="theme-section-title">Font</div>
+      <div class="theme-section-title">${escapeHtml(t.font_title || 'Font')}</div>
       <div class="theme-chips">
         ${t.fonts.map(f => `
           <button type="button" class="theme-chip${f.key === (t.font || 'inter') ? ' active' : ''}" data-font="${escapeHtml(f.key)}">${escapeHtml(f.label)}</button>`).join('')}
@@ -1560,14 +1562,15 @@ function reloadPreview(){
 
 // Double-clicked text edited in place inside the preview. The page already
 // shows the new text; next dev's hot reload picks up the file change.
-async function saveTextEdit(slot, oldText, newText){
+async function saveTextEdit(slot, oldText, newText, path){
   const slug = currentEditSlug;
   if (!slug) return;
   setStatus('editStatus', 'Saving text...');
   try {
     const res = await fetch('/api/pipeline/text_edit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ slug, slot, oldText, newText })
+      // path: the content.json key (library sites tag every text node with it)
+      body: JSON.stringify({ slug, slot, oldText, newText, path: path || '' })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1601,7 +1604,7 @@ window.addEventListener('message', (e) => {
   } else if (e.data.type === 'slots') {
     if (cbSlotsResolver) cbSlotsResolver(e.data.slots);
   } else if (e.data.type === 'text-edit') {
-    saveTextEdit(String(e.data.slot || ''), String(e.data.oldText || ''), String(e.data.newText || ''));
+    saveTextEdit(String(e.data.slot || ''), String(e.data.oldText || ''), String(e.data.newText || ''), String(e.data.path || ''));
   }
 });
 

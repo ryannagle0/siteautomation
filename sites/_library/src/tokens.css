@@ -1,0 +1,207 @@
+/*
+ * Design tokens. Every colour, font, radius and spacing value the sections
+ * use comes from here — sections never hardcode hex values.
+ *
+ * <html data-preset="..."> (from src/site.json) picks one of the four preset
+ * blocks below. The SITE block at the bottom is rewritten by SiteForge at
+ * build time and from the dashboard's theme panel: the business's brand
+ * colour as --accent, plus contrast-safe companions it computes.
+ */
+
+:root {
+  --maxw: 1200px;
+  --gutter: clamp(1rem, 4vw, 2.5rem);
+  --call-bar-h: 64px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Derived from the accent. Declared on the preset element itself (not :root)
+   so they resolve against that preset's own --bg/--border when nested. */
+[data-preset] {
+  --accent-soft: color-mix(in oklab, var(--accent) 12%, var(--bg));
+  --accent-line: color-mix(in oklab, var(--accent) 45%, var(--border));
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, black);
+}
+
+/* ── heritage: warm, established firms. Painted shopfront fascia. ───────── */
+[data-preset="heritage"] {
+  --bg: #f2f0eb;
+  --surface: #ffffff;
+  --surface-2: #e8e5de;
+  --text: #1c1e1b;
+  --muted: #595c55;
+  --border: #d6d2c8;
+  --band: color-mix(in oklab, var(--accent) 26%, #121411);
+  --band-text: #f4f1ea;
+  --band-muted: #c9c4b8;
+  --band-border: rgb(255 255 255 / 0.16);
+
+  --font-display: var(--font-brygada), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-libre-franklin), system-ui, sans-serif;
+  --display-weight: 600;
+  --display-case: none;
+  --display-tracking: -0.01em;
+  --display-leading: 1.06;
+  --heading-leading: 1.12;
+  --label-case: none;
+  --label-tracking: 0.01em;
+  --label-weight: 600;
+  --body-leading: 1.65;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.875rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.15rem, 1.05rem + 0.4vw, 1.3rem);
+  --step-2: clamp(1.3rem, 1.15rem + 0.7vw, 1.6rem);
+  --step-3: clamp(1.6rem, 1.3rem + 1.3vw, 2.2rem);
+  --step-4: clamp(2rem, 1.5rem + 2.2vw, 3.1rem);
+  --step-5: clamp(2.5rem, 1.7rem + 3.8vw, 4.6rem);
+
+  --radius: 3px;
+  --radius-lg: 6px;
+  --btn-radius: 3px;
+  --border-w: 1px;
+  --section-y: clamp(4.5rem, 9vw, 8rem);
+  --image-shadow: none;
+}
+
+/* ── industrial: dark, sharp, commercial work. Site hoarding + spec sheet. ─ */
+[data-preset="industrial"] {
+  --bg: #0e1012;
+  --surface: #16191c;
+  --surface-2: #1e2226;
+  --text: #eceef0;
+  --muted: #9ba3ab;
+  --border: #2b3036;
+  --band: #08090a;
+  --band-text: #f2f3f4;
+  --band-muted: #a3aab1;
+  --band-border: rgb(255 255 255 / 0.12);
+
+  --font-display: var(--font-big-shoulders), "Arial Narrow", sans-serif;
+  --font-body: var(--font-barlow), system-ui, sans-serif;
+  --display-weight: 800;
+  --display-case: uppercase;
+  --display-tracking: 0.005em;
+  --display-leading: 0.95;
+  --heading-leading: 1;
+  --label-case: uppercase;
+  --label-tracking: 0.08em;
+  --label-weight: 600;
+  --body-leading: 1.6;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.8125rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.2rem, 1.1rem + 0.5vw, 1.4rem);
+  --step-2: clamp(1.45rem, 1.25rem + 0.9vw, 1.85rem);
+  --step-3: clamp(1.9rem, 1.5rem + 1.8vw, 2.8rem);
+  --step-4: clamp(2.5rem, 1.8rem + 3.2vw, 4.2rem);
+  --step-5: clamp(3.1rem, 2rem + 5.4vw, 6rem);
+
+  --radius: 0px;
+  --radius-lg: 2px;
+  --btn-radius: 0px;
+  --border-w: 1px;
+  --section-y: clamp(4rem, 8vw, 7rem);
+  --image-shadow: none;
+}
+
+/* ── clean-local: light, friendly domestic trades. ───────────────────────── */
+[data-preset="clean-local"] {
+  --bg: #ffffff;
+  --surface: #f3f5f4;
+  --surface-2: #e8edea;
+  --text: #15201c;
+  --muted: #52605a;
+  --border: #dce2df;
+  --band: var(--accent);
+  --band-text: var(--accent-fg);
+  --band-muted: var(--accent-fg);
+  --band-border: color-mix(in oklab, var(--accent-fg) 22%, transparent);
+
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-body: var(--font-figtree), system-ui, sans-serif;
+  --display-weight: 700;
+  --display-case: none;
+  --display-tracking: -0.03em;
+  --display-leading: 1.02;
+  --heading-leading: 1.08;
+  --label-case: none;
+  --label-tracking: 0;
+  --label-weight: 600;
+  --body-leading: 1.6;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.875rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.15rem, 1.05rem + 0.4vw, 1.3rem);
+  --step-2: clamp(1.3rem, 1.15rem + 0.7vw, 1.6rem);
+  --step-3: clamp(1.65rem, 1.35rem + 1.4vw, 2.3rem);
+  --step-4: clamp(2.1rem, 1.55rem + 2.4vw, 3.3rem);
+  --step-5: clamp(2.6rem, 1.75rem + 4vw, 4.8rem);
+
+  --radius: 14px;
+  --radius-lg: 24px;
+  --btn-radius: 999px;
+  --border-w: 1px;
+  --section-y: clamp(3.5rem, 7vw, 6.5rem);
+  --image-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.25);
+}
+
+/* ── bold: high contrast, confident, younger businesses. Van livery. ─────── */
+[data-preset="bold"] {
+  --bg: #ffffff;
+  --surface: #f0f0ec;
+  --surface-2: #e2e2dc;
+  --text: #0b0b0b;
+  --muted: #454543;
+  --border: #0b0b0b;
+  --band: #0b0b0b;
+  --band-text: #ffffff;
+  --band-muted: #b9b9b4;
+  --band-border: rgb(255 255 255 / 0.28);
+
+  --font-display: var(--font-epilogue), system-ui, sans-serif;
+  --font-body: var(--font-hanken), system-ui, sans-serif;
+  --display-weight: 800;
+  --display-case: none;
+  --display-tracking: -0.04em;
+  --display-leading: 0.94;
+  --heading-leading: 0.98;
+  --label-case: uppercase;
+  --label-tracking: 0.06em;
+  --label-weight: 700;
+  --body-leading: 1.55;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.875rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.2rem, 1.1rem + 0.5vw, 1.4rem);
+  --step-2: clamp(1.45rem, 1.25rem + 0.9vw, 1.9rem);
+  --step-3: clamp(1.9rem, 1.45rem + 2vw, 3rem);
+  --step-4: clamp(2.5rem, 1.7rem + 3.6vw, 4.6rem);
+  --step-5: clamp(2.9rem, 1.6rem + 6vw, 6rem);
+
+  --radius: 0px;
+  --radius-lg: 0px;
+  --btn-radius: 0px;
+  --border-w: 2px;
+  --section-y: clamp(4.5rem, 10vw, 9rem);
+  --image-shadow: none;
+}
+
+/* SITE:BEGIN — written by SiteForge (brand colour + contrast companions). */
+:root {
+  --accent: #2f7d4f;
+  --accent-fg: #ffffff;
+}
+[data-preset="heritage"] { --accent-ink: #2b7349; }
+[data-preset="industrial"] { --accent-ink: #599772; }
+[data-preset="clean-local"] { --accent-ink: #2d784c; }
+[data-preset="bold"] { --accent-ink: #296e46; }
+/* SITE:END */
