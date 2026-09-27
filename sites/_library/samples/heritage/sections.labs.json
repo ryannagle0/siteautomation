@@ -1,0 +1,42 @@
+[
+  {
+    "slot": "nav",
+    "variant": "nav-centred-logo"
+  },
+  {
+    "slot": "hero",
+    "variant": "hero-editorial"
+  },
+  {
+    "slot": "trust",
+    "variant": "trust-strip"
+  },
+  {
+    "slot": "services",
+    "variant": "services-index"
+  },
+  {
+    "slot": "about",
+    "variant": "about-owner-note"
+  },
+  {
+    "slot": "reviews",
+    "variant": "reviews-featured"
+  },
+  {
+    "slot": "service-area",
+    "variant": "area-towns"
+  },
+  {
+    "slot": "cta",
+    "variant": "cta-callout"
+  },
+  {
+    "slot": "contact",
+    "variant": "contact-form-split"
+  },
+  {
+    "slot": "footer",
+    "variant": "footer-wordmark"
+  }
+]

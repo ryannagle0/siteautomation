@@ -181,3 +181,19 @@ Flat by default. Depth comes from tone changes between sections and 1px (bold: 2
 - **Do** keep every text node mapped to a `content.json` key via `data-edit`.
 - **Don't** add kickers or eyebrows, gradient text, glass, icon-tile card grids, fake stats or invented credentials.
 - **Don't** hardcode hex colours in sections; use the tokens.
+
+## Labs variants (opt-in)
+
+Seven variants built from the Dribbble study in `INSPIRATION.md` are marked `"labs": true` in `catalogue.json`. SiteForge only offers them to the composer when `SITEFORGE_LABS=1`; otherwise any labs id is swapped for its stable twin (`site_library.LABS_STABLE`).
+
+| Variant | Slot | Idea | Reference |
+|---|---|---|---|
+| `hero-editorial` | hero | Photo under visible hairline grid columns; services on a rule; phone card in the bottom-right cell | R2, R7 |
+| `hero-colour-field` | hero | The accent drenches the hero, darkened only toward the empty top-right corner; services as a ruled label row | R4 |
+| `hero-quick-quote` | hero | "What needs doing?" box with service chips that prefills the quote form; big phone beside it | R3 (interaction only) |
+| `services-index` | services | One bordered table of shared hairlines; each cell starts a quote for that service | R6 |
+| `area-marquee` | service-area | One slow loop of town names (3+ towns); pauses on hover, a still wrapped list under reduced motion | R1 |
+| `footer-wordmark` | footer | The name measured to span the container, cropped by the bottom edge; wraps when a long name would get too small | R5, R2 |
+| `contact-chips` | contact | Quote form that opens with tappable service chips | R6, R3 |
+
+**Labs rules:** the quick-quote hero and the services index need a form contact (SiteForge swaps `contact-details` for `contact-form-split`). In clean-local the band *is* the accent, so band and accent count as one colour in the tone rhythm. "+" marks (`GridMark`) are decoration only and never sit in the text flow, so they don't shift the left edge.

@@ -358,3 +358,36 @@
 [data-preset] :is(p, blockquote, label, button, figcaption, dd, input, select, textarea, .btn, .t-label, .link) {
   font-family: var(--font-body);
 }
+
+/* ── area-marquee: one slow loop of town names (labs). ───────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee 55s linear infinite;
+}
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    width: auto;
+    padding-inline: var(--gutter);
+  }
+  .marquee-track,
+  .marquee-row {
+    flex-wrap: wrap;
+    row-gap: 1rem;
+  }
+  .marquee-row {
+    flex: 1 1 100%;
+    max-width: var(--maxw);
+    margin-inline: auto;
+  }
+  .marquee-row[aria-hidden="true"] {
+    display: none;
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ChevronDown } from "lucide-react";
 import { MorphingSquare } from "@/components/ui/morphing-square";
 import { cn } from "@/lib/cn";
@@ -20,16 +20,41 @@ export type FormText = {
   phoneDisplay: string;
 };
 
+/** Other sections (quick-quote hero, services table) prefill the form with this event. */
+export const QUOTE_EVENT = "sf:quote";
+export type QuoteDetail = { service?: string; message?: string };
+
+/** Fill the quote form (wherever it is on the page) and bring it into view. */
+export function requestQuote(detail: QuoteDetail) {
+  window.dispatchEvent(new CustomEvent<QuoteDetail>(QUOTE_EVENT, { detail }));
+  document.getElementById("contact")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 /**
  * Quote form. Posts to /api/contact (Resend). If the site has no email
  * delivery set up, it says so and points to the phone rather than
  * pretending the message went.
  */
-export function ContactForm({ t, className }: { t: FormText; className?: string }) {
+export function ContactForm({ t, className, chips = false }: { t: FormText; className?: string; chips?: boolean }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [service, setService] = useState(t.services[0] || "");
+  const [note, setNote] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
   const uid = useId();
   const id = (f: string) => `cf-${f}-${uid}`;
+
+  // Prefill from the quick-quote hero or the services table.
+  useEffect(() => {
+    const onQuote = (e: Event) => {
+      const d = (e as CustomEvent<QuoteDetail>).detail || {};
+      if (d.service && t.services.includes(d.service)) setService(d.service);
+      if (d.message) setNote(d.message);
+      window.setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 450);
+    };
+    window.addEventListener(QUOTE_EVENT, onQuote);
+    return () => window.removeEventListener(QUOTE_EVENT, onQuote);
+  }, [t.services]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -72,9 +97,24 @@ export function ContactForm({ t, className }: { t: FormText; className?: string 
   return (
     <form onSubmit={onSubmit} noValidate className={cn("grid gap-5", className)}>
       {t.heading && <p className="t-title text-ink">{t.heading}</p>}
+      {chips && t.services.length > 0 && (
+        <fieldset>
+          <legend className={label}>{t.labels.service}</legend>
+          <div className="flex flex-wrap gap-2">
+            {t.services.map((s) => (
+              <label key={s} className="cursor-pointer">
+                <input type="radio" name="service" value={s} checked={service === s} onChange={() => setService(s)} className="peer sr-only" />
+                <span className="inline-flex min-h-11 items-center rounded-btn border-theme border-line px-4 font-medium text-ink transition-colors peer-checked:border-[var(--btn-bg)] peer-checked:bg-[var(--btn-bg)] peer-checked:text-[var(--btn-fg)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-ink">
+                  {s}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <div>
         <label htmlFor={id("name")} className={label}>{t.labels.name}</label>
-        <input id={id("name")} name="name" autoComplete="name" required className="field" />
+        <input ref={nameRef} id={id("name")} name="name" autoComplete="name" required className="field" />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
@@ -88,11 +128,11 @@ export function ContactForm({ t, className }: { t: FormText; className?: string 
           <input id={id("email")} name="email" type="email" autoComplete="email" className="field" />
         </div>
       </div>
-      {t.services.length > 0 && (
+      {!chips && t.services.length > 0 && (
         <div>
           <label htmlFor={id("service")} className={label}>{t.labels.service}</label>
           <div className="relative">
-            <select id={id("service")} name="service" className="field appearance-none pr-11">
+            <select id={id("service")} name="service" value={service} onChange={(e) => setService(e.target.value)} className="field appearance-none pr-11">
               {t.services.map((s) => (
                 <option key={s}>{s}</option>
               ))}
@@ -103,7 +143,7 @@ export function ContactForm({ t, className }: { t: FormText; className?: string 
       )}
       <div>
         <label htmlFor={id("message")} className={label}>{t.labels.message}</label>
-        <textarea id={id("message")} name="message" rows={4} className="field min-h-[7.5rem] resize-y" />
+        <textarea id={id("message")} name="message" rows={4} value={note} onChange={(e) => setNote(e.target.value)} className="field min-h-[7.5rem] resize-y" />
       </div>
       {status === "error" && message && (
         <p role="alert" className="rounded-theme border-theme border-line bg-accent-soft px-4 py-3 text-ink">
