@@ -8,7 +8,10 @@ leads.db
 cache/
 static/logos/
 sites/*
-!sites/derek-doyle-electrical
-sites/derek-doyle-electrical/node_modules/
-sites/derek-doyle-electrical/.next/
+!sites/_library/
+sites/_library/node_modules/
+sites/_library/.next/
+sites/_library/.impeccable/
+sites/_library/public/_samples/
 data/logos/
+data/images/

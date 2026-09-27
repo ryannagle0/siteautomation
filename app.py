@@ -30,17 +30,20 @@ from PIL import Image
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory
 
 import logos as logo_lib
+import site_library as lib
 
 BASE_DIR = Path(__file__).resolve().parent
 LEADS_CSV = BASE_DIR / "leads.csv"  # legacy file, only read once for migration
 # Everything SiteForge creates (leads, built sites, caches, logos) lives
 # under DATA_DIR. It defaults to this folder; on Railway point it at a
 # mounted volume (e.g. DATA_DIR=/data), since the container's own disk is
-# wiped on every deploy. The master template always ships with the code.
+# wiped on every deploy. The section library always ships with the code.
 DATA_DIR = Path(os.environ.get("DATA_DIR") or BASE_DIR)
 LEADS_DB = DATA_DIR / "leads.db"
 SITES_DIR = DATA_DIR / "sites"
-TEMPLATE_SITE = BASE_DIR / "sites" / "derek-doyle-electrical"
+# Every site is composed from the section library (see site_library.py).
+LIBRARY_DIR = lib.LIBRARY_DIR
+SITE_IMAGES_DIR = DATA_DIR / "data" / "images"  # approved Gemini photos, cached per lead
 
 CSV_FIELDS = [
     "name", "phone", "email", "website", "location", "score", "years",
@@ -51,6 +54,8 @@ CSV_FIELDS = [
     "town", "county", "use_logo",
     # Logo editor: trade (for generated icons) and the chosen emblem
     "trade", "logo_choice", "logo_mode", "logo_size", "logo_color",
+    # Section library: chosen style preset; demo views reported by ViewBeacon
+    "preset", "views", "last_viewed",
 ]
 
 app = Flask(__name__)
@@ -79,6 +84,18 @@ TWENTYFIRST_API_KEY = os.environ.get("TWENTYFIRST_API_KEY", "")
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 OPERATOR_NAME = os.environ.get("OPERATOR_NAME", "")
 OPERATOR_PHONE = os.environ.get("OPERATOR_PHONE", "")
+# Scene photos for new sites (optional). Each image is checked by Claude
+# vision and dropped unless it passes, so a bad render never ships.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_IMAGE_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+# Public URL of this SiteForge (e.g. the Railway URL). When set, demo sites
+# ping /api/beacon/<slug> when a prospect opens them. Local-only installs
+# leave it empty: a prospect's browser can't reach localhost anyway.
+SITEFORGE_PUBLIC_URL = os.environ.get("SITEFORGE_PUBLIC_URL", "").rstrip("/")
+# Built sites link node_modules to sites/_library/node_modules (a junction on
+# Windows, a symlink elsewhere) instead of a ~400MB npm install each.
+# Set SHARED_NODE_MODULES=0 to go back to one install per site.
+SHARED_NODE_MODULES = os.environ.get("SHARED_NODE_MODULES", "1") != "0"
 
 try:
     import anthropic
@@ -246,6 +263,9 @@ def clear_site_dir(dest):
     """
     if not dest.exists():
         return
+    # A shared node_modules link must go first: deleting through it would
+    # empty the library's own install that every other site uses.
+    lib.detach_node_modules(dest)
     try:
         stale = dest.with_name(f"{dest.name}.stale-{time.time_ns()}")
         dest.rename(stale)
@@ -267,8 +287,8 @@ def clear_site_dir(dest):
 HISTORY_DIRNAME = ".history"
 MAX_SNAPSHOTS = 25
 SNAPSHOT_PATHS = ["src", "tailwind.config.ts", "sections.json",
-                  "public/brand", "public/og.png", "public/apple-touch-icon.png"]
-SNAPSHOT_DIRS = {"src", "public/brand"}  # restored file-by-file, in place
+                  "public/brand", "public/images", "public/og.png", "public/apple-touch-icon.png"]
+SNAPSHOT_DIRS = {"src", "public/brand", "public/images"}  # restored file-by-file, in place
 _SNAPSHOT_TS_RE = re.compile(r"^\d{8}T\d{9}Z$")
 
 
@@ -1672,6 +1692,118 @@ def find_lead(leads, slug):
     return None
 
 
+# ---------------------------------------------------------------------------
+# Building a site from the section library
+# ---------------------------------------------------------------------------
+
+PLACE_DETAILS_FIELDS = "rating,userRatingCount,reviews,googleMapsUri,location,regularOpeningHours.weekdayDescriptions"
+
+
+def fetch_place_details(place_id):
+    """Rating, real Google reviews, opening hours and location for a lead,
+    cached with the place for 30 days (Place Details is a paid call, so a
+    rebuild never repeats it). Returns {} without a key or on failure."""
+    if not (GOOGLE_MAPS_API_KEY and _PLACE_ID_RE.match(place_id or "")):
+        return {}
+    path = _place_cache_path(place_id)
+    entry = _cache_read(path) or {"place": {}, "cached_at": time.time()}
+    cached = entry.get("details")
+    if cached and time.time() - cached.get("fetched_at", 0) < CACHE_TTL_SECONDS:
+        return cached
+    try:
+        resp = requests.get(
+            f"https://places.googleapis.com/v1/places/{place_id}",
+            headers={"X-Goog-Api-Key": GOOGLE_MAPS_API_KEY, "X-Goog-FieldMask": PLACE_DETAILS_FIELDS},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        details = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        print(f"[details] {place_id}: {exc}", flush=True)
+        return cached or {}
+    details["fetched_at"] = time.time()
+    entry["details"] = details
+    _cache_write(path, entry)
+    return details
+
+
+def _review_items(details):
+    items = []
+    for r in (details.get("reviews") or [])[:5]:
+        text = ((r.get("text") or {}).get("text") or (r.get("originalText") or {}).get("text") or "").strip()
+        author = ((r.get("authorAttribution") or {}).get("displayName") or "").strip()
+        if not text or not author:
+            continue
+        items.append({"author": author, "rating": int(r.get("rating") or 5), "text": re.sub(r"\s+", " ", text)[:600],
+                      "when": r.get("relativePublishTimeDescription") or ""})
+    # Best first: highest rating, then a readable length.
+    items.sort(key=lambda x: (-x["rating"], abs(len(x["text"]) - 220)))
+    return items
+
+
+def lead_facts(lead):
+    """Everything SiteForge actually knows about a lead, for the composer.
+    Nothing here is invented; copy is written around these facts."""
+    details = fetch_place_details(lead.get("place_id"))
+    place = ((_cache_read(_place_cache_path(lead["place_id"])) or {}).get("place") or {}) if _PLACE_ID_RE.match(lead.get("place_id") or "") else {}
+    loc = details.get("location") or place.get("location") or {}
+    lat, lng = loc.get("latitude"), loc.get("longitude")
+    if lat is None:
+        glng, glat = geocode_location(lead.get("town") or lead.get("location", ""))
+        if (glng, glat) != DUBLIN_FALLBACK_COORDS or "dublin" in (lead.get("location") or "").lower():
+            lat, lng = glat, glng
+    phone = phone_variants(lead.get("phone", ""))
+    if not lib.is_irish_mobile(phone.get("intl")):
+        phone["wa"] = ""  # WhatsApp only makes sense for a mobile number
+    try:
+        rating = float(details.get("rating") or lead.get("rating") or 0) or None
+    except (TypeError, ValueError):
+        rating = None
+    try:
+        count = int(details.get("userRatingCount") or lead.get("review_count") or 0)
+    except (TypeError, ValueError):
+        count = 0
+    town = lead.get("town") or (lead.get("location") or "").split(",")[0].strip()
+    return {
+        "name": lead.get("name", "") or "Your Business",
+        "trade": lead.get("trade", ""),
+        "town": town,
+        "county": lead.get("county", ""),
+        "owner_first_name": lib.owner_first_name(lead.get("name", "")),
+        "phone": phone if phone.get("tel") else None,
+        "email": lead.get("email", ""),
+        "has_website": bool(lead.get("website")),
+        "rating": rating,
+        "review_count": count,
+        "maps_url": details.get("googleMapsUri") or lead.get("maps_url", ""),
+        "reviews": _review_items(details),
+        "hours": lib.compress_hours((details.get("regularOpeningHours") or {}).get("weekdayDescriptions")),
+        "lat": lat,
+        "lng": lng,
+        "towns": lib.nearest_towns(COUNTIES, lead.get("county", ""), town, lat, lng),
+        "preset": lead.get("preset", ""),
+    }
+
+
+def ensure_node_modules(site_dir, log_path):
+    """Give a site its dependencies: a link to the library's shared install
+    (installing that once, on first use), or its own npm install when
+    SHARED_NODE_MODULES=0 or linking isn't possible. Returns True if ready."""
+    if (site_dir / "node_modules").exists():
+        return True
+    if SHARED_NODE_MODULES:
+        with lib._install_lock:
+            if not lib.library_deps_installed():
+                if not run_npm_install(LIBRARY_DIR, LIBRARY_DIR / "npm-install.log"):
+                    return False
+        try:
+            if lib.link_node_modules(site_dir):
+                return True
+        except OSError as exc:
+            print(f"[build] couldn't link node_modules ({exc}); installing per site", flush=True)
+    return run_npm_install(site_dir, log_path)
+
+
 @app.route("/api/pipeline/build_site", methods=["POST"])
 def api_build_site():
     data = request.get_json(force=True) or {}
@@ -1680,8 +1812,8 @@ def api_build_site():
     if not lead:
         return jsonify({"error": "lead not found"}), 404
 
-    if not TEMPLATE_SITE.exists():
-        return jsonify({"step": "template", "error": f"template folder not found: {TEMPLATE_SITE}"}), 500
+    if not lib.library_ready():
+        return jsonify({"step": "template", "error": f"section library not found: {LIBRARY_DIR}"}), 500
 
     dest = SITES_DIR / lead["slug"]
 
@@ -1690,63 +1822,61 @@ def api_build_site():
         if dest.exists():
             kill_stale_preview(dest)  # catches dev servers from a prior SiteForge run
             clear_site_dir(dest)
-        shutil.copytree(TEMPLATE_SITE, dest)
+        lib.copy_library(dest)
     except OSError as exc:
         return jsonify({"step": "copy_template", "error": f"Could not set up the site folder: {exc}"}), 500
 
     try:
-        phone = phone_variants(lead.get("phone", ""))
-        lng, lat = geocode_location(lead.get("location", ""))
-    except Exception as exc:
-        return jsonify({"step": "geocode", "error": f"Could not look up the town's location: {exc}"}), 500
+        facts = lead_facts(lead)
+    except Exception as exc:  # noqa: BLE001 - network/geocode trouble shouldn't be a mystery
+        return jsonify({"step": "facts", "error": f"Could not gather the business details: {exc}"}), 500
 
-    # Google Places leads carry a clean town; a full postal address reads
-    # badly in copy ("Unit W3F1, ... W91 K2PK's electrician"). The full
-    # address is still used for geocoding above, where precision helps.
-    town_name = lead.get("town") or lead.get("location", "") or "Ireland"
-    replacements = {
-        "{{BUSINESS_NAME}}": lead.get("name", "") or "Your Business",
-        "{{TOWN}}": town_name,
-        "{{EMAIL}}": lead.get("email", "") or "",
-        "{{OWNER_FIRST_NAME}}": owner_first_name(lead.get("name", "")),
-        "{{SLUG}}": lead["slug"],
-        "{{PHONE_DISPLAY}}": phone["display"] or "Call us",
-        "{{PHONE_TEL}}": phone["tel"],
-        "{{PHONE_INTL}}": phone["intl"],
-        "{{PHONE_WA}}": phone["wa"],
-        "{{LAT}}": repr(lat),
-        "{{LNG}}": repr(lng),
-        "{{HERO_HEADLINE}}": hero_headline(town_name, lead.get("years", "")),
-    }
+    image_cache = SITE_IMAGES_DIR / (logo_key(lead) or f"slug-{lead['slug']}")
+    try:
+        metas = lib.scene_images(facts, image_cache, GEMINI_API_KEY, GEMINI_IMAGE_MODEL, _client, CLAUDE_MODEL,
+                                 log=lambda m: print(m, flush=True))
+        facts["images"] = lib.install_images(dest, image_cache, metas)
+    except Exception as exc:  # noqa: BLE001 - photos are optional
+        print(f"[images] skipped: {exc}", flush=True)
+        facts["images"] = {}
+
+    preset, sections, content, source = lib.compose(facts, _client, CLAUDE_MODEL, log=lambda m: print(m, flush=True))
+    print(f"[build] {lead['slug']}: preset {preset}, {len(sections)} sections, copy by {source}, "
+          f"{len(facts['reviews'])} reviews, images {sorted(facts['images'])}", flush=True)
 
     try:
-        for path in dest.rglob("*"):
-            if path.is_file() and path.suffix in {".ts", ".tsx", ".json", ".mjs", ".md", ".css"}:
-                text = path.read_text(encoding="utf-8")
-                new_text = text
-                for token, value in replacements.items():
-                    new_text = new_text.replace(token, value)
-                if new_text != text:
-                    path.write_text(new_text, encoding="utf-8")
+        src = dest / "src"
+        lib.write_json(src / "content.json", content)
+        lib.write_json(src / "sections.json", sections)
+        lib.write_json(src / "site.json", {
+            "preset": preset, "slug": lead["slug"], "siteUrl": "",
+            "beaconUrl": f"{SITEFORGE_PUBLIC_URL}/api/beacon/{lead['slug']}" if SITEFORGE_PUBLIC_URL else "",
+        })
+        lib.set_preset(dest, preset)
+        lib.write_json(src / "brand.json", {"mode": "emblem_text", "size": 36, "emblem": "", "name": facts["name"]})
+        pkg = lib.read_json(dest / "package.json", {})
+        pkg["name"] = lead["slug"]
+        lib.write_json(dest / "package.json", pkg)
     except OSError as exc:
-        return jsonify({"step": "personalize", "error": f"Could not write the personalized site files: {exc}"}), 500
+        return jsonify({"step": "personalize", "error": f"Could not write the site's content files: {exc}"}), 500
 
     try:
         # Their brand colour is the starting accent; an explicitly saved
         # theme (from the Theme panel) takes precedence over it.
-        brand_accent = first_usable_brand_color(lead.get("brand_colors"))
-        if brand_accent and not lead.get("accent"):
-            apply_accent(dest, brand_accent)
+        accent = first_usable_brand_color(lead.get("brand_colors")) or lib.read_site_theme(dest)[0]
+        lib.write_site_theme(dest, accent=accent)
         apply_saved_theme(dest, lead)
         apply_brand_logo(dest, lead)
-    except (ThemeError, OSError) as exc:
+    except (ThemeError, OSError, ValueError) as exc:
         return jsonify({"step": "theme", "error": f"Could not apply the theme/logo: {exc}"}), 500
 
     log_path = dest / "npm-install.log"
-    if not run_npm_install(dest, log_path):
+    if not ensure_node_modules(dest, log_path):
         tail = ""
-        if log_path.exists():
-            tail = log_path.read_text(encoding="utf-8", errors="ignore")[-2000:]
+        for candidate in (log_path, LIBRARY_DIR / "npm-install.log"):
+            if candidate.exists():
+                tail = candidate.read_text(encoding="utf-8", errors="ignore")[-2000:]
+                break
         return jsonify({
             "step": "npm_install",
             "error": "npm install failed — see the tail of npm-install.log below for why.",
@@ -1766,8 +1896,10 @@ def api_build_site():
         lead = find_lead(leads, slug)
         if lead:
             lead["demo_built"] = "Yes"
+            lead["preset"] = preset
 
-    return jsonify({"lead": lead, "preview_port": port, "preview_ready": ready})
+    return jsonify({"lead": lead, "preview_port": port, "preview_ready": ready,
+                    "preset": preset, "copy_source": source})
 
 
 @app.route("/api/pipeline/preview/<slug>", methods=["GET"])
@@ -1778,14 +1910,16 @@ def api_preview(slug):
 
     if not (site_dir / "node_modules").exists():
         log_path = site_dir / "npm-install.log"
-        if not run_npm_install(site_dir, log_path):
+        ok = ensure_node_modules(site_dir, log_path) if lib.is_library_site(site_dir) else run_npm_install(site_dir, log_path)
+        if not ok:
             return jsonify({"error": "npm install failed"}), 500
 
     port, ready = start_preview_and_wait(slug)
     return jsonify({"port": port, "ready": ready})
 
 
-CONTENT_FILES = [
+# Sites built from the pre-library template (derek-doyle-electrical).
+LEGACY_CONTENT_FILES = [
     "tailwind.config.ts",
     "src/app/layout.tsx",
     "src/app/page.tsx",
@@ -1801,6 +1935,44 @@ CONTENT_FILES = [
     "src/components/Contact.tsx",
     "src/components/Footer.tsx",
 ]
+
+
+LIBRARY_BASE_FILES = [
+    "src/content.json", "src/sections.json", "src/tokens.css", "src/app/globals.css",
+    "src/app/layout.tsx", "tailwind.config.ts", "src/components/icons.tsx", "src/components/parts.tsx",
+]
+LIBRARY_EDIT_GUIDANCE = (
+    "This site is composed from a section library:\n"
+    "- ALL visible text lives in src/content.json. To change words, edit that JSON (keep it valid JSON, keep "
+    "every existing key the components read). Never hardcode copy into a component.\n"
+    "- src/sections.json is the ordered list of sections: [{\"slot\", \"variant\", \"tone\"?}]. To move, "
+    "remove or restyle a whole section, edit this list. A variant must be one of the existing files under "
+    "src/components/sections/<slot>/ (ids: " + "{variant_ids}" + "). tone is base | surface | band | accent.\n"
+    "- Colours, fonts, radius and spacing are CSS variables in src/tokens.css, exposed as Tailwind classes: "
+    "bg-bg, bg-surface, bg-surface-2, text-ink, text-muted, border-line, bg-accent, text-accent-fg, "
+    "text-accent-ink (accent for text), bg-accent-soft, bg-band, text-band-ink, rounded-theme, rounded-theme-lg, "
+    "rounded-btn, font-display, text-step-1..5, section-y, wrap. Use only these; never hardcode hex colours. "
+    "To change the brand colour edit --accent in the SITE block of tokens.css.\n"
+    "- Shared pieces: .btn .btn-primary .btn-secondary .link .field (globals.css); <T k=\"path\" /> renders "
+    "content.json text with a data-edit attribute; <Section slot tone> is every section's root and must keep "
+    "its data-slot. Keep data-slot and data-edit attributes on anything you touch.\n"
+    "- Icons: lucide-react via the <Icon name=\"...\"/> map in src/components/icons.tsx.\n"
+    "- Never state facts the business hasn't confirmed (years, registrations, insurance, prices, awards).\n\n"
+)
+
+
+def site_packages(site_dir):
+    """The runtime packages a site can import, from its own package.json."""
+    pkg = lib.read_json(site_dir / "package.json", {}) or {}
+    return ", ".join(sorted(pkg.get("dependencies") or {})) or "react, next"
+
+
+def content_files(site_dir):
+    """Files the AI editor sees and may write for a full-site edit."""
+    if not lib.is_library_site(site_dir):
+        return LEGACY_CONTENT_FILES
+    used = [lib.variant_file(s["slot"], s["variant"]) for s in lib.site_sections(site_dir) if s.get("slot") and s.get("variant")]
+    return LIBRARY_BASE_FILES + [f for f in dict.fromkeys(used) if (site_dir / f).exists()]
 
 
 def is_safe_new_component_path(rel_path):
@@ -1873,7 +2045,8 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
     if not _client:
         return None, "ANTHROPIC_API_KEY not configured"
 
-    allowed_files = scope_files or CONTENT_FILES
+    is_lib = lib.is_library_site(site_dir)
+    allowed_files = scope_files or content_files(site_dir)
     bundle = []
     for rel in allowed_files:
         fp = site_dir / rel
@@ -1885,6 +2058,7 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "You are editing the source of a Next.js (App Router, TypeScript, Tailwind) "
         "small-business demo website. Below are its content files, each preceded by "
         "'--- FILE: <path> ---'. Apply the requested change.\n\n"
+        + (LIBRARY_EDIT_GUIDANCE.replace("{variant_ids}", ", ".join(sorted(lib.catalogue_index()))) if is_lib else (
         "Named colors (blue, navy, ink, base, grey-line, grey-section, etc.) used in "
         "className strings like 'text-blue' or 'bg-navy' are defined as hex values in "
         "tailwind.config.ts, NOT arbitrary Tailwind classes. If asked to change a color, "
@@ -1906,7 +2080,8 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "matches what was asked for. When you use a lucide-react icon, set its color via a "
         "className like `text-blue` (or whatever the site's accent color token is) so it matches "
         "the rest of the site rather than defaulting to black or an unrelated color.\n\n"
-        "When a 21st.dev component is injected, do NOT rewrite or recreate it. Inject the raw "
+        ))
+        + "When a 21st.dev component is injected, do NOT rewrite or recreate it. Inject the raw "
         "component code exactly as received. Only adapt its className values to match the site's "
         "existing Tailwind color tokens (e.g. replace hardcoded hex colors with the named token "
         "like 'text-blue' or 'bg-navy').\n\n"
@@ -1916,7 +2091,7 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "sure you also include and fully write that new file in your response, not only the file "
         "that imports it. An import with no corresponding file breaks the build "
         "('Module not found'). New files must be under src/components/.\n\n")
-        + "Some components (e.g. Reviews.tsx) are async Server Components that `await` server-side "
+        + ("" if is_lib else "Some components (e.g. Reviews.tsx) are async Server Components that `await` server-side "
         "data (like `getGoogleReviews()`) — they have NO 'use client' directive. A Client Component "
         "(one marked 'use client') CANNOT be async/use await; adding 'use client' to one of these "
         "breaks the page with a blank render and a 'component was suspended by an uncached promise' "
@@ -1924,10 +2099,10 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "add 'use client' to the async component itself — instead wrap just the relevant JSX in an "
         "already-client child component (see src/components/motion/FadeUp.tsx's exported "
         "`StaggerGrid`/`StaggerItem`/`FadeUp` helpers, already used this way elsewhere) and keep the "
-        "outer async function a plain Server Component.\n\n"
-        "Do NOT import any npm package that isn't already used in the files shown below "
-        "(framer-motion, motion, lucide-react, maplibre-gl, clsx, tailwind-merge, class-variance-"
-        "authority, react, next). Importing a package that isn't installed (e.g. 'gsap', "
+        "outer async function a plain Server Component.\n\n")
+        + "Do NOT import any npm package that isn't already used in the files shown below "
+        f"({site_packages(site_dir)}). Motion comes from 'motion/react' (import {{ motion }} from "
+        "\"motion/react\") on library sites. Importing a package that isn't installed (e.g. 'gsap', "
         "'swiper', 'react-icons') breaks the build with 'Module not found' — there is no install "
         "step after your edit runs. Build any new interaction/animation using only these already-"
         "available packages, or plain CSS/Tailwind.\n\n"
@@ -2052,8 +2227,13 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         if scope_files is not None:
             if rel not in scope_files:
                 continue
-        elif rel not in CONTENT_FILES and not is_safe_new_component_path(rel):
+        elif rel not in allowed_files and not is_safe_new_component_path(rel):
             continue
+        if rel.endswith(".json"):
+            try:
+                json.loads(content)
+            except (TypeError, json.JSONDecodeError):
+                continue  # never write a broken content.json / sections.json
         target = site_dir / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
@@ -2092,6 +2272,23 @@ SLOT_FILE_MAP = {
     "logo": "src/components/BrandMark.tsx",
 }
 SLOT_SCOPE_EXTRA_FILES = ["tailwind.config.ts", "src/components/icons.tsx"]
+LIBRARY_SLOT_EXTRA_FILES = ["src/content.json", "src/tokens.css", "src/components/icons.tsx", "src/components/parts.tsx"]
+
+
+def slot_scope(site_dir, slot):
+    """(files a section-scoped edit may see/write, primary file) or (None, None)
+    for an unknown section. Library sites resolve the slot through sections.json."""
+    if lib.is_library_site(site_dir):
+        if slot == "logo":
+            return ["src/components/BrandMark.tsx", "src/brand.json"], "src/components/BrandMark.tsx"
+        files = lib.slot_files(site_dir, slot)
+        if not files:
+            return None, None
+        return files + LIBRARY_SLOT_EXTRA_FILES, files[0]
+    slot_file = SLOT_FILE_MAP.get(slot)
+    if not slot_file:
+        return None, None
+    return [slot_file] + SLOT_DATA_FILES.get(slot, []) + SLOT_SCOPE_EXTRA_FILES, slot_file
 # Data files a slot's content actually lives in (the logo's name/size/mode).
 SLOT_DATA_FILES = {"logo": ["src/brand.json"]}
 
@@ -2114,10 +2311,9 @@ def api_edit_site():
     scope_files = None
     label = instruction
     if slot:
-        slot_file = SLOT_FILE_MAP.get(slot)
-        if not slot_file:
+        scope_files, _ = slot_scope(site_dir, slot)
+        if not scope_files:
             return jsonify({"error": f"unknown slot: {slot}"}), 400
-        scope_files = [slot_file] + SLOT_DATA_FILES.get(slot, []) + SLOT_SCOPE_EXTRA_FILES
         label = f"[{slot}] {instruction}"
 
     written, error = apply_edit_instruction(
@@ -2143,7 +2339,7 @@ SLOT_ROOT_TAG = {
     "src/components/Contact.tsx": ("section", "contact"),
     "src/components/Footer.tsx": ("footer", "footer"),
 }
-EDIT_BRIDGE_SOURCE_PATH = TEMPLATE_SITE / "src" / "components" / "EditBridge.tsx"
+EDIT_BRIDGE_SOURCE_PATH = LIBRARY_DIR / "src" / "components" / "EditBridge.tsx"
 
 
 def _inject_data_slot(content, tag, slot):
@@ -2162,6 +2358,8 @@ def backfill_slot_markers(site_dir):
     Idempotent — safe to run repeatedly or on a site that already has it.
     Returns the list of relative paths it changed."""
     changed = []
+    if lib.is_library_site(site_dir):
+        return changed  # library sites carry data-slot on every section already
 
     for rel, (tag, slot) in SLOT_ROOT_TAG.items():
         fp = site_dir / rel
@@ -2303,6 +2501,32 @@ def _escape_for_source(text, ctx):
     return escaped
 
 
+def _sync_phone_fields(site_dir, display):
+    """After the phone number is edited inline, keep tel:/WhatsApp/intl in step."""
+    content_path = site_dir / "src" / "content.json"
+    data = lib.read_json(content_path, {}) or {}
+    phone = phone_variants(display)
+    if not lib.is_irish_mobile(phone.get("intl")):
+        phone["wa"] = ""
+    phone["display"] = display
+    data.setdefault("business", {})["phone"] = phone
+    lib.write_json(content_path, data)
+
+
+def _rename_business(site_dir, new_name, label):
+    """The name shows via BrandMark (brand.json) and business.name: change both."""
+    snapshot_site(site_dir, label, "text edit")
+    brand_path = site_dir / "src" / "brand.json"
+    brand = lib.read_json(brand_path, {}) or {}
+    brand["name"] = new_name
+    lib.write_json(brand_path, brand)
+    try:
+        lib.set_content_path(site_dir, "business.name", new_name)
+    except ValueError:
+        pass
+    return jsonify({"ok": True, "method": "instant", "changed_files": ["src/brand.json", "src/content.json"]})
+
+
 @app.route("/api/pipeline/text_edit", methods=["POST"])
 def api_text_edit():
     data = request.get_json(force=True) or {}
@@ -2312,7 +2536,9 @@ def api_text_edit():
     slot = (data.get("slot") or "").strip().lower()
     old_text = re.sub(r"\s+", " ", data.get("oldText") or "").strip()
     new_text = re.sub(r"\s+", " ", data.get("newText") or "").strip()
-    if slot not in SLOT_FILE_MAP:
+    path = (data.get("path") or "").strip()
+    scope_files, slot_file = slot_scope(site_dir, slot)
+    if not scope_files:
         return jsonify({"error": f"unknown section: {slot or '(none)'}"}), 400
     if not old_text or not new_text:
         return jsonify({"error": "text can't be empty"}), 400
@@ -2321,15 +2547,28 @@ def api_text_edit():
     if old_text == new_text:
         return jsonify({"ok": True, "method": "none"})
 
-    slot_file = SLOT_FILE_MAP[slot]
-    matches = find_text_occurrences(site_dir, SLOT_DATA_FILES.get(slot, []) + [slot_file], old_text)
+    label = f'[{slot}] text: "{new_text[:60]}"'
+    if path and lib.is_library_site(site_dir):
+        # Library sites tag every text node with its content.json key: write
+        # the value straight there. No searching, no AI, no ambiguity.
+        if path == "business.name":
+            return _rename_business(site_dir, new_text, label)
+        try:
+            snapshot_site(site_dir, label, "text edit")
+            lib.set_content_path(site_dir, path, new_text)
+            if path == "business.phone.display":
+                _sync_phone_fields(site_dir, new_text)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"ok": True, "method": "instant", "changed_files": ["src/content.json"], "path": path})
+
+    matches = find_text_occurrences(site_dir, (SLOT_DATA_FILES.get(slot, []) if slot_file in SLOT_FILE_MAP.values() else []) + [slot_file], old_text)
     if not matches:
         # The text may live in a sub-component the section renders.
         others = sorted(str(p.relative_to(site_dir)).replace("\\", "/")
                         for p in (site_dir / "src").rglob("*.tsx"))
         matches = find_text_occurrences(site_dir, [p for p in others if p != slot_file], old_text)
 
-    label = f'[{slot}] text: "{new_text[:60]}"'
     if len(matches) == 1:
         rel, start, end, ctx = matches[0]
         snapshot_site(site_dir, label, "text edit")
@@ -2343,7 +2582,7 @@ def api_text_edit():
     written, error = apply_edit_instruction(
         site_dir, f'Change the text "{old_text}" to "{new_text}"',
         history_label=label, history_source="text edit",
-        scope_files=[slot_file] + SLOT_DATA_FILES.get(slot, []) + SLOT_SCOPE_EXTRA_FILES,
+        scope_files=scope_files,
     )
     if error:
         return jsonify({"error": error}), 500
@@ -2411,6 +2650,14 @@ def extract_component_code(text):
     match = re.search(r"```(?:tsx|jsx|ts|js)?\n(.*?)```", text, re.DOTALL)
     return match.group(1) if match else text
 
+
+LIBRARY_SECTION_HINTS = [
+    (("hero",), "hero"), (("about",), "about"), (("service",), "services"), (("review", "testimonial"), "reviews"),
+    (("footer",), "footer"), (("contact", "form"), "contact"), (("nav", "header", "menu"), "nav"),
+    (("process", "step", "how it works"), "process"), (("trust", "badge", "certif"), "trust"),
+    (("gallery", "project", "portfolio"), "gallery"), (("area", "map", "town"), "service-area"),
+    (("cta", "call to action", "banner"), "cta"),
+]
 
 SECTION_FILE_HINTS = [
     (("hero",), "Hero.tsx"),
@@ -2494,13 +2741,22 @@ def api_component_apply():
         return jsonify({"error": f"Could not fetch component: {text[:500]}"}), 502
 
     code = extract_component_code(text)
-    target_file = Path(SLOT_FILE_MAP[slot]).name if slot in SLOT_FILE_MAP else guess_section_file(section)
+    if lib.is_library_site(site_dir):
+        lib_slot = slot or next((sl for keywords, sl in LIBRARY_SECTION_HINTS if any(k in section.lower() for k in keywords)), "")
+        files = lib.slot_files(site_dir, lib_slot) if lib_slot else []
+        target_path = files[0] if files else None
+    else:
+        target_file = Path(SLOT_FILE_MAP[slot]).name if slot in SLOT_FILE_MAP else guess_section_file(section)
+        target_path = f"src/components/{target_file}" if target_file else None
     target_hint = (
-        f"This corresponds to src/components/{target_file}, shown among the files below. "
+        f"This corresponds to {target_path}, shown among the files below. "
         f"You MUST rewrite that file's JSX — replace its current return()/content with a new "
         f"implementation based on the component below. Do not leave the old headline, paragraph "
         f"text, or layout in place.\n\n"
-        if target_file else
+        + ("Keep its root <Section slot=... tone=...> wrapper (data-slot), and put any new words into "
+           "src/content.json under this section's key, rendered with <T k=\"...\" /> — never hardcoded.\n\n"
+           if lib.is_library_site(site_dir) else "")
+        if target_path else
         "This doesn't correspond to one single existing named section (hero/about/services/etc.) "
         "— it's a page-level or multi-section effect (e.g. a scroll-choreographed 'story' layout, "
         "a full-page transition system). You have full authority over page.tsx AND every "
@@ -2557,13 +2813,13 @@ def api_component_apply():
         "4. The npm-package rule below applies even if a file you're editing ALREADY imports "
         "something unauthorized (e.g. a previous bad edit added 'gsap') — that's leftover from a "
         "past mistake, not permission to keep using it. Remove that import and rebuild any "
-        "animation using framer-motion/motion instead. It ALSO applies even if the COMPONENT "
+        "animation using motion (framer-motion on older sites) instead. It ALSO applies even if the COMPONENT "
         "SOURCE below (the fetched reference material itself) imports gsap, ScrollTrigger, "
         "@gsap/react, swiper, or any other package not in the whitelist — that source is "
         "reference material for the *visual result*, not code you may copy verbatim. Reimplement "
-        "any scroll-triggered/entrance animation it does using framer-motion's `whileInView` / "
-        "`useScroll` / `useTransform` hooks (already used elsewhere in this codebase, e.g. "
-        "About.tsx's whileInView pattern) instead of the gsap APIs the source uses. Do not create "
+        "any scroll-triggered/entrance animation it does using motion's `whileInView` / "
+        "`useScroll` / `useTransform` hooks (from 'motion/react', or 'framer-motion' on older "
+        "sites) instead of the gsap APIs the source uses. Do not create "
         "a new file that imports gsap just because the reference component was structured that "
         "way.\n"
         "5. Preserve the fetched component's actual JSX structure as closely as possible — its "
@@ -2848,6 +3104,9 @@ def ensure_accent_foreground(site_dir, accent, fg_hex):
 
 
 def apply_accent(site_dir, hex_):
+    if lib.is_library_site(site_dir):
+        lib.write_site_theme(site_dir, accent=hex_)
+        return "accent"
     accent, default_path, dark_path, _ = _accent_info(site_dir)
     _set_token_hex(site_dir, default_path, hex_)
     if dark_path:  # keep hover states (bg-<accent>-dark) in the same family
@@ -2880,6 +3139,9 @@ def ensure_radius_scaffolding(site_dir):
 
 
 def apply_radius(site_dir, px):
+    if lib.is_library_site(site_dir):
+        lib.write_site_theme(site_dir, radius=px)
+        return
     ensure_radius_scaffolding(site_dir)
     css_path = site_dir / "src" / "app" / "globals.css"
     css = css_path.read_text(encoding="utf-8")
@@ -2939,11 +3201,33 @@ def ensure_font_scaffolding(site_dir):
 
 
 def apply_font(site_dir, key):
+    if lib.is_library_site(site_dir):
+        lib.set_preset(site_dir, key)  # on library sites the "font" choice is the style preset
+        return
     ensure_font_scaffolding(site_dir)
     (site_dir / "src" / "fonts.ts").write_text(FONT_PRESETS[key][1], encoding="utf-8")
 
 
+def read_library_theme(site_dir):
+    accent, radius = lib.read_site_theme(site_dir)
+    preset = lib.read_preset(site_dir)
+    return {
+        "tokens": [{"path": "accent", "label": "brand accent", "hex": accent}],
+        "accent": "accent",
+        "accent_path": "accent",
+        "accent_hex": accent,
+        "font": preset,
+        "font_title": "Style",
+        "radius": radius if radius is not None else {"heritage": 3, "industrial": 0, "clean-local": 14, "bold": 0}[preset],
+        "palettes": [{"name": k, "hex": v} for k, v in PALETTE_PRESETS.items()],
+        "fonts": [{"key": k, "label": lib.PRESET_LABELS[k]} for k in lib.PRESETS],
+        "library": True,
+    }
+
+
 def read_theme(site_dir):
+    if lib.is_library_site(site_dir):
+        return read_library_theme(site_dir)
     cfg_text = _config_path(site_dir).read_text(encoding="utf-8")
     tokens = parse_color_tokens(cfg_text)
     accent = detect_accent_token(site_dir, tokens)
@@ -2982,7 +3266,7 @@ def apply_saved_theme(site_dir, lead):
     radius = (lead.get("radius") or "").strip()
     if _HEX6_RE.match(accent):
         apply_accent(site_dir, accent)
-    if font in FONT_PRESETS:
+    if font in (lib.PRESETS if lib.is_library_site(site_dir) else FONT_PRESETS):
         apply_font(site_dir, font)
     if radius.isdigit() and 0 <= int(radius) <= 20:
         apply_radius(site_dir, int(radius))
@@ -3000,10 +3284,15 @@ def sync_saved_theme_from_files(site_dir):
     accent_hex = next((t["hex"] for t in theme["tokens"] if t["path"] == theme["accent_path"]), "")
     with leads_transaction() as leads:
         lead = find_lead(leads, site_dir.name)
-        if not lead or not any(lead.get(k) for k in ("accent", "font", "radius")):
+        if not lead:
+            return
+        if theme.get("library"):
+            lead["preset"] = theme["font"] or lead.get("preset", "")
+        if not any(lead.get(k) for k in ("accent", "font", "radius")):
             return
         lead["accent"] = accent_hex
-        lead["font"] = theme["font"] or ""
+        if not theme.get("library"):
+            lead["font"] = theme["font"] or ""
         lead["radius"] = "" if theme["radius"] is None else str(theme["radius"])
 
 
@@ -3257,7 +3546,7 @@ def apply_brand_logo(site_dir, lead, assets=True):
     src = logo_choice_path(lead, choice)
     brand_color = lead_brand_color(lead)
     color = lead.get("logo_color") if lead.get("logo_color") in LOGO_COLORS else "original"
-    target = {"accent": theme.get("accent") or brand_color, "white": "#FFFFFF", "black": "#111111"}.get(color)
+    target = {"accent": theme.get("accent_hex") or brand_color, "white": "#FFFFFF", "black": "#111111"}.get(color)
 
     if src.suffix == ".svg" and target and choice.startswith("gen:"):
         # A generated emblem keeps its shape: the chosen colour becomes the
@@ -3319,7 +3608,42 @@ def _apply_legacy_brand_logo(site_dir, lead):
 
 # ---- Upgrading sites built before BrandMark: only when their Nav/Footer
 # logo markup is still exactly the template's (never rewrites custom code).
-BRAND_MARK_SOURCE_PATH = TEMPLATE_SITE / "src" / "components" / "BrandMark.tsx"
+# The pre-library BrandMark, for upgrading sites built before BrandMark existed
+# (the old template folder it used to be copied from has been removed).
+LEGACY_BRAND_MARK_TSX = """import type { CSSProperties } from "react";
+import brand from "@/brand.json";
+
+export function BrandMark({ nameClassName = "" }: { nameClassName?: string }) {
+  const showEmblem = brand.mode !== "text_only" && !!brand.emblem;
+  const showName = brand.mode !== "emblem_only" || !showEmblem;
+
+  return (
+    <span
+      data-slot="logo"
+      className="inline-flex items-center gap-2.5"
+      style={{ "--logo-size": `${brand.size || 36}px` } as CSSProperties}
+    >
+      {showEmblem && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={brand.emblem}
+          alt={showName ? "" : brand.name}
+          className="block w-auto shrink-0"
+          style={{ height: "var(--logo-size)" }}
+        />
+      )}
+      {showName && (
+        <span
+          className={nameClassName}
+          style={{ fontFamily: "var(--font-heading, var(--font-body)), system-ui, sans-serif" }}
+        >
+          {brand.name}
+        </span>
+      )}
+    </span>
+  );
+}
+"""
 # Two template generations: {BRAND_LOGO && <img/>}, and the older
 # <Image src="/logo.png"/> — which was the template's own (Derek Doyle's)
 # logo, so those sites show someone else's logo until upgraded.
@@ -3377,7 +3701,7 @@ def upgrade_brand_mark(site_dir, lead):
         layout = re.sub(r'(\n(\s*)card: "summary_large_image",\n)', r'\1\2images: ["/og.png"],\n', layout, count=1)
 
     snapshot_site(site_dir, "logo: upgrade to emblem + name", "logo")
-    (site_dir / "src/components/BrandMark.tsx").write_text(BRAND_MARK_SOURCE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    (site_dir / "src/components/BrandMark.tsx").write_text(LEGACY_BRAND_MARK_TSX, encoding="utf-8")
     (site_dir / "src/brand.json").write_text(json.dumps(
         {"mode": "emblem_text", "size": 36, "emblem": "", "name": lead.get("name", "")}, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8")
@@ -3398,7 +3722,7 @@ def api_upgrade_logos():
         if only and lead.get("slug") != only:
             continue
         site_dir = _resolve_site_dir(lead.get("slug"))
-        if not site_dir or site_dir == TEMPLATE_SITE.resolve():
+        if not site_dir or lib.is_library_site(site_dir):
             continue
         try:
             results[lead["slug"]] = upgrade_brand_mark(site_dir, lead)
@@ -3656,7 +3980,8 @@ def api_theme_set(slug):
     elif kind == "color":
         path = data.get("path") or ""
         try:
-            _, accent_default_path, _, paths = _accent_info(site_dir)
+            _, accent_default_path, _, paths = (("accent", "accent", None, {"accent"}) if lib.is_library_site(site_dir)
+                                                 else _accent_info(site_dir))
         except ThemeError as exc:
             return jsonify({"error": str(exc)}), 400
         if path not in paths:
@@ -3664,9 +3989,14 @@ def api_theme_set(slug):
         label = f"theme: {path} {hex_}"
     elif kind == "font":
         key = data.get("font")
-        if key not in FONT_PRESETS:
+        if lib.is_library_site(site_dir):
+            if key not in lib.PRESETS:
+                return jsonify({"error": "unknown style preset"}), 400
+            label = f"theme: style {key}"
+        elif key not in FONT_PRESETS:
             return jsonify({"error": "unknown font preset"}), 400
-        label = f"theme: font {FONT_PRESETS[key][0]}"
+        else:
+            label = f"theme: font {FONT_PRESETS[key][0]}"
     elif kind == "radius":
         try:
             px = int(data.get("radius"))
@@ -3691,7 +4021,7 @@ def api_theme_set(slug):
                 _set_token_hex(site_dir, path, hex_)
         elif kind == "font":
             apply_font(site_dir, key)
-            saved["font"] = key
+            saved["preset" if lib.is_library_site(site_dir) else "font"] = key
         elif kind == "radius":
             apply_radius(site_dir, px)
             saved["radius"] = str(px)
@@ -3727,15 +4057,15 @@ def collect_deploy_files(site_dir):
     heavy/local-only stuff (node_modules, build output, our own bookkeeping
     files). Vercel builds from source remotely, same as the `vercel` CLI."""
     files = []
-    for path in site_dir.rglob("*"):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(site_dir)
-        if any(part in DEPLOY_IGNORE_DIRS for part in rel.parts):
-            continue
-        if rel.name in DEPLOY_IGNORE_FILES or rel.name.startswith(".stale-"):
-            continue
-        files.append((rel.as_posix(), path))
+    # os.walk with pruning: never descend into node_modules (on library sites
+    # it's a link to the shared install, hundreds of MB we must not upload).
+    for root, dirs, names in os.walk(site_dir):
+        dirs[:] = [d for d in dirs if d not in DEPLOY_IGNORE_DIRS]
+        for name in names:
+            if name in DEPLOY_IGNORE_FILES or name.startswith(".stale-"):
+                continue
+            path = Path(root) / name
+            files.append((path.relative_to(site_dir).as_posix(), path))
     return files
 
 
@@ -3983,6 +4313,28 @@ def api_use_logo():
         applied = apply_brand_logo(site_dir, lead)
     lead.update(lead_logo_summary(lead))
     return jsonify({"lead": lead, "applied": applied})
+
+
+@app.route("/api/beacon/<slug>", methods=["POST", "OPTIONS"])
+def api_beacon(slug):
+    """A demo site was opened (ViewBeacon.tsx). Counts views per lead so the
+    pipeline shows when a prospect looked. Public and CORS-open by design:
+    it only ever increments a counter for an existing slug."""
+    resp = Response(status=204)
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    if request.method == "OPTIONS" or not re.fullmatch(r"[a-z0-9-]{1,120}", slug or ""):
+        return resp
+    with leads_transaction() as leads:
+        lead = find_lead(leads, slug)
+        if lead:
+            try:
+                lead["views"] = str(int(lead.get("views") or 0) + 1)
+            except ValueError:
+                lead["views"] = "1"
+            lead["last_viewed"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    return resp
 
 
 def open_browser(port):

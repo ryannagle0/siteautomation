@@ -22,6 +22,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# The section library's dependencies, installed once: every built site links
+# its node_modules here (site_library.link_node_modules) instead of running
+# its own npm install.
+RUN cd sites/_library && npm ci --no-audit --no-fund
+
 # One worker: preview servers, deploy status and search jobs live in this
 # process's memory. Threads give concurrency; the long timeout covers a
 # site build's npm install, which runs inside the request.

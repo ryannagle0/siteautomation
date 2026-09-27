@@ -1,0 +1,121 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped.",
+  "business": {
+    "name": "Kavanagh & Sons Plumbing and Heating",
+    "trade": "Plumber",
+    "town": "Kilkenny",
+    "county": "Kilkenny",
+    "ownerFirstName": "Tom",
+    "phone": { "display": "056 776 2143", "tel": "0567762143", "intl": "+353567762143", "wa": "" },
+    "email": "tomkavanagh.plumbing@gmail.com",
+    "hours": "Mon–Fri 8am–6pm · Sat 9am–1pm",
+    "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Kavanagh+Sons+Plumbing+Kilkenny",
+    "lat": 52.6541,
+    "lng": -7.2448
+  },
+  "seo": {
+    "title": "Kavanagh & Sons | Plumber & Heating Engineer in Kilkenny",
+    "description": "Family plumbing and heating firm covering Kilkenny City, Thomastown, Callan and Castlecomer. Boiler servicing, bathrooms and leak repairs. Call Tom on 056 776 2143."
+  },
+  "nav": {
+    "links": [
+      { "label": "Services", "href": "#services" },
+      { "label": "About", "href": "#about" },
+      { "label": "Reviews", "href": "#reviews" },
+      { "label": "Areas", "href": "#area" },
+      { "label": "Contact", "href": "#contact" }
+    ],
+    "cta": "Call Tom",
+    "note": "Plumbing & heating across Co. Kilkenny"
+  },
+  "hero": {
+    "headline": "Kilkenny’s family plumbers, one call away.",
+    "subhead": "Boilers serviced, leaks found and fixed, bathrooms fitted properly. Tom answers the phone himself.",
+    "primaryCta": "Call 056 776 2143",
+    "secondaryCta": "Request a quote",
+    "note": "Rated 4.9 from 63 Google reviews",
+    "image": { "src": "/_samples/plumbing-1.jpg", "alt": "Copper pipework being fitted under a kitchen sink", "width": 1600, "height": 1200 }
+  },
+  "trust": {
+    "items": [
+      { "icon": "users", "title": "Family-run", "text": "Tom and his two sons do the work themselves." },
+      { "icon": "clock", "title": "Straight answers", "text": "A time you can hold us to and a price before we start." },
+      { "icon": "house", "title": "Left tidy", "text": "Dust sheets down, everything cleared away after." }
+    ]
+  },
+  "services": {
+    "heading": "What we do",
+    "intro": "Domestic plumbing and heating for homes across the county, from a dripping tap to a full heating system.",
+    "items": [
+      { "icon": "flame", "title": "Boiler service & repair", "text": "Annual services, breakdowns and pressure problems on oil and gas boilers." },
+      { "icon": "thermometer", "title": "Heating systems", "text": "Radiators added or moved, power flushes, pumps and zone controls." },
+      { "icon": "shower", "title": "Bathrooms & showers", "text": "Full bathroom fits, electric and pumped showers, wet rooms." },
+      { "icon": "droplets", "title": "Leaks & burst pipes", "text": "Traced, fixed and made good, with as little disruption as possible." },
+      { "icon": "wrench", "title": "Taps, toilets & cylinders", "text": "Replacements and repairs, including hot water cylinders and immersions." },
+      { "icon": "snowflake", "title": "Winter callouts", "text": "Frozen pipes and no heat in a cold snap. Ring early and we'll fit you in." }
+    ]
+  },
+  "about": {
+    "heading": "Three of us, one van, and our name on every job.",
+    "body": [
+      "Tom Kavanagh has been fixing boilers and plumbing houses around Kilkenny since he was an apprentice. These days his sons Conor and Mark work alongside him.",
+      "We keep the business small on purpose. The person who quotes the job is the person who turns up to do it, and if something isn't right afterwards, you ring the same number."
+    ],
+    "image": { "src": "/_samples/plumbing-2.jpg", "alt": "A plumber's toolbag open on a workbench", "width": 1600, "height": 1200 },
+    "signoff": "Tom Kavanagh",
+    "facts": [
+      { "label": "Based in", "value": "Kilkenny City" },
+      { "label": "Covering", "value": "All of Co. Kilkenny" },
+      { "label": "Hours", "value": "Mon–Sat" }
+    ]
+  },
+  "process": {
+    "heading": "How it works",
+    "intro": "No call centre and no waiting in for a window that never comes.",
+    "steps": [
+      { "title": "Ring or send a message", "text": "Tell us what's wrong or what you're planning. Photos help." },
+      { "title": "We call out and quote", "text": "A fixed price before any work starts, and a date you can plan around." },
+      { "title": "The job gets done", "text": "Fitted properly, tested, and the place left as we found it." }
+    ]
+  },
+  "reviews": {
+    "heading": "What Kilkenny says",
+    "rating": 4.9,
+    "count": 63,
+    "source": "Google",
+    "link": "https://www.google.com/maps/search/?api=1&query=Kavanagh+Sons+Plumbing+Kilkenny",
+    "linkLabel": "Read all 63 reviews on Google",
+    "items": [
+      { "author": "Siobhán D.", "rating": 5, "text": "Boiler died on a Sunday night in January. Tom was out first thing Monday, had the part by lunchtime and the heat back on before the kids got home. Couldn't recommend them more.", "when": "2 months ago" },
+      { "author": "Pádraig M.", "rating": 5, "text": "They fitted our new bathroom. Tidy, on time and the price didn't change once. Conor was great to deal with.", "when": "5 months ago" },
+      { "author": "Helen R.", "rating": 5, "text": "Found a leak two other lads couldn't. Honest and fair.", "when": "a year ago" },
+      { "author": "John K.", "rating": 4, "text": "Good job on the radiators, would use again. Had to wait a week for a slot but it was worth it.", "when": "a year ago" }
+    ]
+  },
+  "area": {
+    "heading": "Where we work",
+    "intro": "Based in Kilkenny City and out every day across the county.",
+    "towns": ["Kilkenny City", "Thomastown", "Callan", "Castlecomer", "Bennettsbridge", "Freshford", "Graiguenamanagh", "Paulstown"],
+    "note": "Just outside these? Ring and ask."
+  },
+  "cta": {
+    "heading": "No heat, a leak, or a bathroom to plan?",
+    "text": "Ring Tom directly. If he's on a job he'll call you back the same day.",
+    "primary": "Call 056 776 2143",
+    "secondary": "Send a message"
+  },
+  "contact": {
+    "heading": "Get a quote",
+    "intro": "Tell us a bit about the job and we'll come back to you, usually the same day.",
+    "formHeading": "Send us the details",
+    "services": ["Boiler service or repair", "Heating system", "Bathroom or shower", "Leak or burst pipe", "Something else"],
+    "submit": "Send enquiry",
+    "success": "Thanks, that's with us. We'll be in touch today or first thing tomorrow.",
+    "labels": { "name": "Your name", "phone": "Phone", "email": "Email", "service": "What's it about?", "message": "Details" }
+  },
+  "footer": {
+    "blurb": "Family plumbing and heating in Kilkenny since the 1990s.",
+    "legal": "© Kavanagh & Sons Plumbing and Heating"
+  },
+  "mobileBar": { "call": "Call Tom", "whatsapp": "WhatsApp", "quote": "Get a quote" }
+}

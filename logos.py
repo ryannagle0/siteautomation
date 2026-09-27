@@ -489,7 +489,10 @@ INITIALS_STOPWORDS = {
     "builders", "builder", "construction", "painting", "painters", "painter", "decorating", "decorators",
     "contractor", "contractors", "contracting", "engineering", "engineers", "ireland", "irl", "teo",
 }
-FONT_FAMILIES = {"geist": "Geist", "inter": "Inter", "plus-jakarta-sans": "Plus Jakarta Sans", "dm-sans": "DM Sans"}
+FONT_FAMILIES = {"geist": "Geist", "inter": "Inter", "plus-jakarta-sans": "Plus Jakarta Sans", "dm-sans": "DM Sans",
+                 # section-library style presets (site_library.PRESETS)
+                 "heritage": "Brygada 1918", "industrial": "Big Shoulders Display",
+                 "clean-local": "Bricolage Grotesque", "bold": "Epilogue"}
 
 
 def trade_icon(trade, name=""):
