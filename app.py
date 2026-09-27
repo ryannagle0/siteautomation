@@ -2069,7 +2069,7 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "You are editing the source of a Next.js (App Router, TypeScript, Tailwind) "
         "small-business demo website. Below are its content files, each preceded by "
         "'--- FILE: <path> ---'. Apply the requested change.\n\n"
-        + (LIBRARY_EDIT_GUIDANCE.replace("{variant_ids}", ", ".join(sorted(lib.catalogue_index()))) if is_lib else (
+        + (LIBRARY_EDIT_GUIDANCE.replace("{variant_ids}", ", ".join(sorted(v for v, m in lib.catalogue_index().items() if lib.labs_enabled() or not m.get("labs")))) if is_lib else (
         "Named colors (blue, navy, ink, base, grey-line, grey-section, etc.) used in "
         "className strings like 'text-blue' or 'bg-navy' are defined as hex values in "
         "tailwind.config.ts, NOT arbitrary Tailwind classes. If asked to change a color, "

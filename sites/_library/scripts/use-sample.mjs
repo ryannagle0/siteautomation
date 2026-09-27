@@ -6,12 +6,15 @@ import { readFileSync, writeFileSync, copyFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const name = process.argv[2];
+// `npm run sample -- bold labs` uses samples/<name>/sections.labs.json instead.
+const labs = process.argv[3] === "labs";
 const dir = join("samples", name || "");
 if (!name || !existsSync(dir)) {
-  console.error("usage: npm run sample -- <heritage|industrial|clean-local|bold>");
+  console.error("usage: npm run sample -- <heritage|industrial|clean-local|bold> [labs]");
   process.exit(1);
 }
-for (const f of ["sections.json", "site.json", "brand.json"]) copyFileSync(join(dir, f), join("src", f));
+for (const f of ["site.json", "brand.json"]) copyFileSync(join(dir, f), join("src", f));
+copyFileSync(join(dir, labs ? "sections.labs.json" : "sections.json"), join("src", "sections.json"));
 // content.json gets the library's default interface strings (content.ui) merged under its own.
 const sampleContent = JSON.parse(readFileSync(join(dir, "content.json"), "utf8"));
 const uiDefaults = JSON.parse(readFileSync("ui-defaults.json", "utf8"));
@@ -56,4 +59,4 @@ const block = [
 ].join("\n");
 const tokens = readFileSync("src/tokens.css", "utf8");
 writeFileSync("src/tokens.css", tokens.replace(/\/\* SITE:BEGIN[\s\S]*?SITE:END \*\//, block));
-console.log(`sample "${name}" in place (accent ${accent}, fg ${fg})`);
+console.log(`sample "${name}"${labs ? " (labs)" : ""} in place (accent ${accent}, fg ${fg})`);

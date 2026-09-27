@@ -65,6 +65,7 @@ COPY_IGNORE = shutil.ignore_patterns(
     "node_modules", ".next", "samples", "scripts", "_samples", ".impeccable", "catalogue",
     "PRODUCT.md", "DESIGN.md", "catalogue.json", "ui-defaults.json", "next-env.d.ts", "*.tsbuildinfo",
     "npm-install.log", "dev-server.log", ".devserver.json", ".history", ".vercel", "README.md",
+    "inspiration", "INSPIRATION.md",  # design references (60MB of video): never shipped in a site
 )
 
 # Always removed: things no business data can back up on a demo site.
@@ -97,6 +98,19 @@ def load_catalogue():
 
 def catalogue_index():
     return {v["id"]: v for v in load_catalogue()["variants"]}
+
+
+def labs_enabled():
+    """Labs variants (catalogue "labs": true) are only composed when
+    SITEFORGE_LABS=1, so the stable library is the default."""
+    return os.environ.get("SITEFORGE_LABS") == "1"
+
+
+# What a labs variant becomes when labs are off (or its data is missing).
+LABS_STABLE = {"hero-editorial": "hero-full-bleed", "hero-colour-field": "hero-typographic",
+               "hero-quick-quote": "hero-typographic", "services-index": "services-grid",
+               "area-marquee": "area-towns", "footer-wordmark": "footer-simple",
+               "contact-chips": "contact-form-split"}
 
 
 def ui_defaults():
@@ -498,6 +512,8 @@ def _variant_ok(variant, facts):
         return facts.get("lat") is not None
     if variant in ("hero-image-grid",):
         return len(facts.get("images") or {}) >= 3
+    if variant == "area-marquee":
+        return len(facts.get("towns") or []) >= 3
     return True
 
 
@@ -529,6 +545,9 @@ def normalize_sections(raw, facts, preset):
         meta = cat.get(vid)
         if not meta or meta["slot"] in chosen:
             continue
+        if vid in LABS_STABLE and (not labs_enabled() or not _variant_ok(vid, facts)):
+            vid = LABS_STABLE[vid]
+            meta = cat[vid]
         if not _variant_ok(vid, facts):
             if meta["slot"] == "hero":
                 vid = HERO_SWAPS.get(vid, "hero-typographic")
@@ -550,7 +569,7 @@ def normalize_sections(raw, facts, preset):
     # none, the typographic hero (or the review-led one when reviews exist).
     images = facts.get("images") or {}
     hero = chosen["hero"]
-    photo_heroes = {"hero-split-image", "hero-full-bleed"} | ({"hero-image-grid"} if len(images) >= 3 else set())
+    photo_heroes = {"hero-split-image", "hero-full-bleed", "hero-editorial"} | ({"hero-image-grid"} if len(images) >= 3 else set())
     if images.get("hero") and hero["variant"] not in photo_heroes:
         hero["variant"] = "hero-full-bleed" if preset in ("industrial", "bold") else "hero-split-image"
         hero.pop("tone", None)
@@ -563,6 +582,12 @@ def normalize_sections(raw, facts, preset):
             chosen["about"] = {"slot": "about", "variant": "about-split"}
         elif chosen["about"]["variant"] == "about-facts":
             chosen["about"]["variant"] = "about-split"
+
+    # Labs: the quick-quote hero and the services index send into the quote
+    # form, so the page needs a contact variant that has one.
+    if (hero["variant"] == "hero-quick-quote" or chosen["services"]["variant"] == "services-index") \
+            and chosen["contact"]["variant"] == "contact-details":
+        chosen["contact"]["variant"] = "contact-form-split"
 
     # One phone moment at the end of the page.
     footer = chosen["footer"]
@@ -584,7 +609,10 @@ def normalize_sections(raw, facts, preset):
     prev = None
     for item in ordered:
         tone = item.get("tone") or cat[item["variant"]].get("tone", "base")
-        if prev is not None and tone == prev["tone"] and tone in ("surface", "band", "accent"):
+        # In clean-local the band *is* the accent, so the two count as one colour.
+        same = tone == prev["tone"] or (preset == "clean-local" and {tone, prev["tone"]} == {"band", "accent"}) \
+            if prev is not None else False
+        if same and tone in ("surface", "band", "accent"):
             own = cat[item["variant"]].get("tone")
             if own in ("band", "accent") and prev["item"]["slot"] not in ("nav", "hero"):
                 prev["item"]["tone"] = "base"
@@ -825,7 +853,8 @@ def build_prompt(facts, catalogue):
     compact = {
         "presets": catalogue["presets"],
         "rules": catalogue["rules"],
-        "variants": [{k: v[k] for k in ("id", "slot", "desc", "needs", "best", "tone")} for v in catalogue["variants"]],
+        "variants": [{k: v[k] for k in ("id", "slot", "desc", "needs", "best", "tone")} for v in catalogue["variants"]
+                     if labs_enabled() or not v.get("labs")],
     }
     fact_lines = {k: facts.get(k) for k in ("name", "trade", "town", "county", "owner_first_name", "email",
                                             "rating", "review_count", "towns", "hours", "has_website")}

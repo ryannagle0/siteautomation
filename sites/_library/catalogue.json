@@ -18,7 +18,8 @@
   "Photos decide the hero: with a hero photo use hero-split-image or hero-full-bleed; with none use hero-typographic (or hero-review-led when reviews exist). SiteForge enforces this.",
   "A second photo goes in About: use about-split or about-owner-note, never about-facts, when about.image exists.",
   "The rating shows at most twice: once in the hero (badge OR review card) and once in reviews. Trust items never mention the rating; use area, hours or contact facts.",
-  "Every section's content starts on the same left edge as the nav logo; no centred or offset columns."
+  "Every section's content starts on the same left edge as the nav logo; no centred or offset columns.",
+  "Variants marked labs are only offered when SITEFORGE_LABS=1; SiteForge swaps them for a stable variant otherwise."
  ],
  "variants": [
   {
@@ -664,6 +665,148 @@
     "industrial"
    ],
    "tone": "band"
+  },
+  {
+   "id": "hero-editorial",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS. Their photo full-bleed under hairline grid columns; poster headline low, top services on a rule beneath, phone card in the bottom-right cell. Band tone grid without a photo.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.image",
+    "hero.subhead",
+    "services.items",
+    "business.phone"
+   ],
+   "best": [
+    "industrial",
+    "heritage",
+    "bold"
+   ],
+   "tone": "band",
+   "ref": "R2, R7"
+  },
+  {
+   "id": "hero-colour-field",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS. The brand colour drenches the hero with a one-hue tonal depth; headline mid-left with + marks, services as a ruled label row near the bottom. No photo needed.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "services.items",
+    "area.towns"
+   ],
+   "best": [
+    "bold",
+    "clean-local"
+   ],
+   "tone": "accent",
+   "ref": "R4"
+  },
+  {
+   "id": "hero-quick-quote",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS. The hero is the start of the quote: 'What needs doing?' box with service chips that prefills the contact form; big phone beside it. Needs a contact variant with a form.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "contact.services",
+    "business.phone",
+    "business.hours"
+   ],
+   "best": [
+    "clean-local",
+    "heritage"
+   ],
+   "tone": "base",
+   "ref": "R3 (interaction only)"
+  },
+  {
+   "id": "services-index",
+   "slot": "services",
+   "labs": true,
+   "desc": "LABS. Services as one bordered table of shared hairlines; each cell (icon, name, one line) starts a quote for that service.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.intro"
+   ],
+   "best": [
+    "industrial",
+    "clean-local",
+    "bold"
+   ],
+   "tone": "base",
+   "ref": "R6"
+  },
+  {
+   "id": "area-marquee",
+   "slot": "service-area",
+   "labs": true,
+   "desc": "LABS. One slow loop of the town names at headline size on the brand colour; pauses on hover, static under reduced motion. Needs 3+ towns.",
+   "needs": [
+    "area.heading",
+    "area.towns"
+   ],
+   "optional": [
+    "area.intro"
+   ],
+   "best": [
+    "bold",
+    "clean-local"
+   ],
+   "tone": "accent",
+   "ref": "R1"
+  },
+  {
+   "id": "footer-wordmark",
+   "slot": "footer",
+   "labs": true,
+   "desc": "LABS. Phone, email and links on a rule, then the business name at poster size cropped by the page's bottom edge.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "business.phone",
+    "business.email",
+    "footer.legal"
+   ],
+   "best": [
+    "bold",
+    "industrial"
+   ],
+   "tone": "band",
+   "ref": "R5, R2"
+  },
+  {
+   "id": "contact-chips",
+   "slot": "contact",
+   "labs": true,
+   "desc": "LABS. Dark closing step: details left, quote form right that opens with tappable service chips instead of a dropdown.",
+   "needs": [
+    "contact.heading"
+   ],
+   "optional": [
+    "contact.intro",
+    "contact.services",
+    "business.email"
+   ],
+   "best": [
+    "industrial",
+    "clean-local",
+    "bold"
+   ],
+   "tone": "band",
+   "ref": "R6, R3"
   }
  ]
 }
