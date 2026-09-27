@@ -285,6 +285,15 @@
   }
 }
 
+/* ── The typographic hero's trade mark: brand colour, barely there. ─────── */
+.hero-mark {
+  opacity: var(--mark-opacity, 0.09);
+}
+[data-preset="industrial"] .hero-mark,
+[data-preset="bold"] .hero-mark {
+  --mark-opacity: 0.12;
+}
+
 /* ── The one authored motion moment: the hero settles in on load. ─────── */
 @keyframes hero-rise {
   from {
@@ -340,4 +349,12 @@
     animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Type discipline (enforced, not advisory): the display face is for
+      headings and big numbers only. Paragraphs, quotes, labels, buttons,
+      links and form text always use the body face, whatever utility class
+      lands on them. Specificity (0,2,0) beats a stray .font-display. ───── */
+[data-preset] :is(p, blockquote, label, button, figcaption, dd, input, select, textarea, .btn, .t-label, .link) {
+  font-family: var(--font-body);
 }

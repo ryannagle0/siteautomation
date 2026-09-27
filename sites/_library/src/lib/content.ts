@@ -11,7 +11,8 @@ import site from "@/site.json";
  * missing renders nothing rather than an empty shell.
  */
 
-export type Img = { src: string; alt: string; width?: number; height?: number; caption?: string };
+/** credit: photographer attribution (required for Google Places photos) — always shown. */
+export type Img = { src: string; alt: string; width?: number; height?: number; caption?: string; credit?: string };
 export type Link = { label: string; href: string };
 
 export type Content = {
@@ -39,6 +40,10 @@ export type Content = {
     note?: string;
     image?: Img;
     images?: Img[];
+    /** icons.tsx key for the oversized outline mark on image-less heroes. */
+    icon?: string;
+    /** A short standalone quote from a real review, chosen at build time. */
+    quote?: { text: string; author: string; rating?: number };
   };
   trust?: { heading?: string; items: { icon?: string; title: string; text?: string }[] };
   services?: {
@@ -144,3 +149,31 @@ export const towns = (content.area?.towns || []).filter(Boolean);
 
 export const reviewItems = (content.reviews?.items || []).filter((r) => r && r.text && r.author);
 export const hasReviews = reviewItems.length > 0;
+
+const QUOTE_OPENERS = new Set(["he", "she", "they", "it", "this", "that", "and", "but", "so", "also", "then", "which", "him", "them", "his", "her", "their", "as", "because", "plus"]);
+
+/**
+ * The hero's review quote: content.hero.quote (chosen and trimmed by
+ * SiteForge at build time), else the same pick made here — the review whose
+ * first sentence stands alone best, cut to 25 words. Keep in step with
+ * site_library.hero_quote().
+ */
+export function heroQuote(maxWords = 25): { text: string; author: string; rating: number; path: string } | null {
+  const q = content.hero?.quote;
+  if (q?.text && q.author) return { text: q.text, author: q.author, rating: q.rating || 5, path: "hero.quote" };
+  let best: { r: (typeof reviewItems)[number]; words: string[]; score: number } | null = null;
+  for (const r of reviewItems) {
+    const text = r.text.replace(/\s+/g, " ").trim();
+    const first = (text.match(/^(.+?[.!?])(\s|$)/)?.[1] || text).trim();
+    const words = first.split(" ");
+    let score = words.length >= 6 && words.length <= maxWords ? 3 : words.length < 6 ? 1 : 0;
+    if (QUOTE_OPENERS.has(words[0].toLowerCase().replace(/[,.]/g, ""))) score -= 3;
+    if (/[.!]$/.test(first)) score += 1;
+    score += (r.rating || 5) - 5 - Math.abs(words.length - 16) / 20;
+    if (!best || score > best.score) best = { r, words: words.length < 6 ? text.split(" ") : words, score };
+  }
+  if (!best) return null;
+  const cut = best.words.length > maxWords;
+  const text = best.words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + (cut ? "…" : "");
+  return { text, author: best.r.author, rating: best.r.rating || 5, path: "" };
+}

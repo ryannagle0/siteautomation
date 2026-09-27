@@ -13,6 +13,13 @@
   --gutter: clamp(1rem, 4vw, 2.5rem);
   --call-bar-h: 64px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Photo scrims: legibility layers over real photos, same in every preset. */
+  --scrim-strong: rgb(0 0 0 / 0.82);
+  --scrim-mid: rgb(0 0 0 / 0.55);
+  --scrim-soft: rgb(0 0 0 / 0.15);
+  --on-scrim: #ffffff;
+  --on-scrim-muted: rgb(255 255 255 / 0.84);
 }
 
 /* Derived from the accent. Declared on the preset element itself (not :root)
@@ -25,12 +32,13 @@
 
 /* ── heritage: warm, established firms. Painted shopfront fascia. ───────── */
 [data-preset="heritage"] {
+  /* Surfaces derive from the ground: white card, ground ×0.955, rule ×0.88. */
   --bg: #f2f0eb;
   --surface: #ffffff;
-  --surface-2: #e8e5de;
+  --surface-2: #e7e5e1;
   --text: #1c1e1b;
   --muted: #595c55;
-  --border: #d6d2c8;
+  --border: #d5d3cf;
   --band: color-mix(in oklab, var(--accent) 26%, #121411);
   --band-text: #f4f1ea;
   --band-muted: #c9c4b8;
@@ -68,15 +76,17 @@
 
 /* ── industrial: dark, sharp, commercial work. Site hoarding + spec sheet. ─ */
 [data-preset="industrial"] {
-  --bg: #0e1012;
-  --surface: #16191c;
-  --surface-2: #1e2226;
-  --text: #eceef0;
-  --muted: #9ba3ab;
-  --border: #2b3036;
-  --band: #08090a;
-  --band-text: #f2f3f4;
-  --band-muted: #a3aab1;
+  /* True neutral charcoal (R=G=B): plates are the ground + 5% / 9% white,
+     seams + 14%. No blue cast anywhere. */
+  --bg: #101010;
+  --surface: #1c1c1c;
+  --surface-2: #262626;
+  --text: #ededed;
+  --muted: #a3a3a3;
+  --border: #333333;
+  --band: #080808;
+  --band-text: #f2f2f2;
+  --band-muted: #a6a6a6;
   --band-border: rgb(255 255 255 / 0.12);
 
   --font-display: var(--font-big-shoulders), "Arial Narrow", sans-serif;
@@ -111,12 +121,13 @@
 
 /* ── clean-local: light, friendly domestic trades. ───────────────────────── */
 [data-preset="clean-local"] {
+  /* Neutral greys from the white ground: ×0.955, ×0.92, rule ×0.87. */
   --bg: #ffffff;
-  --surface: #f3f5f4;
-  --surface-2: #e8edea;
+  --surface: #f4f4f4;
+  --surface-2: #eaeaea;
   --text: #15201c;
   --muted: #52605a;
-  --border: #dce2df;
+  --border: #dedede;
   --band: var(--accent);
   --band-text: var(--accent-fg);
   --band-muted: var(--accent-fg);
@@ -154,9 +165,10 @@
 
 /* ── bold: high contrast, confident, younger businesses. Van livery. ─────── */
 [data-preset="bold"] {
+  /* Neutral greys from the white ground; rules stay true black on purpose. */
   --bg: #ffffff;
-  --surface: #f0f0ec;
-  --surface-2: #e2e2dc;
+  --surface: #f0f0f0;
+  --surface-2: #e3e3e3;
   --text: #0b0b0b;
   --muted: #454543;
   --border: #0b0b0b;
@@ -201,7 +213,7 @@
   --accent-fg: #ffffff;
 }
 [data-preset="heritage"] { --accent-ink: #2b7349; }
-[data-preset="industrial"] { --accent-ink: #599772; }
-[data-preset="clean-local"] { --accent-ink: #2d784c; }
+[data-preset="industrial"] { --accent-ink: #619c79; }
+[data-preset="clean-local"] { --accent-ink: #2b7349; }
 [data-preset="bold"] { --accent-ink: #296e46; }
 /* SITE:END */

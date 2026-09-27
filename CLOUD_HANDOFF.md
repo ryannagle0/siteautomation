@@ -1,142 +1,93 @@
-# Cloud handoff: section library (`cloud/section-library`)
+# Cloud handoff: design fixes (`cloud/design-fixes`)
 
-Build Site no longer clones one template (`derek-doyle-electrical`, now removed). It composes each site from a **section library**: one of 4 style presets plus one of 37 section variants per slot. The copy is written by Claude around real facts about the business, and a check strips invented claims (years, registrations, insurance, prices).
+Ten fixes to the section library, the build pipeline and the editor, in seven groups. After each group I audited all 4 sample pages and every variant in every preset at 390px and 1440px:
+- **Contrast:** checked against the real background.
+- **Tap targets:** at least 44px.
+- **Alignment and fonts:** two checks added this round (content aligned to the logo's edge, display font only on headings and big numbers).
+- **Rating count:** a new check that the rating value appears at most twice per page.
+- **Detector:** `impeccable detect`.
+
+Everything passes.
 
 ## What changed
 
-### New: `sites/_library/` (Next.js 14 + TypeScript + Tailwind)
+### 1. Photos (`site_library.py`, `app.py`, hero/about variants)
+- **Photo source:** Place Details now also requests `photos`. `places_photos()` downloads the lead's **own Google photos**, taking the best landscape photo at least 1200px wide for the hero and a second one for About. Claude vision rejects logos, flyers, screenshots and blurry shots. Choices are cached per lead in `data/images/`.
+- **Attribution:** the photographer credit ("Photo: … on Google", which Google requires) is shown on the photo.
+- **Gemini:** now only fills a slot that has no Places photo.
+- **Layout rules:** a hero photo **forces** an image hero (split-image, or full-bleed in industrial/bold). No hero photo forces the typographic hero (or review-led when reviews exist). A second photo switches About to a variant that shows it.
+- **No photos:** `hero-typographic` draws the trade's icon (zap, droplets, leaf…, set in `hero.icon`) as an oversized hairline outline in the brand colour at 9–12% opacity.
 
-**Design context (Impeccable):**
-- `PRODUCT.md`
-- `DESIGN.md`: 4 presets, each with its own fonts, type scale, spacing, radius and colour roles:
-  - **heritage:** Brygada 1918 + Libre Franklin
-  - **industrial:** Big Shoulders Display + Barlow
-  - **clean-local:** Bricolage Grotesque + Figtree
-  - **bold:** Epilogue + Hanken Grotesk
-- `.impeccable/surfaces/…`: the direction contract
+### 2. Alignment
+Every section's content now starts on the nav logo's left edge. The fixes:
+- **`nav-centred-logo`:** the name drifted off-centre when the text beside it was long, because the browser sized its grid column to the longest single word. It's now centred on the header's own centre line. This is the likely cause of the offset look on Accell Electrical.
+- **`process-cards` and `contact-form-centered`:** these were centred columns; they now start on the left edge. The ids are kept so existing sites still work.
 
-**Where things live:**
-- **Copy:** all text is in `src/content.json`, with no copy hardcoded in components. Interface strings sit in `content.ui`, with defaults in `ui-defaults.json`.
-- **Composition:** `src/sections.json` sets section order, variant and tone. `src/site.json` holds the preset, slug and beacon URL.
-- **Tokens:** all design tokens are CSS variables in `src/tokens.css`. The `SITE:BEGIN…END` block holds the brand accent. SiteForge computes `--accent-fg` and a contrast-safe `--accent-ink` for every preset.
-- **Editing hooks:** every section root has `data-slot`, and every text node has `data-edit="<content.json path>"`.
+### 3–4. Rating and hero quote
+- **Rating:** it now shows at most twice per page, once in the hero and once in the reviews section:
+  - `hero-review-led` shows only the review card, with no separate badge.
+  - Trust items and about-facts that mention the rating are dropped, and the AI is told to use area, hours or contact facts instead.
+- **Hero quote:** chosen at build time (`hero.quote`) from the review whose first sentence stands alone, skipping openings like "He was great…", and cut to 25 words with an ellipsis.
 
-**37 variants** in `src/components/sections/<slot>/`:
+### 5–6. Typography and surfaces
+- **Display font:** used only for headings, big numbers, the logo and the town list. It was removed from the trust titles, review quotes and the owner signature. A guard rule in `globals.css` forces the body font on paragraphs, quotes, labels, buttons, links and form text whatever class is applied.
+- **Neutral surfaces:** every preset's surfaces now derive from its own background. Industrial is true neutral charcoal (#101010 / #1C1C1C / #262626 / #333333), with no blue cast. The contrast inputs in Python and in the sample script were updated to match.
 
-| Slot | Variants |
-|---|---|
-| nav | minimal, centred-logo, phone-bar |
-| hero | split-image, full-bleed, typographic, image-grid, review-led |
-| trust | strip, grid, rating |
-| services | grid, list-icons, featured-grid, tabs |
-| about | split, owner-note, facts |
-| process | steps, timeline, cards |
-| reviews | featured, grid, carousel (real reviews only) |
-| gallery | grid, mosaic (3+ real photos only) |
-| service-area | towns, map |
-| cta | band, split, callout |
-| contact | form-split, details, form-centered |
-| footer | simple, columns, big-phone |
+### 7. Logo check (`logos.py`, `app.py`)
+- **Vision check:** now runs on every detected emblem and returns `generic_symbol` (recycling arrows, globe, tick, swoosh, clip-art house or bolt…) and its own `confidence`.
+- **Suspect logos:** a stock symbol or confidence under 0.6 marks the logo as suspect. The site then uses the initials monogram (`gen:1`), and the pipeline card shows **"Logo: check"**. Picking "extracted" in the logo editor still overrides this.
 
-**Shared behaviour:**
-- **Missing data:** every variant renders nothing, or a designed fallback, when its data is missing (no photos, no email, no reviews).
-- **Mobile:** a sticky Call / WhatsApp bar on phones. WhatsApp only appears for mobile numbers.
+### 8. Editor overlay (`templates/index.html`, `EditBridge.tsx`)
+- **Fade:** the dark fade behind the hotbar is now at most 120px tall and much lighter.
+- **Hide button:** a new eye button in the toolbar hides the hotbar entirely, and **H** toggles it. H also works while the preview has focus (EditBridge forwards it). A small "Show editor bar" pill brings it back.
+- **Dashboard contrast:** while auditing, I fixed some pre-existing issues. White text on the light blue (3.2:1) now uses a darker fill, muted-label buttons no longer turn blue on hover, and the placeholder and log header are more legible.
 
-**Kept and carried over:**
-- BrandMark and `brand.json`
-- EditBridge, which now sends the `data-edit` path so inline edits write straight to `content.json`
-- The favicon and OG image written by `logos.py`
-- MorphingSquare, used as the form's sending state
-- The map, now lazy-loaded so pages without it skip ~200 kB of JS
+### 9. 21st.dev curation
+- **Hidden results:** anything whose name or description mentions AI, SaaS, startup, app, dashboard, pricing plan, crypto or developer.
+- **New "Local business" chip (on by default):** it ranks service, contact, testimonial/review, gallery, map/location, booking, footer, CTA and quote components first. When you're browsing "All", it also searches with local-business terms.
 
-**New components and tools:**
-- **ViewBeacon:** when a prospect opens a deployed demo, the site pings SiteForge.
-- **`catalogue.json`:** every variant with its slot, a one-line description, needs, optional fields, best presets and default tone, plus composition rules. It is sent minified to the AI on each build.
-- **Samples and QA:** `samples/<preset>/` holds 4 synthetic sample businesses; switch between them with `npm run sample -- <preset>`. `/catalogue?preset=…` renders every variant in one preset for QA (removed from built sites).
+### 10. Claim guard (`site_library.claim_guard`)
+- **What it checks:** before `content.json` is written, any 24-hour/24-7, emergency, years-in-business or certification claim (Safe Electric, RECI, RGII, SEAI, registered, insured…) must appear in the source data: the business name, trade, real review text, Google opening hours, or the lead's `years` field.
+- **What happens otherwise:** the sentence is removed, and a list item that loses its title goes entirely.
+- **Logging:** every removal is logged in the server log, returned as `claims_removed` from Build Site, and shown in the dashboard's Recent actions.
+- **Always removed:** prices, superlatives, guarantees and fake urgency, whatever the data says.
 
-### New: `site_library.py`
-- **Composition:** `compose()` asks Claude (Haiku) for a preset, sections and copy. `normalize_sections()` then enforces the catalogue and data rules:
-  - no reviews or gallery sections without real data
-  - no hero that needs photos when there are none
-  - no back-to-back band tones
-  - one phone moment at the end of the page
-  - the rating shown once
-- **Copy checks:** `sanitize_content()` strips unverifiable claims, and the hero headline must name the town. Without an API key, or if the AI call fails, a plain, true fallback copy is used.
-- **Photos:** `scene_images()` generates 2 Gemini photos (hero and about). Each is checked by Claude vision and kept only if it scores 7/10 or higher with no text, logos or warped hands. Results are cached per lead in `data/images/`, so rebuilds cost nothing.
-- **Shared `node_modules`:** `link_node_modules()` / `detach_node_modules()` link each site's `node_modules` to the library's: a **junction on Windows** (`_winapi.CreateJunction`, falling back to `mklink /J`) and a symlink elsewhere. Deleting a site removes the link first and never the shared install.
+## Tested here
+- **End-to-end Build Site:** a fake Claude plus mocked Google responses (photos, reviews, hours) on an Accell-style lead. It produced the photo hero and About photo with credits, the trimmed quote, dropped the rating repeats, and removed 3 claims.
+- **Unit tests:** the logo suspect logic and the claim guard.
+- **Dashboard in a real browser:** hotbar toggle, H key, the 120px fade and the drawer filtering/ranking.
+- **Last round's route tests:** still pass. They also caught one guard bug, fixed.
+- **Builds:** `npm run build` in `sites/_library` passes, and `py_compile` passes.
 
-### `app.py`
-- **Build Site:**
-  1. Gathers facts: the Place Details call (rating, up to 5 real Google reviews, opening hours, location) and the nearest towns from `data/ireland_counties.json`.
-  2. Generates photos (optional).
-  3. Composes the site and writes `content.json`, `sections.json`, `site.json`, `tokens.css`, `fonts.ts` and `brand.json`.
-  4. Links `node_modules` and starts the preview.
-- **Edits on library sites:**
-  - **Edit Site / hotbar:** section-scoped edits resolve the variant file through `sections.json`.
-  - **Claude's instructions:** Claude gets library-specific guidance (copy in `content.json`, colours via tokens), and invalid JSON is never written.
-  - **Allowed packages:** the list comes from each site's `package.json`, so `framer-motion` is no longer offered to library sites.
-  - **Inline text edits:** they write straight to the `content.json` key. Editing the phone updates tel/WhatsApp too, and editing the name updates `brand.json` too.
-  - **21st.dev swaps:** they target the slot's variant file.
-- **Theme panel:** on library sites, "Font" becomes **Style** (the 4 presets). Accent and corners write the `SITE` block.
-- **Pipeline:** new lead fields `preset`, `views` and `last_viewed`, and a new `POST /api/beacon/<slug>` route. The pipeline shows **Demo views** and **Style**.
-- **Deploy:** now walks the site folder without descending into `node_modules`.
-- **Older sites:** sites built from the old template keep working. Every changed path checks `is_library_site()` first and falls back to the old behaviour. The Windows process handling (taskkill, netstat, `npm.cmd`) and the `.vbs`/`.bat` launchers are unchanged.
+## Not tested here
+- **Live Google, Claude and Gemini calls.** The Places photo download is a paid call per downloaded photo (usually 1–4 per lead, cached 30 days). Place Details now also requests `photos`.
+- **Windows.** Nothing Windows-specific changed this round.
+- **Real 21st.dev results.** The filter and ranking were only tested on mock results.
 
-### Other files
-- **`templates/index.html`:** forwards the `data-edit` path, adds the Style label, and shows views and preset in the pipeline.
-- **`logos.py`:** preset font names added to the emblem font map.
-- **`.gitignore` / `.dockerignore`:** now keep `sites/_library/` (minus its `node_modules`, `.next` and review screenshots), and ignore `data/images/`.
-- **`Dockerfile`:** runs `npm ci` in `sites/_library` once.
-- **`.claude/skills/impeccable`:** the Impeccable skill, committed so it persists. Its auto-run detector hooks were deliberately not installed.
-
-## Quality pass (Impeccable)
-- **Screenshots:** each preset's sample page was captured at 390px and 1440px.
-- **Automated audit:** checked WCAG contrast against the real painted background, 44px tap targets, one h1, heading order, form labels and alt text. It passes on all 4 samples and on every variant in every preset. The fixes this round needed:
-  - accent ink is now checked against the preset's surface as well as its ground
-  - no muted text on brand-colour sections
-  - larger tap targets on phones
-- **Detector:** `impeccable detect` found no real issues. Its 12 "broken-image" warnings are false positives from the `<Img>` wrapper. Off-scale font sizes were moved onto type tokens.
-- **Finish review** (fresh reviewer agent: critique, then polish verdict):
-  - **First verdict: fix.** It raised icon-card grids, headlines missing the town, bare stars, stacked phone endings, a "CALL" eyebrow and mobile name truncation.
-  - **Second pass:** 7 of 8 fixes were resolved and 1 was partial (repeated contact details in the industrial sample's ending).
-  - **Final state:** that last fix was applied and recaptured, but not sent for a third review, because Impeccable caps these at two rounds.
-- **Known ceilings the reviewer noted, left for later:** the map/coverage motif could go further (currently a pin plus towns at display size), and the hero has only one small load motion.
-- **Concept roll:** ran in degraded mode (its service was unreachable from the cloud). Your brief pinned the presets anyway.
-
-## Not tested here (no keys, no Windows, no outbound access to these hosts)
-1. **Windows junction linking.** Only the Linux symlink path was exercised: build, rebuild and delete all worked, and the shared install survived. **Check this first.**
-2. **Live Claude composition.** It was tested with a fake client that deliberately broke rules; validation and sanitising handled it.
-3. **Live Gemini generation and Claude image QA.** Tested with mocks. The default model is `gemini-2.5-flash-image`; override it with `GEMINI_IMAGE_MODEL`.
-4. **Live Place Details** (reviews, hours, location). Mocked. **This is a paid Enterprise + Atmosphere call**, made once per lead per 30 days (cached).
-5. **Vercel deploy of a library site.** The file list was verified: 82 files, no `node_modules`. A composed site builds with `next build`.
-6. **Other live services:** map tiles, Resend email and the dashboard clicked through in a browser. Photo stand-ins were used for screenshots.
+## Dribbble inspiration task: not started
+Your images are at `C:\Users\ryana\OneDrive\Documents\inspiration` on your PC, which a cloud session can't read. To run that task, copy the folder into the repo as `sites\_library\inspiration\` and push it, as described below.
 
 ## Run this on Windows after pulling
 1. Get the branch:
    ```powershell
    git fetch origin
-   git checkout cloud/section-library
+   git checkout cloud/design-fixes
    ```
-   Or merge the PR, then `git pull` on master.
-2. Install the library's dependencies once (every built site shares them):
+   Or merge the PR, then `git checkout master` and `git pull`.
+2. `cd sites\_library`, then `npm ci`, then `cd ..\..`. Dependencies are unchanged; this just keeps your shared install in step.
+3. There are no new Python packages and no new `.env` keys. The Places photos use your existing `GOOGLE_MAPS_API_KEY`.
+4. Restart SiteForge: run `stop_siteforge.bat`, then `start_siteforge.vbs`.
+5. Test:
+   - Click **Rebuild** on Accell Electrical and on a lead with no photos.
+   - In the editor, press **H**.
+   - Open the component drawer and check the Local business chip.
+   - Check Recent actions for "Claim guard" lines.
+6. For the Dribbble task, after merging this PR, run:
    ```powershell
-   cd sites\_library
-   npm ci
-   cd ..\..
+   git checkout master
+   git pull
+   Copy-Item -Recurse "C:\Users\ryana\OneDrive\Documents\inspiration" sites\_library\inspiration
+   git add sites/_library/inspiration
+   git commit -m "Add Dribbble inspiration images"
+   git push
    ```
-3. Python: there are no new packages. If in doubt, run `pip install -r requirements.txt`.
-4. Add to `.env` (all optional):
-   ```
-   GEMINI_API_KEY=your-key          # scene photos; without it sites build without photos
-   GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
-   SITEFORGE_PUBLIC_URL=            # e.g. your Railway URL; turns on demo view tracking
-   SHARED_NODE_MODULES=1            # set to 0 to go back to one npm install per site
-   ```
-5. Restart SiteForge: run `stop_siteforge.bat`, then `start_siteforge.vbs`.
-6. Test: in Pipeline, click **Rebuild** on one lead and check the preview. Then open **Edit Site** and:
-   - double-click a heading
-   - try the theme panel's **Style** chips
-   - click **Deploy**
-7. If the build fails at the node_modules step: check that `sites\<slug>\node_modules` shows as a junction (`dir` lists `<JUNCTION>`). If it's still broken, set `SHARED_NODE_MODULES=0` in `.env` and restart.
-8. On Railway: add `GEMINI_API_KEY` and `SITEFORGE_PUBLIC_URL` to the service variables. The Dockerfile installs the library's dependencies itself.
-9. Existing demo sites still work as they are. Rebuild a lead to move it onto the library. Rebuilding replaces that site's whole folder, **including its undo history** (this was already how Rebuild worked), so deploy first any site whose current version you want to keep live.

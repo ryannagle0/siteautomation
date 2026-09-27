@@ -1,664 +1,669 @@
 {
-  "about": "SiteForge section library. A site = one preset + src/sections.json, an ordered list of {slot, variant, tone?}. All copy lives in src/content.json.",
-  "presets": {
-    "heritage": "warm, established family firms; serif headings; limestone ground",
-    "industrial": "dark, sharp; commercial/industrial contractors",
-    "clean-local": "light, friendly; domestic trades, gardeners, cafés",
-    "bold": "high contrast, big type; younger or punchy businesses"
+ "about": "SiteForge section library. A site = one preset + src/sections.json, an ordered list of {slot, variant, tone?}. All copy lives in src/content.json.",
+ "presets": {
+  "heritage": "warm, established family firms; serif headings; limestone ground",
+  "industrial": "dark, sharp; commercial/industrial contractors",
+  "clean-local": "light, friendly; domestic trades, gardeners, cafés",
+  "bold": "high contrast, big type; younger or punchy businesses"
+ },
+ "tones": "Each variant has a default tone (base | surface | band = dark/brand | accent = brand fill); override per entry with \"tone\". Alternate tones down the page.",
+ "rules": [
+  "Order: nav, hero, trust, services, then any of about/process/reviews/gallery in the order that suits, service-area, cta, contact, footer.",
+  "One variant per slot; nav, hero, contact and footer are required; reviews and gallery render nothing without real data, so include them only when data exists.",
+  "Never put two sections with tone band next to each other (e.g. area-towns tone band then cta-band); alternate base and surface.",
+  "Use hero-review-led or trust-rating when there are real reviews and a rating.",
+  "End the page with one phone moment only: footer-big-phone never with cta-band or contact-details; pair it with a form contact and cta-split/cta-callout.",
+  "The hero headline must name the trade (or what they do) and the home town.",
+  "Never pair cta-split or cta-band with contact-details (contact routes twice in a row); use cta-callout.",
+  "Photos decide the hero: with a hero photo use hero-split-image or hero-full-bleed; with none use hero-typographic (or hero-review-led when reviews exist). SiteForge enforces this.",
+  "A second photo goes in About: use about-split or about-owner-note, never about-facts, when about.image exists.",
+  "The rating shows at most twice: once in the hero (badge OR review card) and once in reviews. Trust items never mention the rating; use area, hours or contact facts.",
+  "Every section's content starts on the same left edge as the nav logo; no centred or offset columns."
+ ],
+ "variants": [
+  {
+   "id": "nav-minimal",
+   "slot": "nav",
+   "desc": "Sticky bar: name left, links + call button right.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "nav.links",
+    "nav.cta"
+   ],
+   "best": [
+    "clean-local",
+    "bold",
+    "industrial"
+   ],
+   "tone": "base"
   },
-  "tones": "Each variant has a default tone (base | surface | band = dark/brand | accent = brand fill); override per entry with \"tone\". Alternate tones down the page.",
-  "rules": [
-    "Order: nav, hero, trust, services, then any of about/process/reviews/gallery in the order that suits, service-area, cta, contact, footer.",
-    "One variant per slot; nav, hero, contact and footer are required; reviews and gallery render nothing without real data, so include them only when data exists.",
-    "Never put two sections with tone band next to each other (e.g. area-towns tone band then cta-band); alternate base and surface.",
-    "No photos: prefer hero-typographic or hero-review-led; avoid hero-image-grid.",
-    "Use hero-review-led or trust-rating when there are real reviews and a rating.",
-    "End the page with one phone moment only: footer-big-phone never with cta-band or contact-details; pair it with a form contact and cta-split/cta-callout.",
-    "Show the rating once near the top: with a reviews section, use trust-strip or trust-grid, not trust-rating.",
-    "The hero headline must name the trade (or what they do) and the home town.",
-    "Never pair cta-split or cta-band with contact-details (contact routes twice in a row); use cta-callout."
-  ],
-  "variants": [
-    {
-      "id": "nav-minimal",
-      "slot": "nav",
-      "desc": "Sticky bar: name left, links + call button right.",
-      "needs": [
-        "business.name"
-      ],
-      "optional": [
-        "nav.links",
-        "nav.cta"
-      ],
-      "best": [
-        "clean-local",
-        "bold",
-        "industrial"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "nav-centred-logo",
-      "slot": "nav",
-      "desc": "Name centred like a shopfront fascia, double rule, links row beneath, phone right.",
-      "needs": [
-        "business.name"
-      ],
-      "optional": [
-        "nav.links",
-        "nav.note",
-        "business.phone"
-      ],
-      "best": [
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "nav-phone-bar",
-      "slot": "nav",
-      "desc": "Dark utility strip (what we do + phone) above a sticky main bar.",
-      "needs": [
-        "business.name"
-      ],
-      "optional": [
-        "nav.note",
-        "nav.links",
-        "nav.cta",
-        "business.phone"
-      ],
-      "best": [
-        "industrial",
-        "bold",
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "hero-split-image",
-      "slot": "hero",
-      "desc": "Headline left, one photo right; no photo: big phone panel instead.",
-      "needs": [
-        "hero.headline"
-      ],
-      "optional": [
-        "hero.subhead",
-        "hero.image",
-        "hero.note",
-        "hero.primaryCta",
-        "hero.secondaryCta",
-        "business.hours"
-      ],
-      "best": [
-        "heritage",
-        "clean-local"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "hero-full-bleed",
-      "slot": "hero",
-      "desc": "Photo across the whole width, words low on a scrim; no photo: dark band with big type.",
-      "needs": [
-        "hero.headline"
-      ],
-      "optional": [
-        "hero.image",
-        "hero.subhead",
-        "hero.note"
-      ],
-      "best": [
-        "industrial",
-        "bold"
-      ],
-      "tone": "band"
-    },
-    {
-      "id": "hero-typographic",
-      "slot": "hero",
-      "desc": "No image by design: huge headline + van-door contact panel (phone, hours, towns).",
-      "needs": [
-        "hero.headline"
-      ],
-      "optional": [
-        "hero.subhead",
-        "business.hours",
-        "hero.note"
-      ],
-      "best": [
-        "bold",
-        "clean-local",
-        "industrial",
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "hero-image-grid",
-      "slot": "hero",
-      "desc": "Headline + 3-photo mosaic; fewer photos degrade to one photo or phone panel.",
-      "needs": [
-        "hero.headline"
-      ],
-      "optional": [
-        "hero.images(3)",
-        "hero.subhead",
-        "hero.note"
-      ],
-      "best": [
-        "bold",
-        "clean-local"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "hero-review-led",
-      "slot": "hero",
-      "desc": "Headline beside the best real Google review quoted large with the rating.",
-      "needs": [
-        "hero.headline",
-        "reviews.items"
-      ],
-      "optional": [
-        "reviews.rating",
-        "reviews.count"
-      ],
-      "best": [
-        "heritage",
-        "clean-local",
-        "bold"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "trust-strip",
-      "slot": "trust",
-      "desc": "3-4 short promises in a ruled row under the hero, type only.",
-      "needs": [
-        "trust.items"
-      ],
-      "optional": [],
-      "best": [
-        "heritage",
-        "clean-local",
-        "industrial",
-        "bold"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "trust-grid",
-      "slot": "trust",
-      "desc": "Heading beside spec-sheet rows of reasons (title + one line).",
-      "needs": [
-        "trust.items"
-      ],
-      "optional": [
-        "trust.heading"
-      ],
-      "best": [
-        "industrial",
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "trust-rating",
-      "slot": "trust",
-      "desc": "Google rating big with promises beside. Use when there's a rating but no review texts.",
-      "needs": [
-        "trust.items|reviews.rating"
-      ],
-      "optional": [
-        "reviews.count",
-        "reviews.link"
-      ],
-      "best": [
-        "bold",
-        "clean-local"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "services-grid",
-      "slot": "services",
-      "desc": "Two-column ruled list: service name + one line. No icons. Good for 3-10 services.",
-      "needs": [
-        "services.items"
-      ],
-      "optional": [
-        "services.intro"
-      ],
-      "best": [
-        "clean-local",
-        "bold",
-        "heritage",
-        "industrial"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "services-list-icons",
-      "slot": "services",
-      "desc": "Sticky heading left, ruled list of services right. Good for long lists.",
-      "needs": [
-        "services.items"
-      ],
-      "optional": [
-        "services.intro"
-      ],
-      "best": [
-        "heritage",
-        "clean-local"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "services-featured-grid",
-      "slot": "services",
-      "desc": "Main service featured large (points or photo), the rest as spec-sheet rows.",
-      "needs": [
-        "services.items"
-      ],
-      "optional": [
-        "services.items.0.points",
-        "services.items.0.image"
-      ],
-      "best": [
-        "industrial",
-        "bold"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "services-tabs",
-      "slot": "services",
-      "desc": "One service at a time: names as tabs, detail + points beside.",
-      "needs": [
-        "services.items(3+)"
-      ],
-      "optional": [
-        "items.points",
-        "items.image"
-      ],
-      "best": [
-        "bold",
-        "industrial"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "about-split",
-      "slot": "about",
-      "desc": "Photo + story; no photo: heading left, story right.",
-      "needs": [
-        "about.heading",
-        "about.body"
-      ],
-      "optional": [
-        "about.image"
-      ],
-      "best": [
-        "clean-local",
-        "industrial"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "about-owner-note",
-      "slot": "about",
-      "desc": "A signed letter from the owner. Best with a real first name.",
-      "needs": [
-        "about.heading",
-        "about.body"
-      ],
-      "optional": [
-        "about.signoff",
-        "about.image"
-      ],
-      "best": [
-        "heritage",
-        "clean-local"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "about-facts",
-      "slot": "about",
-      "desc": "Story left, ruled facts list (base, hours, cover) right.",
-      "needs": [
-        "about.heading",
-        "about.body"
-      ],
-      "optional": [
-        "about.facts"
-      ],
-      "best": [
-        "industrial",
-        "heritage",
-        "bold"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "process-steps",
-      "slot": "process",
-      "desc": "Numbered steps across one rule (3-5 steps).",
-      "needs": [
-        "process.steps"
-      ],
-      "optional": [
-        "process.intro"
-      ],
-      "best": [
-        "bold",
-        "industrial",
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "process-timeline",
-      "slot": "process",
-      "desc": "Vertical timeline with numbered markers, heading left.",
-      "needs": [
-        "process.steps"
-      ],
-      "optional": [
-        "process.intro"
-      ],
-      "best": [
-        "heritage",
-        "industrial"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "process-cards",
-      "slot": "process",
-      "desc": "Steps as tinted panels with big numerals, centred heading.",
-      "needs": [
-        "process.steps"
-      ],
-      "optional": [
-        "process.intro"
-      ],
-      "best": [
-        "clean-local"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "reviews-featured",
-      "slot": "reviews",
-      "desc": "One review quoted large, next few beside. Hidden without real reviews.",
-      "needs": [
-        "reviews.items"
-      ],
-      "optional": [
-        "reviews.rating",
-        "reviews.count",
-        "reviews.link"
-      ],
-      "best": [
-        "heritage",
-        "bold",
-        "clean-local"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "reviews-grid",
-      "slot": "reviews",
-      "desc": "All reviews in balanced columns. Hidden without real reviews.",
-      "needs": [
-        "reviews.items"
-      ],
-      "optional": [
-        "reviews.rating",
-        "reviews.link"
-      ],
-      "best": [
-        "industrial",
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "reviews-carousel",
-      "slot": "reviews",
-      "desc": "Swipeable row of review panels. Hidden without real reviews. Best 3+.",
-      "needs": [
-        "reviews.items"
-      ],
-      "optional": [
-        "reviews.rating",
-        "reviews.link"
-      ],
-      "best": [
-        "clean-local",
-        "bold"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "gallery-grid",
-      "slot": "gallery",
-      "desc": "Even grid of real job photos with captions. Hidden with <3 photos.",
-      "needs": [
-        "gallery.images(3+)"
-      ],
-      "optional": [
-        "captions"
-      ],
-      "best": [
-        "industrial",
-        "heritage"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "gallery-mosaic",
-      "slot": "gallery",
-      "desc": "One large photo leading smaller ones. Hidden with <3 photos.",
-      "needs": [
-        "gallery.images(3+)"
-      ],
-      "optional": [],
-      "best": [
-        "clean-local",
-        "bold"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "area-towns",
-      "slot": "service-area",
-      "desc": "SIGNATURE: towns set as large type like a van door; home town pinned.",
-      "needs": [
-        "area.heading",
-        "area.towns"
-      ],
-      "optional": [
-        "area.intro",
-        "area.note"
-      ],
-      "best": [
-        "heritage",
-        "clean-local",
-        "bold",
-        "industrial"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "area-map",
-      "slot": "service-area",
-      "desc": "Map centred on home town + town list. Needs business.lat/lng.",
-      "needs": [
-        "area.heading",
-        "business.lat",
-        "business.lng"
-      ],
-      "optional": [
-        "area.towns"
-      ],
-      "best": [
-        "industrial",
-        "clean-local"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "cta-band",
-      "slot": "cta",
-      "desc": "Full-width dark band: ask left, phone huge right.",
-      "needs": [
-        "cta.heading"
-      ],
-      "optional": [
-        "cta.text",
-        "business.phone"
-      ],
-      "best": [
-        "heritage",
-        "bold",
-        "industrial"
-      ],
-      "tone": "band"
-    },
-    {
-      "id": "cta-split",
-      "slot": "cta",
-      "desc": "Ask one side, every contact route listed the other.",
-      "needs": [
-        "cta.heading"
-      ],
-      "optional": [
-        "cta.text"
-      ],
-      "best": [
-        "industrial",
-        "heritage"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "cta-callout",
-      "slot": "cta",
-      "desc": "Contained brand-colour panel with the ask + buttons.",
-      "needs": [
-        "cta.heading"
-      ],
-      "optional": [
-        "cta.text"
-      ],
-      "best": [
-        "clean-local",
-        "bold"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "contact-form-split",
-      "slot": "contact",
-      "desc": "Details list left, quote form right.",
-      "needs": [
-        "contact.heading"
-      ],
-      "optional": [
-        "contact.intro",
-        "contact.services",
-        "business.email"
-      ],
-      "best": [
-        "heritage",
-        "bold",
-        "clean-local",
-        "industrial"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "contact-details",
-      "slot": "contact",
-      "desc": "No form: phone at full size, WhatsApp, email, hours, Maps link.",
-      "needs": [
-        "contact.heading",
-        "business.phone"
-      ],
-      "optional": [
-        "business.email",
-        "business.mapsUrl"
-      ],
-      "best": [
-        "industrial",
-        "bold"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "contact-form-centered",
-      "slot": "contact",
-      "desc": "Centred form with call/WhatsApp under it.",
-      "needs": [
-        "contact.heading"
-      ],
-      "optional": [
-        "contact.intro",
-        "contact.services"
-      ],
-      "best": [
-        "clean-local"
-      ],
-      "tone": "surface"
-    },
-    {
-      "id": "footer-simple",
-      "slot": "footer",
-      "desc": "One quiet row: name, links, phone, legal.",
-      "needs": [],
-      "optional": [
-        "footer.blurb",
-        "footer.legal"
-      ],
-      "best": [
-        "clean-local",
-        "bold"
-      ],
-      "tone": "base"
-    },
-    {
-      "id": "footer-columns",
-      "slot": "footer",
-      "desc": "Dark footer: who, contact, towns, links.",
-      "needs": [],
-      "optional": [
-        "footer.blurb",
-        "footer.legal"
-      ],
-      "best": [
-        "heritage",
-        "industrial"
-      ],
-      "tone": "band"
-    },
-    {
-      "id": "footer-big-phone",
-      "slot": "footer",
-      "desc": "The number at poster size as the page's last word.",
-      "needs": [
-        "business.phone"
-      ],
-      "optional": [
-        "footer.blurb",
-        "business.email"
-      ],
-      "best": [
-        "bold",
-        "industrial"
-      ],
-      "tone": "band"
-    }
-  ]
+  {
+   "id": "nav-centred-logo",
+   "slot": "nav",
+   "desc": "Name centred like a shopfront fascia, double rule, links row beneath, phone right.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "nav.links",
+    "nav.note",
+    "business.phone"
+   ],
+   "best": [
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "nav-phone-bar",
+   "slot": "nav",
+   "desc": "Dark utility strip (what we do + phone) above a sticky main bar.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "nav.note",
+    "nav.links",
+    "nav.cta",
+    "business.phone"
+   ],
+   "best": [
+    "industrial",
+    "bold",
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-split-image",
+   "slot": "hero",
+   "desc": "Headline left, the business's own photo right (best landscape Places photo, credited).",
+   "needs": [
+    "hero.headline",
+    "hero.image"
+   ],
+   "optional": [
+    "hero.subhead",
+    "hero.image",
+    "hero.note",
+    "hero.primaryCta",
+    "hero.secondaryCta",
+    "business.hours"
+   ],
+   "best": [
+    "heritage",
+    "clean-local"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-full-bleed",
+   "slot": "hero",
+   "desc": "Their photo across the full width, words low on a scrim, photo credit in the corner.",
+   "needs": [
+    "hero.headline",
+    "hero.image"
+   ],
+   "optional": [
+    "hero.image",
+    "hero.subhead",
+    "hero.note"
+   ],
+   "best": [
+    "industrial",
+    "bold"
+   ],
+   "tone": "band"
+  },
+  {
+   "id": "hero-typographic",
+   "slot": "hero",
+   "desc": "No photo: huge headline + van-door contact panel, the trade's icon as an oversized faint brand-colour outline behind.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "hero.icon",
+    "business.hours",
+    "hero.note"
+   ],
+   "best": [
+    "bold",
+    "clean-local",
+    "industrial",
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-image-grid",
+   "slot": "hero",
+   "desc": "Headline + 3-photo mosaic; fewer photos degrade to one photo or phone panel.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.images(3)",
+    "hero.subhead",
+    "hero.note"
+   ],
+   "best": [
+    "bold",
+    "clean-local"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-review-led",
+   "slot": "hero",
+   "desc": "Headline beside one real review as a card (<=25 words, chosen at build). The card is the hero's only rating moment.",
+   "needs": [
+    "hero.headline",
+    "reviews.items"
+   ],
+   "optional": [
+    "hero.quote",
+    "reviews.items"
+   ],
+   "best": [
+    "heritage",
+    "clean-local",
+    "bold"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "trust-strip",
+   "slot": "trust",
+   "desc": "3-4 short promises in a ruled row under the hero, type only.",
+   "needs": [
+    "trust.items"
+   ],
+   "optional": [],
+   "best": [
+    "heritage",
+    "clean-local",
+    "industrial",
+    "bold"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "trust-grid",
+   "slot": "trust",
+   "desc": "Heading beside spec-sheet rows of reasons (title + one line).",
+   "needs": [
+    "trust.items"
+   ],
+   "optional": [
+    "trust.heading"
+   ],
+   "best": [
+    "industrial",
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "trust-rating",
+   "slot": "trust",
+   "desc": "Google rating big with promises beside. Use when there's a rating but no review texts.",
+   "needs": [
+    "trust.items|reviews.rating"
+   ],
+   "optional": [
+    "reviews.count",
+    "reviews.link"
+   ],
+   "best": [
+    "bold",
+    "clean-local"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "services-grid",
+   "slot": "services",
+   "desc": "Two-column ruled list: service name + one line. No icons. Good for 3-10 services.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.intro"
+   ],
+   "best": [
+    "clean-local",
+    "bold",
+    "heritage",
+    "industrial"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "services-list-icons",
+   "slot": "services",
+   "desc": "Sticky heading left, ruled list of services right. Good for long lists.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.intro"
+   ],
+   "best": [
+    "heritage",
+    "clean-local"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "services-featured-grid",
+   "slot": "services",
+   "desc": "Main service featured large (points or photo), the rest as spec-sheet rows.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.items.0.points",
+    "services.items.0.image"
+   ],
+   "best": [
+    "industrial",
+    "bold"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "services-tabs",
+   "slot": "services",
+   "desc": "One service at a time: names as tabs, detail + points beside.",
+   "needs": [
+    "services.items(3+)"
+   ],
+   "optional": [
+    "items.points",
+    "items.image"
+   ],
+   "best": [
+    "bold",
+    "industrial"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "about-split",
+   "slot": "about",
+   "desc": "Photo + story (used whenever a second photo exists); no photo: heading left, story right.",
+   "needs": [
+    "about.heading",
+    "about.body"
+   ],
+   "optional": [
+    "about.image"
+   ],
+   "best": [
+    "clean-local",
+    "industrial"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "about-owner-note",
+   "slot": "about",
+   "desc": "A signed letter from the owner. Best with a real first name.",
+   "needs": [
+    "about.heading",
+    "about.body"
+   ],
+   "optional": [
+    "about.signoff",
+    "about.image"
+   ],
+   "best": [
+    "heritage",
+    "clean-local"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "about-facts",
+   "slot": "about",
+   "desc": "Story left, ruled facts list (base, hours, cover) right.",
+   "needs": [
+    "about.heading",
+    "about.body"
+   ],
+   "optional": [
+    "about.facts"
+   ],
+   "best": [
+    "industrial",
+    "heritage",
+    "bold"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "process-steps",
+   "slot": "process",
+   "desc": "Numbered steps across one rule (3-5 steps).",
+   "needs": [
+    "process.steps"
+   ],
+   "optional": [
+    "process.intro"
+   ],
+   "best": [
+    "bold",
+    "industrial",
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "process-timeline",
+   "slot": "process",
+   "desc": "Vertical timeline with numbered markers, heading left.",
+   "needs": [
+    "process.steps"
+   ],
+   "optional": [
+    "process.intro"
+   ],
+   "best": [
+    "heritage",
+    "industrial"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "process-cards",
+   "slot": "process",
+   "desc": "Steps as tinted panels with big numerals, heading on the page's left edge.",
+   "needs": [
+    "process.steps"
+   ],
+   "optional": [
+    "process.intro"
+   ],
+   "best": [
+    "clean-local"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "reviews-featured",
+   "slot": "reviews",
+   "desc": "One review quoted large, next few beside. Hidden without real reviews.",
+   "needs": [
+    "reviews.items"
+   ],
+   "optional": [
+    "reviews.rating",
+    "reviews.count",
+    "reviews.link"
+   ],
+   "best": [
+    "heritage",
+    "bold",
+    "clean-local"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "reviews-grid",
+   "slot": "reviews",
+   "desc": "All reviews in balanced columns. Hidden without real reviews.",
+   "needs": [
+    "reviews.items"
+   ],
+   "optional": [
+    "reviews.rating",
+    "reviews.link"
+   ],
+   "best": [
+    "industrial",
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "reviews-carousel",
+   "slot": "reviews",
+   "desc": "Swipeable row of review panels. Hidden without real reviews. Best 3+.",
+   "needs": [
+    "reviews.items"
+   ],
+   "optional": [
+    "reviews.rating",
+    "reviews.link"
+   ],
+   "best": [
+    "clean-local",
+    "bold"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "gallery-grid",
+   "slot": "gallery",
+   "desc": "Even grid of real job photos with captions. Hidden with <3 photos.",
+   "needs": [
+    "gallery.images(3+)"
+   ],
+   "optional": [
+    "captions"
+   ],
+   "best": [
+    "industrial",
+    "heritage"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "gallery-mosaic",
+   "slot": "gallery",
+   "desc": "One large photo leading smaller ones. Hidden with <3 photos.",
+   "needs": [
+    "gallery.images(3+)"
+   ],
+   "optional": [],
+   "best": [
+    "clean-local",
+    "bold"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "area-towns",
+   "slot": "service-area",
+   "desc": "SIGNATURE: towns set as large type like a van door; home town pinned.",
+   "needs": [
+    "area.heading",
+    "area.towns"
+   ],
+   "optional": [
+    "area.intro",
+    "area.note"
+   ],
+   "best": [
+    "heritage",
+    "clean-local",
+    "bold",
+    "industrial"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "area-map",
+   "slot": "service-area",
+   "desc": "Map centred on home town + town list. Needs business.lat/lng.",
+   "needs": [
+    "area.heading",
+    "business.lat",
+    "business.lng"
+   ],
+   "optional": [
+    "area.towns"
+   ],
+   "best": [
+    "industrial",
+    "clean-local"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "cta-band",
+   "slot": "cta",
+   "desc": "Full-width dark band: ask left, phone huge right.",
+   "needs": [
+    "cta.heading"
+   ],
+   "optional": [
+    "cta.text",
+    "business.phone"
+   ],
+   "best": [
+    "heritage",
+    "bold",
+    "industrial"
+   ],
+   "tone": "band"
+  },
+  {
+   "id": "cta-split",
+   "slot": "cta",
+   "desc": "Ask one side, every contact route listed the other.",
+   "needs": [
+    "cta.heading"
+   ],
+   "optional": [
+    "cta.text"
+   ],
+   "best": [
+    "industrial",
+    "heritage"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "cta-callout",
+   "slot": "cta",
+   "desc": "Contained brand-colour panel with the ask + buttons.",
+   "needs": [
+    "cta.heading"
+   ],
+   "optional": [
+    "cta.text"
+   ],
+   "best": [
+    "clean-local",
+    "bold"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "contact-form-split",
+   "slot": "contact",
+   "desc": "Details list left, quote form right.",
+   "needs": [
+    "contact.heading"
+   ],
+   "optional": [
+    "contact.intro",
+    "contact.services",
+    "business.email"
+   ],
+   "best": [
+    "heritage",
+    "bold",
+    "clean-local",
+    "industrial"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "contact-details",
+   "slot": "contact",
+   "desc": "No form: phone at full size, WhatsApp, email, hours, Maps link.",
+   "needs": [
+    "contact.heading",
+    "business.phone"
+   ],
+   "optional": [
+    "business.email",
+    "business.mapsUrl"
+   ],
+   "best": [
+    "industrial",
+    "bold"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "contact-form-centered",
+   "slot": "contact",
+   "desc": "One focused form column on the page's left edge, call/WhatsApp beside it.",
+   "needs": [
+    "contact.heading"
+   ],
+   "optional": [
+    "contact.intro",
+    "contact.services"
+   ],
+   "best": [
+    "clean-local"
+   ],
+   "tone": "surface"
+  },
+  {
+   "id": "footer-simple",
+   "slot": "footer",
+   "desc": "One quiet row: name, links, phone, legal.",
+   "needs": [],
+   "optional": [
+    "footer.blurb",
+    "footer.legal"
+   ],
+   "best": [
+    "clean-local",
+    "bold"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "footer-columns",
+   "slot": "footer",
+   "desc": "Dark footer: who, contact, towns, links.",
+   "needs": [],
+   "optional": [
+    "footer.blurb",
+    "footer.legal"
+   ],
+   "best": [
+    "heritage",
+    "industrial"
+   ],
+   "tone": "band"
+  },
+  {
+   "id": "footer-big-phone",
+   "slot": "footer",
+   "desc": "The number at poster size as the page's last word.",
+   "needs": [
+    "business.phone"
+   ],
+   "optional": [
+    "footer.blurb",
+    "business.email"
+   ],
+   "best": [
+    "bold",
+    "industrial"
+   ],
+   "tone": "band"
+  }
+ ]
 }

@@ -47,8 +47,7 @@ export function Review({ i, size = "md", className }: { i: number; size?: "md" |
       <Stars value={r.rating || 5} className={size === "lg" ? "text-xl" : "text-base"} />
       <blockquote className="mt-4">
         <p data-edit={`reviews.items.${index}.text`}
-          className={size === "lg" ? "font-display text-step-3 leading-[1.2] text-ink" : "leading-relaxed text-ink"}
-          style={size === "lg" ? { textTransform: "none", letterSpacing: "var(--display-tracking)" } : undefined}>
+          className={size === "lg" ? "text-step-2 font-medium leading-snug text-ink" : "leading-relaxed text-ink"}>
           “{r.text}”
         </p>
       </blockquote>

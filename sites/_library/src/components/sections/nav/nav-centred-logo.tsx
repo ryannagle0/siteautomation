@@ -14,12 +14,15 @@ export default function NavCentredLogo({ tone = "base" }: { tone?: Tone }) {
   return (
     <Section slot="nav" as="header" tone={tone} className="relative z-30">
       <div className="wrap">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 py-4 md:grid-cols-[1fr_auto_1fr] md:py-6">
-          <T k="nav.note" as="p" className="t-label hidden text-muted md:block" />
-          <a href="#top" className="min-w-0 text-ink no-underline md:text-center">
-            <BrandMark nameClassName="text-[1.05rem] leading-tight sm:text-[1.2rem] md:text-[1.75rem]" />
+        {/* The name is centred on the header's own centre line (not a grid
+            column), so a long note or name can never push it off-centre. */}
+        <div className="relative flex items-center justify-between gap-4 py-4 md:min-h-[5.75rem] md:py-6">
+          <T k="nav.note" as="p" className="t-label hidden max-w-[26%] truncate text-muted lg:block" />
+          <a href="#top"
+            className="min-w-0 text-ink no-underline md:absolute md:left-1/2 md:top-1/2 md:max-w-[46%] md:-translate-x-1/2 md:-translate-y-1/2 md:text-center">
+            <BrandMark nameClassName="text-[1.05rem] leading-tight sm:text-[1.2rem] md:text-[1.6rem]" />
           </a>
-          <div className="flex items-center justify-end gap-3">
+          <div className="ml-auto flex items-center justify-end gap-3">
             {phone && (
               <a href={telHref} className="hidden items-center gap-2 font-semibold text-ink no-underline hover:text-accent-ink md:inline-flex">
                 <PhoneIcon aria-hidden="true" className="h-4 w-4 text-accent-ink" strokeWidth={2} />
