@@ -65,6 +65,7 @@ COPY_IGNORE = shutil.ignore_patterns(
     "node_modules", ".next", "samples", "scripts", "_samples", ".impeccable", "catalogue",
     "PRODUCT.md", "DESIGN.md", "catalogue.json", "ui-defaults.json", "next-env.d.ts", "*.tsbuildinfo",
     "npm-install.log", "dev-server.log", ".devserver.json", ".history", ".vercel", "README.md",
+    "inspiration", "INSPIRATION.md",  # design references (60MB of video): never shipped in a site
 )
 
 # Always removed: things no business data can back up on a demo site.
