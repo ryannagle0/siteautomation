@@ -1,0 +1,43 @@
+[
+  {
+    "slot": "nav",
+    "variant": "nav-centred-logo"
+  },
+  {
+    "slot": "hero",
+    "variant": "hero-electric"
+  },
+  {
+    "slot": "trust",
+    "variant": "trust-strip"
+  },
+  {
+    "slot": "services",
+    "variant": "services-index"
+  },
+  {
+    "slot": "about",
+    "variant": "about-owner-note"
+  },
+  {
+    "slot": "reviews",
+    "variant": "reviews-featured"
+  },
+  {
+    "slot": "service-area",
+    "variant": "area-towns"
+  },
+  {
+    "slot": "cta",
+    "variant": "cta-callout"
+  },
+  {
+    "slot": "contact",
+    "variant": "contact-chips",
+    "tone": "surface"
+  },
+  {
+    "slot": "footer",
+    "variant": "footer-columns"
+  }
+]

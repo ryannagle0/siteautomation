@@ -27,7 +27,7 @@ export default function ServicesIndex({ tone = "base" }: { tone?: Tone }) {
           {items.map((s, i) => (
             <ServiceCell key={i} service={s.title}
               className={cn("min-h-[9.5rem] border-b border-r border-line p-4 md:min-h-[12rem] md:p-6", i === items.length - 1 && lastSpan)}>
-              <Icon name={s.icon} className="h-7 w-7 flex-none text-accent-ink" strokeWidth={1.5} />
+              <Icon name={s.icon} className="h-10 w-10 flex-none text-accent-ink md:h-12 md:w-12" strokeWidth={1.4} />
               <span className="pt-6 md:pt-8">
                 <T k={`services.items.${i}.title`} className="block text-step-1 font-semibold leading-snug text-ink" />
                 <T k={`services.items.${i}.text`} className="mt-1.5 hidden text-step-small leading-snug text-muted md:block" />

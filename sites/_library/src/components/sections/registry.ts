@@ -5,6 +5,7 @@ import NavMinimal from "./nav/nav-minimal";
 import NavPhoneBar from "./nav/nav-phone-bar";
 import HeroColourField from "./hero/hero-colour-field";
 import HeroEditorial from "./hero/hero-editorial";
+import HeroElectric from "./hero/hero-electric";
 import HeroFullBleed from "./hero/hero-full-bleed";
 import HeroImageGrid from "./hero/hero-image-grid";
 import HeroQuickQuote from "./hero/hero-quick-quote";
@@ -60,6 +61,7 @@ export const SECTIONS: Record<string, ComponentType<SectionProps>> = {
   "nav-phone-bar": NavPhoneBar,
   "hero-colour-field": HeroColourField,
   "hero-editorial": HeroEditorial,
+  "hero-electric": HeroElectric,
   "hero-full-bleed": HeroFullBleed,
   "hero-image-grid": HeroImageGrid,
   "hero-quick-quote": HeroQuickQuote,

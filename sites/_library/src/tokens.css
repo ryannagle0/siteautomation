@@ -20,6 +20,14 @@
   --scrim-soft: rgb(0 0 0 / 0.15);
   --on-scrim: #ffffff;
   --on-scrim-muted: rgb(255 255 255 / 0.84);
+
+  /* Cable cores (IEC colours) for the electrician motif. They name what
+     they are, so they're the one sanctioned exception to one-brand-colour. */
+  --wire-live: #7b4a26;
+  --wire-neutral: #1f5fae;
+  --wire-earth-a: #2f8a3c;
+  --wire-earth-b: #e2bd14;
+  --hazard-ink: #111111;
 }
 
 /* Derived from the accent. Declared on the preset element itself (not :root)

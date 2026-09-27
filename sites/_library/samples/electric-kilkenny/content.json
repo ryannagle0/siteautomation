@@ -1,0 +1,240 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped.",
+  "business": {
+    "name": "Kavanagh & Sons Electrical",
+    "trade": "Electrician",
+    "town": "Kilkenny",
+    "county": "Kilkenny",
+    "ownerFirstName": "Tom",
+    "phone": {
+      "display": "056 776 2143",
+      "tel": "0567762143",
+      "intl": "+353567762143",
+      "wa": ""
+    },
+    "email": "tomkavanagh.electrical@gmail.com",
+    "hours": "Mon–Fri 8am–6pm · Sat 9am–1pm",
+    "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Kavanagh+Sons+Electrical+Kilkenny",
+    "lat": 52.6541,
+    "lng": -7.2448
+  },
+  "seo": {
+    "title": "Kavanagh & Sons | Electrician in Kilkenny",
+    "description": "Family electricians covering Kilkenny City, Thomastown, Callan and Castlecomer. Fuse boards, rewires, EV chargers and fault finding. Call Tom on 056 776 2143."
+  },
+  "nav": {
+    "links": [
+      {
+        "label": "Services",
+        "href": "#services"
+      },
+      {
+        "label": "About",
+        "href": "#about"
+      },
+      {
+        "label": "Reviews",
+        "href": "#reviews"
+      },
+      {
+        "label": "Areas",
+        "href": "#area"
+      },
+      {
+        "label": "Contact",
+        "href": "#contact"
+      }
+    ],
+    "cta": "Call Tom",
+    "note": "Electrical work across Co. Kilkenny"
+  },
+  "hero": {
+    "headline": "Kilkenny’s family electricians, one call away.",
+    "subhead": "Fuse boards upgraded, faults found, EV chargers fitted properly. Tom answers the phone himself.",
+    "primaryCta": "Call 056 776 2143",
+    "secondaryCta": "Request a quote",
+    "note": "Rated 4.9 from 63 Google reviews",
+    "icon": "fuse-board"
+  },
+  "trust": {
+    "items": [
+      {
+        "icon": "users",
+        "title": "Family-run",
+        "text": "Tom and his two sons do the work themselves."
+      },
+      {
+        "icon": "clock",
+        "title": "Straight answers",
+        "text": "A time you can hold us to and a price before we start."
+      },
+      {
+        "icon": "house",
+        "title": "Left tidy",
+        "text": "Dust sheets down, everything cleared away after."
+      }
+    ]
+  },
+  "services": {
+    "heading": "What we do",
+    "intro": "Domestic electrical work for homes across the county, from a tripping switch to a full rewire.",
+    "items": [
+      {
+        "icon": "fuse-board",
+        "title": "Fuse board upgrades",
+        "text": "Old boards replaced with modern RCBO boards, labelled and tested."
+      },
+      {
+        "icon": "ev-wall",
+        "title": "EV chargers",
+        "text": "Home chargers fitted on the wall or driveway, with the grant paperwork handled."
+      },
+      {
+        "icon": "rewire",
+        "title": "Rewires",
+        "text": "Full and partial rewires, planned around the house so you're not left in the dark."
+      },
+      {
+        "icon": "tester",
+        "title": "Fault finding",
+        "text": "Tripping switches, dead sockets and flickering lights traced and fixed."
+      },
+      {
+        "icon": "pendant",
+        "title": "Lighting",
+        "text": "New lights, dimmers and outside lighting, inside and out."
+      },
+      {
+        "icon": "smoke-alarm",
+        "title": "Smoke & heat alarms",
+        "text": "Mains-wired, interlinked alarms for every floor and the kitchen."
+      }
+    ]
+  },
+  "about": {
+    "heading": "Three of us, one van, and our name on every job.",
+    "body": [
+      "Tom Kavanagh has been wiring houses around Kilkenny since he was an apprentice. These days his sons Conor and Mark work alongside him.",
+      "We keep the business small on purpose. The person who quotes the job is the person who turns up to do it, and if something isn't right afterwards, you ring the same number."
+    ],
+    "signoff": "Tom Kavanagh",
+    "facts": [
+      {
+        "label": "Based in",
+        "value": "Kilkenny City"
+      },
+      {
+        "label": "Covering",
+        "value": "All of Co. Kilkenny"
+      },
+      {
+        "label": "Hours",
+        "value": "Mon–Sat"
+      }
+    ]
+  },
+  "process": {
+    "heading": "How it works",
+    "intro": "No call centre and no waiting in for a window that never comes.",
+    "steps": [
+      {
+        "title": "Ring or send a message",
+        "text": "Tell us what's wrong or what you're planning. Photos help."
+      },
+      {
+        "title": "We call out and quote",
+        "text": "A fixed price before any work starts, and a date you can plan around."
+      },
+      {
+        "title": "The job gets done",
+        "text": "Fitted properly, tested, and the place left as we found it."
+      }
+    ]
+  },
+  "reviews": {
+    "heading": "What Kilkenny says",
+    "rating": 4.9,
+    "count": 63,
+    "source": "Google",
+    "link": "https://www.google.com/maps/search/?api=1&query=Kavanagh+Sons+Electrical+Kilkenny",
+    "linkLabel": "Read all 63 reviews on Google",
+    "items": [
+      {
+        "author": "Siobhán D.",
+        "rating": 5,
+        "text": "Half the house went dead on a Sunday night. Tom was out first thing Monday, found the fault in the kitchen and had everything back on by lunchtime. Couldn't recommend them more.",
+        "when": "2 months ago"
+      },
+      {
+        "author": "Pádraig M.",
+        "rating": 5,
+        "text": "They put in a new fuse board and an EV charger. Tidy, on time and the price didn't change once. Conor was great to deal with.",
+        "when": "5 months ago"
+      },
+      {
+        "author": "Helen R.",
+        "rating": 5,
+        "text": "Found a fault two other lads couldn't. Honest and fair.",
+        "when": "a year ago"
+      },
+      {
+        "author": "John K.",
+        "rating": 4,
+        "text": "Good job on the rewire, would use again. Had to wait a week for a slot but it was worth it.",
+        "when": "a year ago"
+      }
+    ]
+  },
+  "area": {
+    "heading": "Where we work",
+    "intro": "Based in Kilkenny City and out every day across the county.",
+    "towns": [
+      "Kilkenny City",
+      "Thomastown",
+      "Callan",
+      "Castlecomer",
+      "Bennettsbridge",
+      "Freshford",
+      "Graiguenamanagh",
+      "Paulstown"
+    ],
+    "note": "Just outside these? Ring and ask."
+  },
+  "cta": {
+    "heading": "Lights tripping, a board to upgrade, or a charger to fit?",
+    "text": "Ring Tom directly. If he's on a job he'll call you back the same day.",
+    "primary": "Call 056 776 2143",
+    "secondary": "Send a message"
+  },
+  "contact": {
+    "heading": "Get a quote",
+    "intro": "Tell us a bit about the job and we'll come back to you, usually the same day.",
+    "formHeading": "Send us the details",
+    "services": [
+      "Fuse board",
+      "EV charger",
+      "Rewire",
+      "Fault finding",
+      "Lighting",
+      "Something else"
+    ],
+    "submit": "Send enquiry",
+    "success": "Thanks, that's with us. We'll be in touch today or first thing tomorrow.",
+    "labels": {
+      "name": "Your name",
+      "phone": "Phone",
+      "email": "Email",
+      "service": "What's it about?",
+      "message": "Details"
+    }
+  },
+  "footer": {
+    "blurb": "Family electricians in Kilkenny.",
+    "legal": "© Kavanagh & Sons Electrical"
+  },
+  "mobileBar": {
+    "call": "Call Tom",
+    "whatsapp": "WhatsApp",
+    "quote": "Get a quote"
+  }
+}

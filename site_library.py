@@ -110,7 +110,7 @@ def labs_enabled():
 LABS_STABLE = {"hero-editorial": "hero-full-bleed", "hero-colour-field": "hero-typographic",
                "hero-quick-quote": "hero-typographic", "services-index": "services-grid",
                "area-marquee": "area-towns", "footer-wordmark": "footer-simple",
-               "contact-chips": "contact-form-split"}
+               "contact-chips": "contact-form-split", "hero-electric": "hero-typographic"}
 
 
 def ui_defaults():

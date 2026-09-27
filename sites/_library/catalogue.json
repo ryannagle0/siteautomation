@@ -807,6 +807,29 @@
    ],
    "tone": "band",
    "ref": "R6, R3"
+  },
+  {
+   "id": "hero-electric",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS MOCKUP. Electricians only: a drawn consumer unit fed by brown/blue/green-yellow cable cores, breakers switching on at load; top services with the electrician icon set; cable-core stripe closing the section. No photo needed.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "services.items",
+    "business.phone",
+    "business.hours"
+   ],
+   "best": [
+    "heritage",
+    "industrial",
+    "clean-local",
+    "bold"
+   ],
+   "tone": "base",
+   "ref": "electrician mockup"
   }
  ]
 }
