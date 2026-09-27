@@ -14,4 +14,9 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// SiteForge's hosted preview serves this site under /preview/<slug>.
+// SITEFORGE_BASE_PATH is only set there, never on Vercel.
+const siteforgeBase = process.env.SITEFORGE_BASE_PATH;
+export default siteforgeBase
+  ? { ...nextConfig, basePath: siteforgeBase, images: { ...(nextConfig.images || {}), unoptimized: true } }
+  : nextConfig;

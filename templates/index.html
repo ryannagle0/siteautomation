@@ -149,7 +149,9 @@
   .theme-radius-row{display:flex;align-items:center;gap:10px;}
   .theme-radius-row input[type=range]{flex:1;accent-color:#5b8cff;}
   .theme-radius-value{font-size:.78rem;color:var(--muted);min-width:34px;text-align:right;font-variant-numeric:tabular-nums;}
-  .theme-panel.busy{opacity:.6;pointer-events:none;}
+  .theme-panel.busy #themePanelBody{opacity:.55;pointer-events:none;}
+  .theme-busy{float:right;display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;color:var(--text);}
+  .theme-busy .morphing-square{width:10px;height:10px;}
   .history-dropdown{position:absolute;top:calc(100% + 6px);right:0;width:280px;max-height:340px;overflow-y:auto;background:#1F2023;border:1px solid #3a3d42;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:40;}
   .history-dropdown-header{padding:10px 14px;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid #2a3038;}
   .history-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid #2a3038;}
@@ -206,46 +208,115 @@
   .component-results-loading{display:flex;align-items:center;gap:8px;padding:18px 10px;color:#9CA3AF;font-size:.82rem;width:100%;}
   .edit-overlay-controls .status{margin:0;font-size:.78rem;text-align:center;}
   .build-log-tail{margin:8px 0 0;max-height:180px;overflow:auto;text-align:left;white-space:pre-wrap;word-break:break-word;background:#0a0a0a;border:1px solid #3a3d42;border-radius:8px;padding:8px 10px;font-size:.7rem;color:#c9ced6;}
-  /* Full component browser — sidebar categories + searchable/sortable grid.
-     Covers the whole preview area while open (the modal itself is already
-     near-fullscreen). */
-  .component-browser{position:absolute;inset:0;z-index:20;background:#0d0f12;display:flex;flex-direction:column;}
-  .cb-header{display:flex;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3038;flex:none;}
-  .cb-search-wrap{position:relative;flex:1;}
-  .cb-search-wrap input{width:100%;background:#1F2023;border:1px solid #3a3d42;color:#e8ebef;padding:10px 14px;border-radius:10px;font-size:.9rem;font-family:inherit;outline:none;}
+  /* Component drawer — a slim glass panel docked to the left of the preview,
+     so the live site stays visible and clickable beside it. --cb-width is set
+     on .iframe-wrap so the prompt bar can re-centre in the space left over. */
+  .iframe-wrap{--cb-width:460px;}
+  .component-browser{position:absolute;top:0;left:0;bottom:0;width:var(--cb-width);z-index:20;display:flex;flex-direction:column;background:rgba(10,10,10,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-right:1px solid rgba(255,255,255,.08);box-shadow:8px 0 32px rgba(0,0,0,.4);border-radius:8px 0 0 8px;transform:translateX(calc(-100% - 40px));visibility:hidden;transition:transform .2s ease-out,visibility 0s linear .2s;}
+  .component-browser.open{transform:translateX(0);visibility:visible;transition:transform .2s ease-out,visibility 0s;}
+  .iframe-wrap.cb-open .edit-overlay-controls{left:calc(var(--cb-width) + (100% - var(--cb-width)) / 2);width:min(640px,calc((100% - var(--cb-width)) * .92));}
+  .edit-overlay-controls{transition:left .2s ease-out;}
+  .cb-resizing,.cb-resizing *{cursor:col-resize !important;user-select:none !important;}
+  .cb-resizing iframe{pointer-events:none;}
+  .cb-resize{position:absolute;top:0;bottom:0;right:-3px;width:6px;cursor:col-resize;z-index:4;}
+  .cb-resize::after{content:"";position:absolute;top:0;bottom:0;left:2px;width:2px;background:rgba(255,255,255,.06);transition:background .15s;}
+  .cb-resize:hover::after,.cb-resizing .cb-resize::after{background:rgba(91,140,255,.8);}
+  .cb-top{flex:none;padding:12px 12px 10px;border-bottom:1px solid rgba(255,255,255,.08);}
+  .cb-top-row{display:flex;gap:8px;align-items:center;}
+  .cb-search-wrap{position:relative;flex:1;min-width:0;}
+  .cb-search-wrap input{width:100%;height:36px;margin:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#e8ebef;padding:0 12px;border-radius:8px;font-size:.84rem;font-family:inherit;outline:none;}
   .cb-search-wrap input:focus{border-color:#5b8cff;}
   .cb-suggestions{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1F2023;border:1px solid #3a3d42;border-radius:10px;overflow-y:auto;max-height:220px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.4);}
   .cb-suggestions.open{display:block;}
   .cb-suggestion-item{padding:8px 14px;font-size:.82rem;color:#D1D5DB;cursor:pointer;}
   .cb-suggestion-item:hover{background:rgba(255,255,255,.08);}
-  .cb-header button{flex:none;}
+  .cb-close{flex:none;width:36px;height:36px;margin:0;padding:0;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,.1);color:#9CA3AF;font-size:1.1rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .cb-close:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .cb-chip-row{display:flex;align-items:center;gap:5px;margin-top:9px;overflow-x:auto;scrollbar-width:none;}
+  .cb-chip-row::-webkit-scrollbar{display:none;}
+  .cb-chip{flex:none;margin:0;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#9CA3AF;padding:3px 9px;border-radius:12px;font-size:11px;font-family:inherit;cursor:pointer;white-space:nowrap;}
+  .cb-chip:hover{background:rgba(255,255,255,.1);color:#D1D5DB;}
+  .cb-chip.active,.cb-chip.active:hover{background:#5b8cff;border-color:#5b8cff;color:#fff;}
+  .cb-chip-sep{flex:none;width:1px;height:14px;background:rgba(255,255,255,.12);margin:0 2px;}
   .cb-body{flex:1;display:flex;min-height:0;}
-  .cb-sidebar{width:180px;flex:none;overflow-y:auto;border-right:1px solid #2a3038;padding:12px 8px;}
-  .cb-cat-btn{display:block;width:100%;text-align:left;background:transparent;border:none;color:#9CA3AF;padding:8px 10px;border-radius:8px;font-size:.82rem;cursor:pointer;margin-bottom:2px;font-family:inherit;}
+  .cb-sidebar,.cb-main{overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent;}
+  .cb-sidebar::-webkit-scrollbar,.cb-main::-webkit-scrollbar{width:4px;}
+  .cb-sidebar::-webkit-scrollbar-thumb,.cb-main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+  .cb-sidebar::-webkit-scrollbar-track,.cb-main::-webkit-scrollbar-track{background:transparent;}
+  .cb-sidebar{width:150px;flex:none;border-right:1px solid rgba(255,255,255,.08);padding:8px 6px;}
+  .cb-cat-btn{display:block;width:100%;height:32px;margin:0 0 1px;text-align:left;background:transparent;border:none;color:#9CA3AF;padding:0 10px;border-radius:16px;font-size:13px;line-height:32px;cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cb-cat-btn:hover{background:rgba(255,255,255,.06);color:#D1D5DB;}
-  .cb-cat-btn.active{background:#5b8cff;color:#fff;}
-  .cb-main{flex:1;display:flex;flex-direction:column;min-width:0;padding:14px 18px;overflow-y:auto;}
-  .cb-sort-row{display:flex;gap:8px;margin-bottom:14px;flex:none;}
-  .cb-sort-btn{background:#1F2023;border:1px solid #3a3d42;color:#9CA3AF;padding:6px 12px;border-radius:14px;font-size:.76rem;cursor:pointer;font-family:inherit;}
-  .cb-sort-btn.active{background:#5b8cff;border-color:#5b8cff;color:#fff;}
-  .cb-grid{display:flex;flex-direction:row;overflow-x:auto;gap:12px;padding:12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-  .cb-grid::-webkit-scrollbar{display:none;}
-  .cb-card{flex:0 0 220px;height:280px;scroll-snap-align:start;position:relative;border-radius:8px;overflow:hidden;cursor:pointer;background:#151618;}
+  .cb-cat-btn.active,.cb-cat-btn.active:hover{background:#5b8cff;color:#fff;}
+  .cb-cat-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 4px 7px;}
+  .cb-main{flex:1;min-width:0;position:relative;}
+  .cb-target-row{position:sticky;top:0;z-index:3;padding:10px 12px 0;}
+  .cb-target-chip{display:inline-flex;align-items:center;gap:6px;background:#f59e0b;color:#111;padding:4px 6px 4px 11px;border-radius:13px;font-size:12px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.4);}
+  .cb-target-chip #cbTargetLabel{text-transform:capitalize;}
+  .cb-target-chip button{margin:0;background:rgba(0,0,0,.15);border:none;color:#111;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;line-height:1;padding:0;}
+  .cb-target-chip button:hover{background:rgba(0,0,0,.28);}
+  .cb-grid{display:flex;flex-direction:column;gap:12px;padding:12px;}
+  .cb-sentinel{height:1px;}
+  .cb-card{flex:none;height:180px;position:relative;border-radius:8px;overflow:hidden;cursor:pointer;background:#151618;border:1px solid rgba(255,255,255,.06);}
+  .cb-card:hover{border-color:rgba(255,255,255,.2);}
   .cb-card-thumb{position:absolute;inset:0;}
   .cb-card-thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .2s;}
   .cb-card-thumb img.loaded{opacity:1;}
   .cb-card-thumb.skeleton{background:linear-gradient(90deg,#1a1c20 25%,#24262b 37%,#1a1c20 63%);background-size:400% 100%;animation:cb-shimmer 1.4s ease infinite;}
   @keyframes cb-shimmer{0%{background-position:100% 0;}100%{background-position:0 0;}}
   .cb-card-gradient{position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(to top, rgba(20,20,20,.92) 0%, transparent 100%);pointer-events:none;}
-  .cb-card-name{position:absolute;bottom:36px;left:10px;right:40px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .cb-card-add-btn{position:absolute;bottom:8px;right:8px;width:28px;height:28px;background:#fff;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:background .15s,transform .15s;}
+  .cb-card-name{position:absolute;bottom:13px;left:12px;right:48px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cb-card-add-btn{position:absolute;bottom:8px;right:8px;width:28px;height:28px;margin:0;background:#fff;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:background .15s,transform .15s;}
   .cb-card-add-btn:hover{background:rgba(255,255,255,.85);transform:scale(1.1);}
-  .cb-empty,.cb-loading-text{color:#9CA3AF;padding:30px;text-align:center;}
-  .cb-load-more-card{flex:0 0 220px;height:280px;scroll-snap-align:start;border-radius:8px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:#fff;}
-  .cb-load-more-card .cb-load-more-icon{font-size:32px;line-height:1;}
-  .cb-load-more-card .cb-load-more-label{font-size:13px;color:#9CA3AF;}
-  .cb-load-more-card.loading .cb-load-more-icon{animation:cb-spin 1s linear infinite;}
-  @keyframes cb-spin{to{transform:rotate(360deg);}}
+  .cb-card-fav{position:absolute;top:8px;right:8px;width:26px;height:26px;margin:0;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .15s;}
+  .cb-card:hover .cb-card-fav,.cb-card-fav.on{opacity:1;}
+  .cb-card-fav.on{color:#fbbf24;}
+  .cb-card-fav:hover{background:rgba(0,0,0,.7);}
+  .cb-empty{color:#9CA3AF;padding:30px 12px;text-align:center;font-size:.82rem;line-height:1.5;}
+  .cb-empty button{margin:10px auto 0;display:block;}
+  .cb-popover{position:absolute;z-index:40;min-width:190px;max-height:420px;overflow-y:auto;background:#1F2023;border:1px solid #3a3d42;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.55);padding:5px;}
+  .cb-popover-title{padding:6px 9px 5px;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+  .cb-popover-item{display:block;width:100%;margin:0;text-align:left;background:transparent;border:none;color:#D1D5DB;padding:7px 9px;border-radius:7px;font-size:.82rem;font-family:inherit;cursor:pointer;text-transform:capitalize;}
+  .cb-popover-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .cb-popover-item.auto{text-transform:none;color:#9CA3AF;border-top:1px solid #2a3038;border-radius:0 0 7px 7px;margin-top:3px;}
+  .modal-toolbar-btn.active{background:#5b8cff;border-color:#5b8cff;color:#fff;}
+  .modal-toolbar-btn.active:hover{background:#4a7bef;}
+  /* Logo editor — small floating glass panel next to the clicked logo. */
+  .logo-panel{position:absolute;z-index:30;width:330px;max-height:calc(100% - 16px);overflow-y:auto;background:rgba(10,10,10,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:12px;color:#e8ebef;font-size:.8rem;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent;}
+  .logo-panel.busy .lp-body{opacity:.55;pointer-events:none;}
+  .lp-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .lp-title{font-weight:700;font-size:.86rem;}
+  .lp-head .theme-busy{float:none;margin-left:auto;font-size:.72rem;}
+  .lp-close{margin:0 0 0 auto;width:26px;height:26px;padding:0;border-radius:7px;background:transparent;border:1px solid rgba(255,255,255,.12);color:#9CA3AF;font-size:1rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .lp-close:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .lp-head .theme-busy + .lp-close{margin-left:0;}
+  .lp-preview{height:120px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;border:1px solid rgba(255,255,255,.08);
+    background-color:#e9e9e9;background-image:linear-gradient(45deg,#cfcfcf 25%,transparent 25%),linear-gradient(-45deg,#cfcfcf 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#cfcfcf 75%),linear-gradient(-45deg,transparent 75%,#cfcfcf 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;}
+  .lp-preview img{max-height:96px;max-width:90%;object-fit:contain;}
+  .lp-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a3;margin:10px 0 5px;}
+  .lp-thumbs{display:flex;flex-wrap:wrap;gap:6px;}
+  .lp-thumb{position:relative;width:40px;height:40px;margin:0;padding:3px;border-radius:8px;background:#f2f2f2;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .lp-thumb img{max-width:100%;max-height:100%;object-fit:contain;}
+  .lp-thumb:hover{border-color:rgba(91,140,255,.6);}
+  .lp-thumb.active{border-color:#5b8cff;box-shadow:0 0 0 2px rgba(91,140,255,.35);}
+  .lp-thumb .lp-thumb-tag{position:absolute;left:-2px;right:-2px;bottom:-9px;font-size:8.5px;line-height:1.2;font-weight:700;color:#fff;background:#5b8cff;border-radius:4px;text-align:center;}
+  .lp-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .lp-btn{margin:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#D1D5DB;padding:5px 10px;border-radius:8px;font-size:.74rem;font-family:inherit;cursor:pointer;}
+  .lp-btn:hover{background:rgba(255,255,255,.12);color:#fff;}
+  .lp-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .lp-seg{display:flex;gap:4px;}
+  .lp-seg .cb-chip{flex:1;text-align:center;}
+  .lp-seg .cb-chip:disabled{opacity:.35;cursor:not-allowed;}
+  .lp-size{display:flex;align-items:center;gap:8px;}
+  .lp-size input[type=range]{flex:1;accent-color:#5b8cff;margin:0;}
+  .lp-size span{min-width:34px;text-align:right;color:#9CA3AF;font-variant-numeric:tabular-nums;}
+  .lp-toggle{display:flex;align-items:center;gap:7px;cursor:pointer;color:#D1D5DB;}
+  .lp-toggle input{margin:0;accent-color:#5b8cff;}
+  .lp-note{margin-top:10px;font-size:.7rem;color:#8a93a3;line-height:1.45;}
+  .lp-warning{margin-top:8px;font-size:.72rem;color:#fbbf24;}
+  .logo-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:.66rem;font-weight:600;vertical-align:middle;white-space:nowrap;}
+  .logo-tag.extracted{background:rgba(34,197,94,.15);color:#4ade80;}
+  .logo-tag.generated{background:rgba(148,163,184,.15);color:#cbd5e1;}
+  .logo-tag.needs-check{background:rgba(245,158,11,.18);color:#fbbf24;}
   .email-card label{font-size:.8rem;color:var(--muted);display:block;margin:10px 0 4px;}
   .email-card input[type=text]{width:100%;margin-bottom:0;}
   .email-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
@@ -410,12 +481,15 @@
       <div class="modal-header-row">
         <h2 id="editModalTitle">Edit Site</h2>
         <div class="modal-toolbar">
+          <button type="button" class="modal-toolbar-btn" id="cbToolbarBtn" title="Components (C)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </button>
           <div class="history-dropdown-wrap" id="themePanelWrap">
             <button type="button" class="modal-toolbar-btn" id="themeBtn" title="Theme">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5c0-4.4-4-8.6-9-8.6Z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/></svg>
             </button>
             <div class="history-dropdown theme-panel" id="themePanel" style="display:none;">
-              <div class="history-dropdown-header">Theme</div>
+              <div class="history-dropdown-header">Theme <span id="themePanelBusy" class="theme-busy" style="display:none;"><span class="morphing-square"></span>Applying…</span></div>
               <div id="themePanelBody"></div>
             </div>
           </div>
@@ -478,22 +552,34 @@
           </div>
           <div class="status" id="editStatus"></div>
         </div>
-        <div class="component-browser" id="componentBrowser" style="display:none;">
-          <div class="cb-header">
-            <div class="cb-search-wrap">
-              <input type="text" id="cbSearchInput" placeholder="Search 21st.dev components..." autocomplete="off">
-              <div class="cb-suggestions" id="cbSuggestions"></div>
+        <div class="component-browser" id="componentBrowser" aria-hidden="true">
+          <div class="cb-top">
+            <div class="cb-top-row">
+              <div class="cb-search-wrap">
+                <input type="text" id="cbSearchInput" placeholder="Search 21st.dev components..." autocomplete="off">
+                <div class="cb-suggestions" id="cbSuggestions"></div>
+              </div>
+              <button type="button" class="cb-close" id="cbCloseBtn" title="Close (Esc)">&times;</button>
             </div>
-            <button type="button" class="secondary" id="cbCloseBtn">&times;</button>
+            <div class="cb-chip-row" id="cbChipRow"></div>
           </div>
           <div class="cb-body">
             <div class="cb-sidebar" id="cbSidebar"></div>
-            <div class="cb-main">
-              <div class="cb-sort-row" id="cbSortRow"></div>
+            <div class="cb-main" id="cbMain">
+              <div class="cb-target-row" id="cbTargetRow" style="display:none;">
+                <span class="cb-target-chip">Replacing: <span id="cbTargetLabel"></span>
+                  <button type="button" id="cbTargetClear" title="Clear target">&times;</button>
+                </span>
+              </div>
               <div class="cb-grid" id="cbGrid"></div>
+              <div class="cb-sentinel" id="cbSentinel"></div>
             </div>
           </div>
+          <div class="cb-resize" id="cbResize" title="Drag to resize"></div>
+          <div class="cb-popover" id="cbPopover" style="display:none;"></div>
         </div>
+        <div class="logo-panel" id="logoPanel" style="display:none;"></div>
+        <input type="file" id="logoUploadInput" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" style="display:none;">
       </div>
     </div>
   </div>
@@ -590,9 +676,17 @@ function initialsColor(name){
 // Logo cell shared by the results table and pipeline cards: the real
 // logo, a shimmer while enrichment is still running, or initials.
 function logoHtml(lead){
-  if (lead.logo_path) return `<img class="lead-logo" src="${escapeHtml(lead.logo_path)}" alt="">`;
+  // The extracted/chosen emblem — never the raw logo with its lettering
+  // when an emblem exists.
+  const src = lead.emblem_url || lead.logo_path;
+  if (src) return `<img class="lead-logo" src="${escapeHtml(src)}" alt="">`;
   if (lead.enrich_status === 'pending') return `<div class="lead-logo-skeleton"></div>`;
   return `<div class="lead-initials" style="background:${initialsColor(lead.name)}">${escapeHtml(initials(lead.name))}</div>`;
+}
+
+function logoTagHtml(tag){
+  if (!tag) return '';
+  return `<span class="logo-tag ${tag.replace(/\s+/g, '-')}">Logo: ${escapeHtml(tag)}</span>`;
 }
 
 function colorDotsHtml(colors){
@@ -903,7 +997,7 @@ function renderPipeline(){
         <div class="pipeline-card-brand">
           ${logoHtml(lead)}
           <div style="min-width:0">
-            <span class="name">${escapeHtml(lead.name||'')}</span>
+            <span class="name">${escapeHtml(lead.name||'')}</span>${logoTagHtml(lead.logo_tag)}
             ${lead.brand_colors ? colorDotsHtml(lead.brand_colors) : ''}
           </div>
         </div>
@@ -951,6 +1045,12 @@ function renderPipeline(){
         const data = await res.json();
         if (data.error) { showToast(data.error); logoCheck.checked = !logoCheck.checked; return; }
         lead.use_logo = data.lead.use_logo;
+        lead.emblem_url = data.lead.emblem_url;
+        lead.logo_tag = data.lead.logo_tag;
+        const img = row.querySelector('.lead-logo');
+        if (img && lead.emblem_url) img.src = lead.emblem_url;
+        const tag = row.querySelector('.logo-tag');
+        if (tag) tag.outerHTML = logoTagHtml(lead.logo_tag);
         showToast(logoCheck.checked
           ? (data.applied ? 'Logo added to the site' : 'Logo will be used on the next build')
           : (data.applied ? 'Logo removed from the site' : 'Logo turned off'));
@@ -991,10 +1091,22 @@ function resetPreviewIframe(){
   document.getElementById('editIframe').src = 'about:blank';
 }
 
+// Locally the iframe talks to the site's `next dev` on localhost (with hot
+// reload). Hosted, SiteForge proxies it at /preview/<slug> instead.
+const PREVIEW_PROXY = {{ 'true' if preview_proxy else 'false' }};
+
+function previewUrl(path){
+  if (PREVIEW_PROXY) {
+    const base = `/preview/${encodeURIComponent(currentEditSlug)}`;
+    return path.startsWith('/?') ? base + path.slice(1) : (path === '/' ? base : base + path);
+  }
+  return `http://localhost:${currentPreviewPort}${path}`;
+}
+
 function loadPreviewUrl(url){
   const gen = ++previewLoadGen;
   const iframe = document.getElementById('editIframe');
-  const urlObj = new URL(url);
+  const urlObj = new URL(url, window.location.href);
   urlObj.searchParams.set('edit', '1'); // lets EditBridge activate section-click-to-scope
   iframe.onload = () => {
     if (gen === previewLoadGen) setIframeLoading(false);
@@ -1034,6 +1146,10 @@ async function openPreviewModal(slug, build){
   document.getElementById('removeLayoutImageBtn').click();
   setStatus('editStatus', '');
   document.getElementById('editModal').classList.add('open');
+  closeLogoPanel();
+  cbSetTarget(null);
+  if (lsGet('sf.cb.open', false)) openComponentBrowser();
+  else closeComponentBrowser(false);
   setIframeLoading(true);
   if (build) startBuildMessageRotation();
   else setIframeLoading(true, 'Starting live preview...');
@@ -1064,7 +1180,7 @@ async function openPreviewModal(slug, build){
     const port = data.preview_port || data.port;
     currentPreviewPort = port;
     setIframeLoading(true, 'Loading preview...');
-    loadPreviewUrl(`http://localhost:${port}/`);
+    loadPreviewUrl(previewUrl('/'));
     logAction(build ? 'Build site' : 'Open preview', true, slug);
     if (build) loadPipeline();
   } catch(e) {
@@ -1077,6 +1193,8 @@ async function openPreviewModal(slug, build){
 
 document.getElementById('closeModalBtn').addEventListener('click', () => {
   document.getElementById('editModal').classList.remove('open');
+  closeComponentBrowser(false);
+  closeLogoPanel();
   stopBuildMessageRotation();
   closeHistoryDropdown();
   clearSlotSelection(false);
@@ -1139,24 +1257,25 @@ async function searchComponents(query){
   }
 }
 
-async function applyComponent(component, sectionHint){
+// slot (optional): the exact preview section to replace, from the drawer.
+async function applyComponent(component, sectionHint, slot){
   if (!currentEditSlug) return;
   hideComponentResults();
-  setLoading('editStatus', `Adding "${component.name}"...`);
+  setLoading('editStatus', slot ? `Replacing ${slot} with "${component.name}"...` : `Adding "${component.name}"...`);
   try {
     const res = await fetch('/api/pipeline/component_apply', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ slug: currentEditSlug, component_id: component.id, component_name: component.name, section: sectionHint })
+      body: JSON.stringify({ slug: currentEditSlug, component_id: component.id, component_name: component.name, section: sectionHint, slot: slot || undefined })
     });
     const data = await res.json();
     if (data.error) { setStatus('editStatus', data.error, true); logAction('Add component', false, data.error); return; }
     setStatus('editStatus', 'Added: ' + (data.changed_files || []).join(', '));
-    logAction('Add component', true, component.name);
+    logAction('Add component', true, component.name + (slot ? ` → ${slot}` : ''));
+    cbAddRecent(component);
     clearEditInstruction();
-    closeComponentBrowser();
     if (currentPreviewPort) {
       setIframeLoading(true, 'Reloading preview...');
-      loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
+      loadPreviewUrl(previewUrl(`/?t=${Date.now()}`));
     }
   } catch(e) {
     setStatus('editStatus', 'Failed: ' + e.message, true);
@@ -1266,7 +1385,7 @@ async function restoreSnapshot(timestamp){
     showToast('Restored: ' + label);
     if (currentPreviewPort) {
       setIframeLoading(true, 'Reloading preview...');
-      loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
+      loadPreviewUrl(previewUrl(`/?t=${Date.now()}`));
     }
   } catch(e) {
     setStatus('editStatus', 'Restore failed: ' + e.message, true);
@@ -1375,6 +1494,7 @@ async function applyTheme(payload){
   if (!currentEditSlug) return;
   const panel = document.getElementById('themePanel');
   panel.classList.add('busy');
+  document.getElementById('themePanelBusy').style.display = 'inline-flex';
   try {
     const res = await fetch(`/api/theme/${currentEditSlug}`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1388,6 +1508,7 @@ async function applyTheme(payload){
     }
     themeState = data.theme;
     renderThemePanel();
+    if (PREVIEW_PROXY) reloadPreview(); // no hot reload through the hosted proxy
     showToast(data.label.replace(/^theme: /, 'Theme: '));
     logAction('Theme', true, data.label);
   } catch(e) {
@@ -1395,6 +1516,7 @@ async function applyTheme(payload){
     logAction('Theme', false, e.message);
   } finally {
     panel.classList.remove('busy');
+    document.getElementById('themePanelBusy').style.display = 'none';
   }
 }
 
@@ -1430,14 +1552,57 @@ function clearSlotSelection(notifyIframe){
 
 document.getElementById('slotChipClear').addEventListener('click', () => clearSlotSelection());
 
+function reloadPreview(){
+  if (!currentPreviewPort) return;
+  setIframeLoading(true, 'Reloading preview...');
+  loadPreviewUrl(previewUrl(`/?t=${Date.now()}`));
+}
+
+// Double-clicked text edited in place inside the preview. The page already
+// shows the new text; next dev's hot reload picks up the file change.
+async function saveTextEdit(slot, oldText, newText){
+  const slug = currentEditSlug;
+  if (!slug) return;
+  setStatus('editStatus', 'Saving text...');
+  try {
+    const res = await fetch('/api/pipeline/text_edit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ slug, slot, oldText, newText })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (data.method === 'none') { setStatus('editStatus', ''); return; }
+    const how = data.method === 'ai' ? 'AI' : 'instant';
+    showToast(`Saved (${how})`);
+    setStatus('editStatus', `Text saved (${how}): ` + (data.changed_files || []).join(', '));
+    logAction('Edit text', true, `[${slot}] "${newText.slice(0, 50)}" (${how})`);
+    // The AI may have changed more than the one text node; show its result.
+    if (data.method === 'ai' && slug === currentEditSlug) reloadPreview();
+  } catch(err) {
+    showToast('Text edit failed: ' + err.message);
+    setStatus('editStatus', 'Text edit failed: ' + err.message, true);
+    logAction('Edit text', false, err.message);
+    if (slug === currentEditSlug) reloadPreview(); // drop the unsaved text from the page
+  }
+}
+
 window.addEventListener('message', (e) => {
-  if (!e.data || e.data.type !== 'slot-selected') return;
+  if (!e.data) return;
   // Only accept messages from our own preview iframe, not an arbitrary embed.
   const iframe = document.getElementById('editIframe');
   if (iframe.contentWindow !== e.source) return;
-  selectedSlot = e.data.slot;
-  renderSlotChip();
-  logAction('Select section', true, selectedSlot);
+  if (e.data.type === 'slot-selected') {
+    selectedSlot = e.data.slot;
+    renderSlotChip();
+    logAction('Select section', true, selectedSlot);
+    // The logo gets its own editor; every other section opens the drawer.
+    if (selectedSlot === 'logo') openLogoPanel(e.data.rect);
+    else { closeLogoPanel(); cbTargetSection(selectedSlot); }
+  } else if (e.data.type === 'slots') {
+    if (cbSlotsResolver) cbSlotsResolver(e.data.slots);
+  } else if (e.data.type === 'text-edit') {
+    saveTextEdit(String(e.data.slot || ''), String(e.data.oldText || ''), String(e.data.newText || ''));
+  }
 });
 
 // ---------- Full 21st.dev component browser ----------
@@ -1500,15 +1665,70 @@ function cbFreeTextVariants(base){
   return [base, `${base} section`, `${base} component`, `modern ${base}`, `${base} design`, `simple ${base}`, `${base} block`, `creative ${base}`, `${base} ui`, `minimal ${base}`];
 }
 
+// The component search has no light/dark or "complete section" field, so
+// the two filters are done honestly: Theme steers relevance by putting
+// "light"/"dark" in the query, and "Ready to use" hides results with no
+// preview image, plus effects and primitives (cursors, shaders, loaders…)
+// that aren't a drop-in page section — unless that's what you're browsing.
+const CB_NOT_READY_TERMS = [
+  'cursor', 'shader', 'webgl', 'three.js', '3d', 'globe', 'particle', 'particles', 'noise',
+  'loader', 'spinner', 'button', 'badge', 'tooltip', 'avatar', 'toggle', 'switch',
+  'checkbox', 'input', 'icon', 'playground',
+].map(t => [t, new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(e?s)?\\b`, 'i')]);
+
+// Preview section -> the category whose components can replace it.
+const SLOT_TO_CB_CATEGORY = {
+  nav: 'Headers/Nav', hero: 'Hero', trust: 'Features', services: 'Features', about: 'Features',
+  process: 'Timeline', reviews: 'Testimonials', contact: 'Forms', footer: 'Footer', cta: 'CTA', stats: 'Stats',
+};
+const CB_DEFAULT_SLOTS = ['nav', 'hero', 'trust', 'services', 'about', 'process', 'reviews', 'contact', 'footer'];
+const CB_SPECIAL = { Favourites: '★ Favourites', Recent: '↻ Recent' };
+const CB_MIN_W = 380, CB_MAX_W = 600, CB_RECENT_MAX = 30;
+
+// Per-browser conveniences only (drawer width, open state, favourites), so
+// every access is guarded — storage can be blocked or throw.
+function lsGet(key, fallback){
+  try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch(e) { return fallback; }
+}
+function lsSet(key, value){
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
+}
+
+const cbSavedCategory = lsGet('sf.cb.category', 'All');
 const cbState = {
-  category: 'All',
+  category: (CB_CATEGORIES.includes(cbSavedCategory) || cbSavedCategory in CB_SPECIAL) ? cbSavedCategory : 'All',
   searchText: '',
   sort: 'popular', // 'popular' (API relevance order, default) | 'az'
+  theme: 'all',    // 'all' | 'light' | 'dark'
+  ready: true,
   // topic key -> { items: [...], seenIds: Set, keywordIndex: number }
   cache: new Map(),
   revealCount: CB_PAGE_SIZE,
+  renderedIds: [],     // ids of the cards currently in the list, in order
+  renderedTopic: null,
+  byId: new Map(),     // id -> component for the rendered cards
+  loading: false,
+  runId: 0,            // bumps on every new topic, so stale fetches are ignored
+  target: null,        // section the + button replaces
   debounceTimer: null,
 };
+
+function cbIsSpecial(){ return !cbState.searchText && (cbState.category in CB_SPECIAL); }
+function cbFavs(){ return lsGet('sf.cb.favs', []); }
+function cbRecent(){ return lsGet('sf.cb.recent', []); }
+function cbSlim(c){ return { id: c.id, name: c.name, thumbnail: c.thumbnail || '', description: c.description || '', author: c.author || '' }; }
+function cbToggleFav(component){
+  const favs = cbFavs();
+  const i = favs.findIndex(c => c.id === component.id);
+  if (i >= 0) favs.splice(i, 1); else favs.unshift(cbSlim(component));
+  lsSet('sf.cb.favs', favs);
+  return i < 0;
+}
+function cbAddRecent(component){
+  const recent = cbRecent().filter(c => c.id !== component.id);
+  recent.unshift(cbSlim(component));
+  lsSet('sf.cb.recent', recent.slice(0, CB_RECENT_MAX));
+}
 
 let cbImgObserver = null;
 function getCbImgObserver(){
@@ -1525,51 +1745,69 @@ function getCbImgObserver(){
       }
       obs.unobserve(img);
     });
-  }, { root: document.getElementById('cbGrid'), rootMargin: '200px' });
+  }, { root: document.getElementById('cbMain'), rootMargin: '200px' });
   return cbImgObserver;
 }
 
 function renderCbSidebar(){
   const el = document.getElementById('cbSidebar');
-  el.innerHTML = CB_CATEGORIES.map(cat =>
-    `<button type="button" class="cb-cat-btn${cat === cbState.category ? ' active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`
-  ).join('');
-  el.querySelectorAll('.cb-cat-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      cbState.category = btn.dataset.cat;
-      document.getElementById('cbSearchInput').value = '';
-      document.getElementById('cbSuggestions').classList.remove('open');
-      cbState.searchText = '';
-      renderCbSidebar();
-      runCbSearch();
-    });
-  });
+  const btn = (key, label) =>
+    `<button type="button" class="cb-cat-btn${key === cbState.category && !cbState.searchText ? ' active' : ''}" data-cat="${escapeHtml(key)}" title="${escapeHtml(label)}">${escapeHtml(label)}</button>`;
+  el.innerHTML = Object.entries(CB_SPECIAL).map(([key, label]) => btn(key, label)).join('')
+    + '<div class="cb-cat-divider"></div>'
+    + CB_CATEGORIES.map(cat => btn(cat, cat)).join('');
 }
 
-function renderCbSortRow(){
-  const el = document.getElementById('cbSortRow');
-  const options = [
-    { key: 'popular', label: 'Popular' },
-    { key: 'az', label: 'Name A-Z' },
-  ];
-  el.innerHTML = options.map(o =>
-    `<button type="button" class="cb-sort-btn${cbState.sort === o.key ? ' active' : ''}" data-sort="${o.key}">${o.label}</button>`
-  ).join('');
-  el.querySelectorAll('.cb-sort-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      cbState.sort = btn.dataset.sort;
-      renderCbSortRow();
-      renderCbGrid();
-    });
-  });
+document.getElementById('cbSidebar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.cb-cat-btn');
+  if (btn) cbSelectCategory(btn.dataset.cat);
+});
+
+function cbSelectCategory(cat){
+  cbState.category = cat;
+  lsSet('sf.cb.category', cat);
+  document.getElementById('cbSearchInput').value = '';
+  document.getElementById('cbSuggestions').classList.remove('open');
+  clearTimeout(cbState.debounceTimer);
+  cbState.searchText = '';
+  runCbSearch();
 }
+
+function renderCbChips(){
+  const chip = (group, key, label, on, title) =>
+    `<button type="button" class="cb-chip${on ? ' active' : ''}" data-group="${group}" data-key="${key}"${title ? ` title="${escapeHtml(title)}"` : ''}>${label}</button>`;
+  const themeTip = '21st.dev has no theme field for components, so this steers the search toward light or dark designs';
+  document.getElementById('cbChipRow').innerHTML =
+    chip('sort', 'popular', 'Popular', cbState.sort === 'popular', "21st.dev's own ranking")
+    + chip('sort', 'az', 'Name A-Z', cbState.sort === 'az')
+    + '<span class="cb-chip-sep"></span>'
+    + chip('theme', 'all', 'All', cbState.theme === 'all')
+    + chip('theme', 'light', 'Light', cbState.theme === 'light', themeTip)
+    + chip('theme', 'dark', 'Dark', cbState.theme === 'dark', themeTip)
+    + '<span class="cb-chip-sep"></span>'
+    + chip('ready', 'toggle', (cbState.ready ? '✓ ' : '') + 'Ready to use', cbState.ready,
+        'Hide results with no preview, and effects/primitives (cursors, shaders, loaders, buttons…) that aren\'t a drop-in section');
+}
+
+document.getElementById('cbChipRow').addEventListener('click', (e) => {
+  const chip = e.target.closest('.cb-chip');
+  if (!chip) return;
+  const { group, key } = chip.dataset;
+  if (group === 'sort') cbState.sort = key;
+  else if (group === 'theme') cbState.theme = key;
+  else cbState.ready = !cbState.ready;
+  renderCbChips();
+  if (group === 'theme') runCbSearch(); // different query words, so a different result set
+  else { cbRenderList(true); cbCheckSentinel(); }
+});
 
 function cbTopicKey(){
-  return (cbState.searchText || cbState.category || 'all').toLowerCase();
+  return `${(cbState.searchText || cbState.category || 'all').toLowerCase()}|${cbState.theme}`;
 }
 
 function cbTopicKeywords(){
-  return cbState.searchText ? cbFreeTextVariants(cbState.searchText) : (CB_CATEGORY_KEYWORDS[cbState.category] || [cbState.category]);
+  const base = cbState.searchText ? cbFreeTextVariants(cbState.searchText) : (CB_CATEGORY_KEYWORDS[cbState.category] || [cbState.category]);
+  return cbState.theme === 'all' ? base : base.map(k => `${cbState.theme} ${k}`);
 }
 
 // Fetch the next not-yet-tried keyword for this topic and merge any
@@ -1596,7 +1834,14 @@ async function fetchNextCbVariant(){
     if (data.error) { logAction('Component browse', false, data.error); return true; }
     let added = 0;
     (data.results || []).forEach(r => {
-      if (!entry.seenIds.has(r.id)) { entry.seenIds.add(r.id); entry.items.push(r); added++; }
+      // One component can come back as several demos (different ids, same
+      // name and author) — show it once.
+      const nameKey = `${r.name}|${r.author}`.toLowerCase();
+      if (entry.seenIds.has(r.id) || entry.seenIds.has(nameKey)) return;
+      entry.seenIds.add(r.id);
+      entry.seenIds.add(nameKey);
+      entry.items.push(r);
+      added++;
     });
     logAction('Component browse', true, `"${query}"` + (added ? ` — ${added} new` : ' — no new results'));
   } catch(e) {
@@ -1606,91 +1851,307 @@ async function fetchNextCbVariant(){
 }
 
 function cbHasMoreVariants(){
+  if (cbIsSpecial()) return false;
   const entry = cbState.cache.get(cbTopicKey());
-  const keywords = cbTopicKeywords();
-  return !entry || entry.keywordIndex < keywords.length;
+  return !entry || entry.keywordIndex < cbTopicKeywords().length;
 }
 
-async function runCbSearch(){
-  cbState.revealCount = CB_PAGE_SIZE;
-  const topic = cbTopicKey();
-  const existing = cbState.cache.get(topic);
-  if (existing && existing.items.length) {
-    renderCbGrid();
-    return;
+function cbTopicText(){
+  return [cbState.searchText, cbState.category, ...(CB_CATEGORY_KEYWORDS[cbState.category] || [])].join(' ').toLowerCase();
+}
+
+function cbIsReady(c, topicText){
+  if (!c.thumbnail) return false;
+  return !CB_NOT_READY_TERMS.some(([term, re]) => !topicText.includes(term) && re.test(c.name));
+}
+
+function cbSourceItems(){
+  if (cbIsSpecial()) return cbState.category === 'Favourites' ? cbFavs() : cbRecent();
+  const entry = cbState.cache.get(cbTopicKey());
+  return (entry && entry.items) || [];
+}
+
+function cbVisibleItems(){
+  let items = cbSourceItems().slice();
+  if (cbState.ready && !cbIsSpecial()) {
+    const topicText = cbTopicText();
+    items = items.filter(c => cbIsReady(c, topicText));
   }
-  const grid = document.getElementById('cbGrid');
-  grid.innerHTML = Array.from({ length: CB_PAGE_SIZE }).map(() =>
-    `<div class="cb-card"><div class="cb-card-thumb skeleton"></div></div>`
-  ).join('');
-  await fetchNextCbVariant();
-  const entry = cbState.cache.get(topic);
-  if (!entry || !entry.items.length) {
-    grid.innerHTML = `<div class="cb-empty">No results found.</div>`;
-    return;
-  }
-  renderCbGrid();
+  if (cbState.sort === 'az') items.sort((a, b) => a.name.localeCompare(b.name));
+  return items;
 }
 
 const CB_PLUS_ICON = `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v12M1 7h12" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>`;
+const CB_SKELETON_HTML = `<div class="cb-card cb-skel"><div class="cb-card-thumb skeleton"></div></div>`;
 
-function renderCbGrid(){
-  const topic = cbTopicKey();
-  const entry = cbState.cache.get(topic);
-  let results = ((entry && entry.items) || []).slice();
-  if (cbState.sort === 'az') {
-    results.sort((a, b) => a.name.localeCompare(b.name));
-  }
-  const grid = document.getElementById('cbGrid');
-  if (!results.length) {
-    grid.innerHTML = `<div class="cb-empty">No results found.</div>`;
-    return;
-  }
-  const shown = results.slice(0, cbState.revealCount);
-  const hasMore = cbState.revealCount < results.length || cbHasMoreVariants();
-  grid.innerHTML = shown.map((r, i) => `
-    <div class="cb-card" data-i="${i}" title="${escapeHtml(r.name)}">
+function cbCardHtml(c, favIds){
+  const fav = favIds.has(c.id);
+  return `
+    <div class="cb-card" data-id="${escapeHtml(String(c.id))}" title="${escapeHtml(c.name)}">
       <div class="cb-card-thumb">
-        ${r.thumbnail ? `<img class="cb-lazy-img" data-src="${escapeHtml(r.thumbnail)}" alt="">` : ''}
+        ${c.thumbnail ? `<img class="cb-lazy-img" data-src="${escapeHtml(c.thumbnail)}" alt="">` : ''}
       </div>
       <div class="cb-card-gradient"></div>
-      <div class="cb-card-name">${escapeHtml(r.name)}</div>
-      <button type="button" class="cb-card-add-btn" data-i="${i}" title="Add to site">${CB_PLUS_ICON}</button>
-    </div>
-  `).join('') + (hasMore ? `
-    <div class="cb-load-more-card" id="cbLoadMoreCard">
-      <div class="cb-load-more-icon">&#8635;</div>
-      <div class="cb-load-more-label">Load more</div>
-    </div>
-  ` : '');
-  const observer = getCbImgObserver();
-  grid.querySelectorAll('.cb-lazy-img').forEach(img => observer.observe(img));
-  grid.querySelectorAll('.cb-card-add-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const component = shown[Number(btn.dataset.i)];
-      const sectionHint = cbState.category !== 'All' ? cbState.category : (cbState.searchText || component.name);
-      applyComponent(component, sectionHint);
-    });
-  });
-  const loadMoreCard = document.getElementById('cbLoadMoreCard');
-  if (loadMoreCard) {
-    loadMoreCard.addEventListener('click', async () => {
-      const currentEntry = cbState.cache.get(cbTopicKey());
-      if (currentEntry && cbState.revealCount < currentEntry.items.length) {
-        // Already have unrevealed cached results — no fetch needed.
-        cbState.revealCount += CB_PAGE_SIZE;
-        renderCbGrid();
-        return;
-      }
-      loadMoreCard.classList.add('loading');
-      loadMoreCard.querySelector('.cb-load-more-label').textContent = 'Searching more...';
-      await fetchNextCbVariant();
-      cbState.revealCount += CB_PAGE_SIZE;
-      renderCbGrid();
-    });
-  }
+      <div class="cb-card-name">${escapeHtml(c.name)}</div>
+      <button type="button" class="cb-card-fav${fav ? ' on' : ''}" title="${fav ? 'Remove from favourites' : 'Add to favourites'}">${fav ? '★' : '☆'}</button>
+      <button type="button" class="cb-card-add-btn" title="Add to site">${CB_PLUS_ICON}</button>
+    </div>`;
 }
+
+function cbEmptyHtml(){
+  if (cbIsSpecial()) {
+    return cbState.category === 'Favourites'
+      ? '<div class="cb-empty">No favourites yet.<br>Tap ☆ on any card to save it here.</div>'
+      : '<div class="cb-empty">Nothing added yet.<br>Components you add to a site show up here.</div>';
+  }
+  const total = cbSourceItems().length;
+  if (cbState.ready && total) {
+    return `<div class="cb-empty">None of the ${total} results look ready to drop in.<button type="button" class="secondary" id="cbShowAllBtn">Show all results</button></div>`;
+  }
+  return '<div class="cb-empty">No results found.</div>';
+}
+
+// reset=true: redraw from the top. Otherwise, if the cards already on screen
+// are still the head of the list, just append the new ones so scrolling and
+// loaded thumbnails aren't disturbed.
+function cbRenderList(reset){
+  const grid = document.getElementById('cbGrid');
+  const main = document.getElementById('cbMain');
+  grid.querySelectorAll('.cb-skel').forEach(el => el.remove());
+  cbState.renderedTopic = cbTopicKey();
+  const items = cbVisibleItems();
+  const shown = items.slice(0, cbState.revealCount);
+  if (!shown.length) {
+    cbState.renderedIds = [];
+    cbState.byId = new Map();
+    if (cbState.loading || cbHasMoreVariants()) {
+      // Everything so far was filtered out (or is still coming) — keep looking.
+      grid.innerHTML = CB_SKELETON_HTML.repeat(2);
+      if (!cbState.loading) setTimeout(cbLoadMore, 0);
+      return;
+    }
+    grid.innerHTML = cbEmptyHtml();
+    return;
+  }
+  const ids = shown.map(c => String(c.id));
+  const favIds = new Set(cbFavs().map(c => c.id));
+  const canAppend = !reset && cbState.renderedIds.length
+    && cbState.renderedIds.every((id, i) => ids[i] === id);
+  if (canAppend) {
+    grid.insertAdjacentHTML('beforeend', shown.slice(cbState.renderedIds.length).map(c => cbCardHtml(c, favIds)).join(''));
+  } else {
+    const scrollTop = reset ? 0 : main.scrollTop;
+    grid.innerHTML = shown.map(c => cbCardHtml(c, favIds)).join('');
+    main.scrollTop = scrollTop;
+  }
+  cbState.renderedIds = ids;
+  cbState.byId = new Map(shown.map(c => [String(c.id), c]));
+  const observer = getCbImgObserver();
+  grid.querySelectorAll('img.cb-lazy-img[data-src]').forEach(img => observer.observe(img));
+}
+
+// Infinite scroll: reveal more of what's cached, else fetch the next
+// keyword variant (showing two skeleton cards while it loads).
+async function cbLoadMore(){
+  if (cbState.loading || !cbIsOpen()) return;
+  if (cbState.revealCount < cbVisibleItems().length) {
+    cbState.revealCount += CB_PAGE_SIZE;
+    cbRenderList(false);
+    cbCheckSentinel();
+    return;
+  }
+  if (!cbHasMoreVariants()) return;
+  const runId = cbState.runId;
+  cbState.loading = true;
+  const grid = document.getElementById('cbGrid');
+  if (cbState.renderedIds.length) grid.insertAdjacentHTML('beforeend', CB_SKELETON_HTML.repeat(2));
+  else grid.innerHTML = CB_SKELETON_HTML.repeat(2);
+  await fetchNextCbVariant();
+  if (runId !== cbState.runId) return; // switched topic meanwhile; that run owns the list now
+  cbState.loading = false;
+  cbState.revealCount += CB_PAGE_SIZE;
+  cbRenderList(false);
+  cbCheckSentinel();
+}
+
+// Keep loading while the list is too short to scroll (IntersectionObserver
+// only fires on changes, so a short list would otherwise stall).
+function cbCheckSentinel(){
+  const main = document.getElementById('cbMain');
+  if (!cbIsOpen()) return;
+  if (main.scrollHeight - main.scrollTop - main.clientHeight < 400) cbLoadMore();
+}
+
+new IntersectionObserver((entries) => {
+  if (entries.some(e => e.isIntersecting)) cbLoadMore();
+}, { root: document.getElementById('cbMain'), rootMargin: '0px 0px 400px 0px' })
+  .observe(document.getElementById('cbSentinel'));
+
+async function runCbSearch(){
+  const runId = ++cbState.runId;
+  cbState.loading = false;
+  cbState.revealCount = CB_PAGE_SIZE;
+  cbState.renderedIds = [];
+  cbClosePopover();
+  renderCbSidebar();
+  document.getElementById('cbMain').scrollTop = 0;
+  const entry = cbState.cache.get(cbTopicKey());
+  if (cbIsSpecial() || (entry && entry.items.length)) {
+    cbRenderList(true);
+    cbCheckSentinel();
+    return;
+  }
+  cbState.loading = true;
+  document.getElementById('cbGrid').innerHTML = CB_SKELETON_HTML.repeat(2);
+  await fetchNextCbVariant();
+  if (runId !== cbState.runId) return;
+  cbState.loading = false;
+  cbRenderList(true);
+  cbCheckSentinel();
+}
+
+// ---- Cards: favourite, add, hover-to-outline the section it would replace
+const cbGridEl = document.getElementById('cbGrid');
+let cbHoverCard = null;
+
+cbGridEl.addEventListener('click', (e) => {
+  if (e.target.closest('#cbShowAllBtn')) {
+    cbState.ready = false;
+    renderCbChips();
+    cbRenderList(true);
+    cbCheckSentinel();
+    return;
+  }
+  const card = e.target.closest('.cb-card[data-id]');
+  if (!card) return;
+  const component = cbState.byId.get(card.dataset.id);
+  if (!component) return;
+  const favBtn = e.target.closest('.cb-card-fav');
+  if (favBtn) {
+    const on = cbToggleFav(component);
+    favBtn.classList.toggle('on', on);
+    favBtn.textContent = on ? '★' : '☆';
+    favBtn.title = on ? 'Remove from favourites' : 'Add to favourites';
+    if (cbIsSpecial() && cbState.category === 'Favourites') cbRenderList(false);
+    return;
+  }
+  const addBtn = e.target.closest('.cb-card-add-btn');
+  if (addBtn) cbOnAdd(component, addBtn);
+});
+
+cbGridEl.addEventListener('mouseover', (e) => {
+  const card = e.target.closest('.cb-card[data-id]');
+  if (card === cbHoverCard) return;
+  cbHoverCard = card;
+  if (cbState.target) cbHighlightSlot(card ? cbState.target : null);
+});
+cbGridEl.addEventListener('mouseleave', () => {
+  cbHoverCard = null;
+  if (cbState.target) cbHighlightSlot(null);
+});
+
+function cbHighlightSlot(slot){
+  const iframe = document.getElementById('editIframe');
+  try { iframe.contentWindow.postMessage({ type: 'highlight-slot', slot: slot || null }, '*'); } catch(e) {}
+}
+
+function cbSetTarget(slot){
+  cbState.target = slot || null;
+  document.getElementById('cbTargetRow').style.display = cbState.target ? '' : 'none';
+  document.getElementById('cbTargetLabel').textContent = cbState.target || '';
+  if (!cbState.target) cbHighlightSlot(null);
+}
+document.getElementById('cbTargetClear').addEventListener('click', () => cbSetTarget(null));
+
+// A section clicked in the preview: open the drawer on components that can
+// replace it, with + aimed straight at that section.
+function cbTargetSection(slot){
+  if (!slot) return;
+  cbSetTarget(slot);
+  const cat = SLOT_TO_CB_CATEGORY[slot];
+  if (cat && (cat !== cbState.category || cbState.searchText)) {
+    cbState.category = cat;
+    lsSet('sf.cb.category', cat);
+    document.getElementById('cbSearchInput').value = '';
+    clearTimeout(cbState.debounceTimer);
+    cbState.searchText = '';
+    if (cbIsOpen()) { runCbSearch(); return; }
+  }
+  if (!cbIsOpen()) openComponentBrowser();
+}
+
+// Ask the preview which sections the page actually has, in page order.
+let cbSlotsResolver = null;
+function requestPageSlots(){
+  return new Promise(resolve => {
+    const timer = setTimeout(() => { cbSlotsResolver = null; resolve(CB_DEFAULT_SLOTS); }, 600);
+    cbSlotsResolver = (slots) => {
+      clearTimeout(timer);
+      cbSlotsResolver = null;
+      const sections = Array.isArray(slots) ? slots.filter(s => s !== 'logo') : [];
+      resolve(sections.length ? sections : CB_DEFAULT_SLOTS);
+    };
+    try {
+      document.getElementById('editIframe').contentWindow.postMessage({ type: 'list-slots' }, '*');
+    } catch(e) {
+      cbSlotsResolver(null);
+    }
+  });
+}
+
+let cbPopoverFor = null;
+async function cbOnAdd(component, btn){
+  if (cbState.target) { applyComponent(component, cbState.target, cbState.target); return; }
+  if (cbPopoverFor === component.id) { cbClosePopover(); return; }
+  const slots = await requestPageSlots();
+  cbOpenPopover(component, btn, slots);
+}
+
+function cbOpenPopover(component, btn, slots){
+  const pop = document.getElementById('cbPopover');
+  const drawer = document.getElementById('componentBrowser');
+  // The pre-drawer behaviour: let the backend/AI pick the section from a hint.
+  const hint = (cbState.category !== 'All' && !(cbState.category in CB_SPECIAL)) ? cbState.category : (cbState.searchText || component.name);
+  pop.innerHTML = '<div class="cb-popover-title">Replace which section?</div>'
+    + slots.map(s => `<button type="button" class="cb-popover-item" data-slot="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')
+    + '<button type="button" class="cb-popover-item auto" data-slot="">Best fit — let AI choose</button>';
+  pop.style.display = 'block';
+  const d = drawer.getBoundingClientRect(), b = btn.getBoundingClientRect();
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let top = b.top - d.top - h - 6;
+  if (top < 8) top = Math.min(b.bottom - d.top + 6, d.height - h - 8);
+  pop.style.left = Math.max(8, b.right - d.left - w) + 'px';
+  pop.style.top = Math.max(8, top) + 'px';
+  cbPopoverFor = component.id;
+  pop.onclick = (e) => {
+    const item = e.target.closest('.cb-popover-item');
+    if (!item) return;
+    cbClosePopover();
+    const slot = item.dataset.slot;
+    applyComponent(component, slot || hint, slot || undefined);
+  };
+  pop.onmouseover = (e) => {
+    const item = e.target.closest('.cb-popover-item');
+    cbHighlightSlot(item ? item.dataset.slot : null);
+  };
+  pop.onmouseleave = () => cbHighlightSlot(null);
+}
+
+function cbClosePopover(){
+  const pop = document.getElementById('cbPopover');
+  if (pop.style.display === 'none') return;
+  pop.style.display = 'none';
+  pop.innerHTML = '';
+  cbPopoverFor = null;
+  cbHighlightSlot(null);
+}
+
+document.addEventListener('click', (e) => {
+  const pop = document.getElementById('cbPopover');
+  if (pop.style.display === 'none' || pop.contains(e.target) || e.target.closest('.cb-card-add-btn')) return;
+  cbClosePopover();
+});
+document.getElementById('cbMain').addEventListener('scroll', cbClosePopover, { passive: true });
 
 function renderCbSuggestions(value){
   const box = document.getElementById('cbSuggestions');
@@ -1730,19 +2191,264 @@ cbSearchInputEl.addEventListener('focus', () => {
   if (cbSearchInputEl.value.trim()) renderCbSuggestions(cbSearchInputEl.value);
 });
 
+// ---- Open / close / resize
+function cbIsOpen(){
+  return document.getElementById('componentBrowser').classList.contains('open');
+}
+
 function openComponentBrowser(){
-  document.getElementById('componentBrowser').style.display = 'flex';
-  renderCbSidebar();
-  renderCbSortRow();
-  runCbSearch();
+  const drawer = document.getElementById('componentBrowser');
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+  document.querySelector('.iframe-wrap').classList.add('cb-open');
+  document.getElementById('cbToolbarBtn').classList.add('active');
+  lsSet('sf.cb.open', true);
+  cbApplyWidth(cbWidth);
+  renderCbChips();
+  if (cbIsSpecial() || cbState.renderedTopic !== cbTopicKey()) runCbSearch();
+  else { renderCbSidebar(); cbCheckSentinel(); }
 }
 
-function closeComponentBrowser(){
-  document.getElementById('componentBrowser').style.display = 'none';
+// remember=false: closing because the whole edit modal closed, so the
+// drawer should come back next time.
+function closeComponentBrowser(remember){
+  const drawer = document.getElementById('componentBrowser');
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+  document.querySelector('.iframe-wrap').classList.remove('cb-open');
+  document.getElementById('cbToolbarBtn').classList.remove('active');
+  cbClosePopover();
+  cbHighlightSlot(null);
+  if (remember !== false) lsSet('sf.cb.open', false);
 }
 
-document.getElementById('browseComponentsBtn').addEventListener('click', openComponentBrowser);
-document.getElementById('cbCloseBtn').addEventListener('click', closeComponentBrowser);
+function toggleComponentBrowser(){
+  if (cbIsOpen()) closeComponentBrowser(); else openComponentBrowser();
+}
+
+function cbApplyWidth(w){
+  const wrap = document.querySelector('.iframe-wrap');
+  let max = CB_MAX_W;
+  if (wrap.clientWidth) max = Math.max(CB_MIN_W, Math.min(CB_MAX_W, wrap.clientWidth - 80));
+  const width = Math.round(Math.min(max, Math.max(CB_MIN_W, Number(w) || 460)));
+  wrap.style.setProperty('--cb-width', width + 'px');
+  return width;
+}
+let cbWidth = cbApplyWidth(lsGet('sf.cb.width', 460));
+
+const cbResizeEl = document.getElementById('cbResize');
+cbResizeEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  cbResizeEl.setPointerCapture(e.pointerId);
+  document.body.classList.add('cb-resizing');
+  const left = document.getElementById('componentBrowser').getBoundingClientRect().left;
+  const move = (ev) => { cbWidth = cbApplyWidth(ev.clientX - left); };
+  const up = () => {
+    cbResizeEl.removeEventListener('pointermove', move);
+    cbResizeEl.removeEventListener('pointerup', up);
+    cbResizeEl.removeEventListener('pointercancel', up);
+    document.body.classList.remove('cb-resizing');
+    lsSet('sf.cb.width', cbWidth);
+    cbCheckSentinel();
+  };
+  cbResizeEl.addEventListener('pointermove', move);
+  cbResizeEl.addEventListener('pointerup', up);
+  cbResizeEl.addEventListener('pointercancel', up);
+});
+
+document.getElementById('browseComponentsBtn').addEventListener('click', toggleComponentBrowser);
+document.getElementById('cbToolbarBtn').addEventListener('click', toggleComponentBrowser);
+document.getElementById('cbCloseBtn').addEventListener('click', () => closeComponentBrowser());
+
+// C toggles the drawer, Esc closes it (or its section popover) — but not
+// while typing into a field.
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('editModal').classList.contains('open')) return;
+  const el = document.activeElement;
+  const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape') {
+    if (logoPanelOpen()) { e.preventDefault(); closeLogoPanel(); }
+    else if (document.getElementById('cbPopover').style.display !== 'none') { e.preventDefault(); cbClosePopover(); }
+    else if (cbIsOpen()) { e.preventDefault(); closeComponentBrowser(); }
+  } else if (e.key === 'c' || e.key === 'C') {
+    e.preventDefault();
+    toggleComponentBrowser();
+  }
+});
+
+// ---------- Logo editor (click the logo in the preview) ----------
+let logoState = null;
+let logoAnchor = null; // the clicked logo's rect inside the preview
+
+function logoPanelOpen(){
+  return document.getElementById('logoPanel').style.display !== 'none';
+}
+
+function closeLogoPanel(){
+  const panel = document.getElementById('logoPanel');
+  panel.style.display = 'none';
+  panel.innerHTML = '';
+  logoState = null;
+}
+
+function positionLogoPanel(){
+  const panel = document.getElementById('logoPanel');
+  const wrap = document.querySelector('.iframe-wrap');
+  const r = logoAnchor || { x: 16, y: 16, width: 0, height: 0 };
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const pw = panel.offsetWidth, ph = panel.offsetHeight;
+  let left = Math.min(Math.max(8, r.x), W - pw - 8);
+  let top = r.y + r.height + 10;
+  if (top + ph > H - 8) top = Math.max(8, r.y - ph - 10);
+  if (top + ph > H - 8) top = Math.max(8, H - ph - 8);
+  panel.style.left = Math.max(8, left) + 'px';
+  panel.style.top = top + 'px';
+}
+
+async function openLogoPanel(rect){
+  if (!currentEditSlug) return;
+  logoAnchor = rect || null;
+  if (cbIsOpen()) closeComponentBrowser(false);
+  const panel = document.getElementById('logoPanel');
+  panel.style.display = 'block';
+  panel.innerHTML = `<div class="lp-head"><span class="lp-title">Logo</span><span class="theme-busy"><span class="morphing-square"></span>Loading…</span></div>`;
+  positionLogoPanel();
+  try {
+    const res = await fetch(`/api/logo/${encodeURIComponent(currentEditSlug)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    logoState = data;
+    renderLogoPanel();
+  } catch(e) {
+    panel.innerHTML = `<div class="lp-head"><span class="lp-title">Logo</span><button type="button" class="lp-close" data-lp="close">&times;</button></div><div class="lp-warning">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderLogoPanel(warning){
+  const s = logoState;
+  if (!s) return;
+  const panel = document.getElementById('logoPanel');
+  const preview = s.site_emblem && currentPreviewPort ? previewUrl(s.site_emblem) : '';
+  const thumb = (choice, url, title, tag) => url ? `
+    <button type="button" class="lp-thumb${s.choice === choice ? ' active' : ''}" data-choice="${choice}" title="${escapeHtml(title)}">
+      <img src="${escapeHtml(url)}" alt="">${tag ? `<span class="lp-thumb-tag">${tag}</span>` : ''}
+    </button>` : '';
+  const seg = (group, value, label, current, disabled) =>
+    `<button type="button" class="cb-chip${current === value ? ' active' : ''}" data-lp="${group}" data-value="${value}"${disabled ? ' disabled' : ''}>${label}</button>`;
+  const meta = s.meta || {};
+  const metaNote = s.meta
+    ? `Extracted: ${meta.type ? meta.type.replace(/_/g, ' ') : '—'} · ${meta.method === 'vision' ? 'checked by AI vision' : `heuristic, ${Math.round((meta.confidence || 0) * 100)}% sure`}`
+      + (meta.text ? ` · reads “${escapeHtml(meta.text.slice(0, 60))}”` : '')
+      + (meta.not_a_logo ? ' · their “logo” was a photo, not a logo' : '')
+    : 'No logo was found for this business — pick a generated emblem, or upload theirs.';
+  const pngEmblem = s.choice === 'extracted' && !s.is_svg;
+
+  panel.innerHTML = `
+    <div class="lp-head">
+      <span class="lp-title">Logo</span>${logoTagHtml(s.tag)}
+      <span class="theme-busy" id="lpBusy" style="display:none;"><span class="morphing-square"></span>Saving…</span>
+      <button type="button" class="lp-close" data-lp="close" title="Close (Esc)">&times;</button>
+    </div>
+    <div class="lp-body">
+      <div class="lp-preview">${preview ? `<img src="${escapeHtml(preview)}" alt="Current emblem">` : '<span style="color:#666">No emblem</span>'}</div>
+      <div class="lp-label">Source</div>
+      <div class="lp-thumbs">
+        ${s.extracted ? thumb('extracted', s.extracted.url, 'Original extracted from their logo', 'THEIRS') : ''}
+        ${s.generated.map((u, i) => thumb(`gen:${i + 1}`, u, `Generated ${i + 1}`)).join('')}
+        ${s.ai.map((u, i) => thumb(`ai:${i + 1}`, u, `AI variant ${i + 1}`, 'AI')).join('')}
+      </div>
+      <div class="lp-actions">
+        <button type="button" class="lp-btn" data-lp="ai" ${s.ai_available ? '' : 'disabled title="ANTHROPIC_API_KEY not set"'}>✦ AI variants</button>
+        <button type="button" class="lp-btn" data-lp="upload">Upload new</button>
+        <button type="button" class="lp-btn" data-lp="reextract" ${s.original_url && s.ai_available ? '' : 'disabled'} title="Run extraction again, with the AI vision check">Re-extract</button>
+      </div>
+      <div class="lp-label">Layout</div>
+      <div class="lp-seg">
+        ${seg('mode', 'emblem_text', 'Emblem + text', s.mode)}${seg('mode', 'emblem_only', 'Emblem only', s.mode)}${seg('mode', 'text_only', 'Text only', s.mode)}
+      </div>
+      <div class="lp-label">Size</div>
+      <div class="lp-size"><input type="range" min="24" max="56" step="1" value="${s.size}" id="lpSize"><span id="lpSizeValue">${s.size}px</span></div>
+      <div class="lp-label">Colour${s.is_svg ? '' : ' <span style="text-transform:none;letter-spacing:0">(SVG emblems only)</span>'}</div>
+      <div class="lp-seg">
+        ${['original', 'accent', 'white', 'black'].map(c => seg('color', c, c[0].toUpperCase() + c.slice(1), s.color, !s.is_svg)).join('')}
+      </div>
+      ${s.extracted || s.original_url ? `
+        <label class="lp-toggle" style="margin-top:12px;" title="Re-runs background removal with a stricter threshold">
+          <input type="checkbox" data-lp="strict" ${s.strict_bg ? 'checked' : ''} ${pngEmblem || s.strict_bg ? '' : 'disabled'}>
+          Strict background removal${pngEmblem ? '' : ' (PNG emblems)'}
+        </label>` : ''}
+      <div class="lp-note">${metaNote}</div>
+      ${warning ? `<div class="lp-warning">${escapeHtml(warning)}</div>` : ''}
+    </div>`;
+  positionLogoPanel();
+}
+
+async function logoRequest(path, options, label){
+  const panel = document.getElementById('logoPanel');
+  panel.classList.add('busy');
+  const busy = document.getElementById('lpBusy');
+  if (busy) busy.style.display = 'inline-flex';
+  try {
+    const res = await fetch(`/api/logo/${encodeURIComponent(currentEditSlug)}${path}`, options);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    logoState = data;
+    renderLogoPanel(data.warning);
+    if (PREVIEW_PROXY && path !== '/ai_variants') reloadPreview(); // no hot reload when hosted
+    showToast('Logo: ' + label);
+    logAction('Logo', true, label);
+  } catch(e) {
+    showToast('Logo: ' + e.message);
+    logAction('Logo', false, e.message);
+    renderLogoPanel(e.message);
+  } finally {
+    panel.classList.remove('busy');
+  }
+}
+
+function saveLogo(changes, label){
+  return logoRequest('', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(changes),
+  }, label);
+}
+
+const logoPanelEl = document.getElementById('logoPanel');
+logoPanelEl.addEventListener('click', (e) => {
+  const thumb = e.target.closest('.lp-thumb');
+  if (thumb) {
+    if (logoState && thumb.dataset.choice !== logoState.choice) saveLogo({ choice: thumb.dataset.choice }, thumb.title);
+    return;
+  }
+  const btn = e.target.closest('[data-lp]');
+  if (!btn || btn.disabled) return;
+  const action = btn.dataset.lp;
+  if (action === 'close') closeLogoPanel();
+  else if (action === 'mode' && btn.dataset.value !== logoState.mode) saveLogo({ mode: btn.dataset.value }, btn.textContent);
+  else if (action === 'color' && btn.dataset.value !== logoState.color) saveLogo({ color: btn.dataset.value }, 'colour ' + btn.dataset.value);
+  else if (action === 'upload') document.getElementById('logoUploadInput').click();
+  else if (action === 'ai') logoRequest('/ai_variants', { method: 'POST' }, 'AI variants ready');
+  else if (action === 'reextract') logoRequest('/reextract', { method: 'POST' }, 're-extracted with AI vision');
+});
+logoPanelEl.addEventListener('change', (e) => {
+  if (e.target.id === 'lpSize') saveLogo({ size: Number(e.target.value) }, `size ${e.target.value}px`);
+  else if (e.target.dataset.lp === 'strict') saveLogo({ strict_bg: e.target.checked }, 'strict background removal ' + (e.target.checked ? 'on' : 'off'));
+});
+logoPanelEl.addEventListener('input', (e) => {
+  if (e.target.id === 'lpSize') document.getElementById('lpSizeValue').textContent = e.target.value + 'px';
+});
+document.getElementById('logoUploadInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  logoRequest('/upload', { method: 'POST', body: form }, 'uploaded ' + file.name);
+});
+document.addEventListener('click', (e) => {
+  if (!logoPanelOpen() || logoPanelEl.contains(e.target) || e.target.id === 'logoUploadInput') return;
+  closeLogoPanel();
+});
 
 const HOTBAR_STOPWORDS = new Set([
   'new','a','an','the','our','my','some','another','nice','cool','good',
@@ -1834,7 +2540,7 @@ async function submitEditInstruction(){
     document.getElementById('removeLayoutImageBtn').click();
     if (currentPreviewPort) {
       setIframeLoading(true, 'Reloading preview...');
-      loadPreviewUrl(`http://localhost:${currentPreviewPort}/?t=${Date.now()}`);
+      loadPreviewUrl(previewUrl(`/?t=${Date.now()}`));
     }
   } catch(e) {
     setStatus('editStatus', 'Failed: ' + e.message, true);

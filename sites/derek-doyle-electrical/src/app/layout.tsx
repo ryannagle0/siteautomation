@@ -21,9 +21,11 @@ export const metadata: Metadata = {
     siteName: "{{BUSINESS_NAME}}",
     locale: "en_IE",
     type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "{{BUSINESS_NAME}}" }],
   },
   twitter: {
     card: "summary_large_image",
+    images: ["/og.png"],
     title: "{{BUSINESS_NAME}} | Electrician {{TOWN}} | Safe Electric Registered",
     description:
       "Safe Electric registered electricians with 20+ years experience serving {{TOWN}}. Domestic rewires, EV chargers, solar panels and 24/7 emergency callout. Call {{OWNER_FIRST_NAME}}: {{PHONE_DISPLAY}}",

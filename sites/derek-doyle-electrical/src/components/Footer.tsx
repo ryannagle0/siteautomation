@@ -1,4 +1,4 @@
-import { BRAND_LOGO } from "@/brand";
+import { BrandMark } from "./BrandMark";
 
 const LINKS = [
   { href: "#services", label: "Services" },
@@ -12,19 +12,11 @@ export function Footer() {
   return (
     <footer data-slot="footer" className="bg-ink px-6 py-10 lg:px-16">
       <div className="mx-auto flex max-w-content flex-col items-center gap-8 text-center lg:flex-row lg:justify-between lg:text-left">
-        <div className="flex items-center gap-2.5">
-          {BRAND_LOGO && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={BRAND_LOGO} alt="" className="h-8 w-8 rounded-sharp bg-white object-contain p-0.5" />
-          )}
-          <div>
-            <p className="text-[13.5px] font-semibold text-white">
-              {{BUSINESS_NAME}}
-            </p>
-            <p className="text-[11.5px] text-white/40">
-              20 years experience. Zero shortcuts.
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-1.5 lg:items-start">
+          <BrandMark nameClassName="text-[13.5px] font-semibold text-white" />
+          <p className="text-[11.5px] text-white/40">
+            20 years experience. Zero shortcuts.
+          </p>
         </div>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">

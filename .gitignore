@@ -13,3 +13,6 @@ leads.csv
 leads.db
 cache/
 static/logos/
+
+# Per-lead logo files (extracted/generated emblems)
+data/logos/

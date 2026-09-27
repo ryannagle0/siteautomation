@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MenuIcon, CloseIcon } from "./icons";
-import { BRAND_LOGO } from "@/brand";
+import { BrandMark } from "./BrandMark";
 
 const LINKS = [
   { href: "#services", label: "Services" },
@@ -42,18 +42,8 @@ export function Nav() {
         }`}
       >
         <div className="mx-auto flex max-w-content items-center justify-between px-6 py-4 lg:px-10">
-          <a href="#top" className="flex items-center gap-2.5">
-            {BRAND_LOGO && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={BRAND_LOGO} alt="" className="h-8 w-8 rounded-sharp bg-white object-contain p-0.5" />
-            )}
-            <span
-              className={`text-[15px] font-semibold tracking-tightest ${
-                scrolled || open ? "text-navy" : "text-navy"
-              }`}
-            >
-              {{BUSINESS_NAME}}
-            </span>
+          <a href="#top" className="flex items-center">
+            <BrandMark nameClassName="text-[15px] font-semibold tracking-tightest text-navy" />
           </a>
 
           <nav className="hidden items-center gap-9 lg:flex">

@@ -6,7 +6,8 @@ import { useEffect, useRef } from "react";
  * Only active when this page is running inside an iframe AND the URL has
  * ?edit=1 — i.e. only inside SiteForge's own edit modal preview, never on
  * a real deployed site. Lets the user hover/click a [data-slot] section to
- * scope hotbar edits to just that component, instead of the whole site.
+ * scope hotbar edits to just that component, and double-click text to edit
+ * it in place.
  */
 export function EditBridge() {
   const labelRef = useRef<HTMLDivElement | null>(null);
@@ -27,6 +28,8 @@ export function EditBridge() {
     style.textContent = `
       [data-editbridge-hover] { outline: 2px dashed #3b82f6 !important; outline-offset: -2px; cursor: pointer; }
       [data-editbridge-selected] { outline: 2px solid #3b82f6 !important; outline-offset: -2px; }
+      [data-editbridge-target] { outline: 3px solid #f59e0b !important; outline-offset: -3px; box-shadow: inset 0 0 0 9999px rgba(245,158,11,.08); }
+      [data-editbridge-editing] { outline: 2px solid rgba(59,130,246,.55) !important; outline-offset: 3px; border-radius: 2px; cursor: text; }
       .__editbridge-label {
         position: fixed; z-index: 999999; background: #3b82f6; color: #fff;
         font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
@@ -94,25 +97,127 @@ export function EditBridge() {
       el.removeAttribute("data-editbridge-hover");
       el.setAttribute("data-editbridge-selected", "");
       selectedRef.current = el;
-      window.parent.postMessage({ type: "slot-selected", slot: el.getAttribute("data-slot") }, "*");
+      const r = el.getBoundingClientRect();
+      window.parent.postMessage(
+        {
+          type: "slot-selected",
+          slot: el.getAttribute("data-slot"),
+          rect: { x: r.left, y: r.top, width: r.width, height: r.height },
+        },
+        "*",
+      );
+    }
+
+    // ---- Inline text editing: double-click text, Enter/click-away saves,
+    // Escape cancels. Only elements whose children are all text nodes, so
+    // saving can't clobber nested markup (icons, links inside a paragraph).
+    const TEXT_SELECTOR = "h1,h2,h3,h4,h5,h6,p,span,a,li,button";
+    let editing: { el: HTMLElement; original: string; slot: string } | null = null;
+
+    function editableTarget(target: EventTarget | null): HTMLElement | null {
+      if (!(target instanceof Element)) return null;
+      const el = target.closest(TEXT_SELECTOR) as HTMLElement | null;
+      if (!el || !el.closest("[data-slot]")) return null;
+      const nodes = Array.from(el.childNodes);
+      if (!nodes.length || !nodes.every((n) => n.nodeType === Node.TEXT_NODE)) return null;
+      return (el.textContent || "").trim() ? el : null;
+    }
+
+    function finishEdit(save: boolean) {
+      const cur = editing;
+      if (!cur) return;
+      editing = null;
+      const { el, original, slot } = cur;
+      el.removeEventListener("keydown", onEditKey);
+      el.removeEventListener("blur", onEditBlur);
+      el.removeAttribute("contenteditable");
+      el.removeAttribute("data-editbridge-editing");
+      const oldText = original.replace(/\s+/g, " ").trim();
+      const newText = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (!save || !newText || newText === oldText) {
+        el.textContent = original;
+        return;
+      }
+      window.parent.postMessage({ type: "text-edit", slot, oldText, newText }, "*");
+    }
+
+    function onEditKey(e: KeyboardEvent) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        finishEdit(true);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        finishEdit(false);
+      }
+    }
+
+    function onEditBlur() {
+      finishEdit(true);
+    }
+
+    function onDblClick(e: MouseEvent) {
+      if (editing) return;
+      const el = editableTarget(e.target);
+      if (!el) return;
+      e.preventDefault();
+      editing = { el, original: el.textContent || "", slot: el.closest("[data-slot]")!.getAttribute("data-slot") || "" };
+      el.setAttribute("data-editbridge-editing", "");
+      try {
+        el.contentEditable = "plaintext-only";
+      } catch {
+        el.contentEditable = "true"; // browsers without plaintext-only support
+      }
+      el.addEventListener("keydown", onEditKey);
+      el.addEventListener("blur", onEditBlur);
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+
+    // Section the dashboard's component drawer would replace (hovering a card).
+    let targetEl: HTMLElement | null = null;
+    function highlightSlot(slot: string | null) {
+      if (targetEl) targetEl.removeAttribute("data-editbridge-target");
+      targetEl = slot ? (document.querySelector(`[data-slot="${CSS.escape(slot)}"]`) as HTMLElement | null) : null;
+      if (!targetEl) return;
+      targetEl.setAttribute("data-editbridge-target", "");
+      const rect = targetEl.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
 
     function onMessage(e: MessageEvent) {
-      if (e.data && e.data.type === "clear-selection" && selectedRef.current) {
+      if (!e.data) return;
+      if (e.data.type === "clear-selection" && selectedRef.current) {
         selectedRef.current.removeAttribute("data-editbridge-selected");
         selectedRef.current = null;
+      } else if (e.data.type === "list-slots") {
+        const slots = Array.from(document.querySelectorAll("[data-slot]"))
+          .map((el) => el.getAttribute("data-slot") || "")
+          .filter((s, i, all) => s && all.indexOf(s) === i);
+        window.parent.postMessage({ type: "slots", slots }, "*");
+      } else if (e.data.type === "highlight-slot") {
+        highlightSlot(e.data.slot || null);
       }
     }
 
     document.addEventListener("mouseover", onMouseOver);
     document.addEventListener("mouseout", onMouseOut);
     document.addEventListener("click", onClickCapture, true);
+    document.addEventListener("dblclick", onDblClick);
     window.addEventListener("message", onMessage);
 
     return () => {
+      finishEdit(false);
+      highlightSlot(null);
       document.removeEventListener("mouseover", onMouseOver);
       document.removeEventListener("mouseout", onMouseOut);
       document.removeEventListener("click", onClickCapture, true);
+      document.removeEventListener("dblclick", onDblClick);
       window.removeEventListener("message", onMessage);
       style.remove();
       label.remove();

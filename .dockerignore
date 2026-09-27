@@ -1,0 +1,14 @@
+.git
+.env
+*.log
+__pycache__/
+*.pyc
+leads.csv
+leads.db
+cache/
+static/logos/
+sites/*
+!sites/derek-doyle-electrical
+sites/derek-doyle-electrical/node_modules/
+sites/derek-doyle-electrical/.next/
+data/logos/

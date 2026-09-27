@@ -27,13 +27,20 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory
+
+import logos as logo_lib
 
 BASE_DIR = Path(__file__).resolve().parent
 LEADS_CSV = BASE_DIR / "leads.csv"  # legacy file, only read once for migration
-LEADS_DB = BASE_DIR / "leads.db"
-SITES_DIR = BASE_DIR / "sites"
-TEMPLATE_SITE = SITES_DIR / "derek-doyle-electrical"
+# Everything SiteForge creates (leads, built sites, caches, logos) lives
+# under DATA_DIR. It defaults to this folder; on Railway point it at a
+# mounted volume (e.g. DATA_DIR=/data), since the container's own disk is
+# wiped on every deploy. The master template always ships with the code.
+DATA_DIR = Path(os.environ.get("DATA_DIR") or BASE_DIR)
+LEADS_DB = DATA_DIR / "leads.db"
+SITES_DIR = DATA_DIR / "sites"
+TEMPLATE_SITE = BASE_DIR / "sites" / "derek-doyle-electrical"
 
 CSV_FIELDS = [
     "name", "phone", "email", "website", "location", "score", "years",
@@ -42,6 +49,8 @@ CSV_FIELDS = [
     # From the Google Places search + enrichment:
     "place_id", "logo_path", "brand_colors", "rating", "review_count", "maps_url",
     "town", "county", "use_logo",
+    # Logo editor: trade (for generated icons) and the chosen emblem
+    "trade", "logo_choice", "logo_mode", "logo_size", "logo_color",
 ]
 
 app = Flask(__name__)
@@ -79,7 +88,7 @@ except Exception:
 
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 
-APP_VERSION = "0.6.0"
+APP_VERSION = "0.7.0"
 
 
 def _build_commit():
@@ -257,7 +266,9 @@ def clear_site_dir(dest):
 
 HISTORY_DIRNAME = ".history"
 MAX_SNAPSHOTS = 25
-SNAPSHOT_PATHS = ["src", "tailwind.config.ts", "sections.json"]
+SNAPSHOT_PATHS = ["src", "tailwind.config.ts", "sections.json",
+                  "public/brand", "public/og.png", "public/apple-touch-icon.png"]
+SNAPSHOT_DIRS = {"src", "public/brand"}  # restored file-by-file, in place
 _SNAPSHOT_TS_RE = re.compile(r"^\d{8}T\d{9}Z$")
 
 
@@ -266,8 +277,9 @@ def _new_snapshot_timestamp():
 
 
 def snapshot_site(site_dir, label, source):
-    """Copy the current src/, tailwind.config.ts and sections.json (if
-    present) into sites/[slug]/.history/[timestamp]/, with a meta.json
+    """Copy the current src/, tailwind.config.ts, sections.json and the
+    logo files in public/ (whichever are present) into
+    sites/[slug]/.history/[timestamp]/, with a meta.json
     describing the snapshot. Best-effort: a snapshot failure must never
     block the edit it's guarding, so filesystem errors are swallowed."""
     try:
@@ -392,7 +404,9 @@ def restore_snapshot(site_dir, timestamp):
         for rel in SNAPSHOT_PATHS:
             snap_path = snap_dir / rel
             live_path = site_dir / rel
-            if rel == "src":
+            if rel in SNAPSHOT_DIRS:
+                if rel != "src" and not snap_path.exists() and not live_path.exists():
+                    continue
                 _sync_dir_exact(snap_path, live_path)
             else:
                 if snap_path.exists():
@@ -500,7 +514,49 @@ def geocode_location(location_text):
 # ---------------------------------------------------------------------------
 
 NPM_CMD = "npm.cmd" if os.name == "nt" else "npm"
-RUNNING_PREVIEWS = {}  # slug -> {"process": Popen, "port": int, "log_file": file}
+RUNNING_PREVIEWS = {}  # slug -> {"process": Popen, "port": int, "log_file": file, "last_used": float}
+
+# Hosted (Railway): the browser can't reach the container's localhost:41xx
+# dev servers, so each preview is served through SiteForge itself at
+# /preview/<slug> — `next dev` runs with that basePath (set only via
+# SITEFORGE_BASE_PATH, so Vercel deploys are unaffected). Locally the iframe
+# talks to localhost directly, which keeps hot reload.
+PREVIEW_PROXY = (os.environ.get("PREVIEW_PROXY")
+                 or ("1" if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_ENVIRONMENT_NAME") else "")) == "1"
+# Each `next dev` needs a few hundred MB; on a hosted box, cap how many run
+# at once (least recently used is stopped first). 0 = no limit.
+MAX_PREVIEWS = int(os.environ.get("MAX_PREVIEWS") or (2 if PREVIEW_PROXY else 0))
+
+
+def preview_base_path(slug):
+    return f"/preview/{slug}"
+
+
+_NEXT_CONFIG_EXPORT = "export default nextConfig;"
+_NEXT_CONFIG_WRAPPED = (
+    "// SiteForge's hosted preview serves this site under /preview/<slug>.\n"
+    "// SITEFORGE_BASE_PATH is only set there, never on Vercel.\n"
+    "const siteforgeBase = process.env.SITEFORGE_BASE_PATH;\n"
+    "export default siteforgeBase\n"
+    "  ? { ...nextConfig, basePath: siteforgeBase, images: { ...(nextConfig.images || {}), unoptimized: true } }\n"
+    "  : nextConfig;"
+)
+
+
+def ensure_preview_config(site_dir):
+    """Make a site's next.config honour SITEFORGE_BASE_PATH (sites built
+    before the proxy existed). Idempotent. Returns False if it can't."""
+    for name in ("next.config.mjs", "next.config.js"):
+        cfg = site_dir / name
+        if not cfg.exists():
+            continue
+        text = cfg.read_text(encoding="utf-8")
+        if "SITEFORGE_BASE_PATH" in text:
+            return True
+        if _NEXT_CONFIG_EXPORT in text:
+            cfg.write_text(text.replace(_NEXT_CONFIG_EXPORT, _NEXT_CONFIG_WRAPPED, 1), encoding="utf-8")
+            return True
+    return False
 _claimed_ports = set()  # ports we've handed out but whose process may not be listening yet
 _preview_lock = threading.Lock()
 # Running many `npm install`s at once (e.g. clicking Build Site on several
@@ -536,7 +592,7 @@ def wait_for_port(port, timeout=25):
     return False
 
 
-def wait_for_preview_ready(port, timeout=90):
+def wait_for_preview_ready(port, timeout=90, slug=None):
     """Wait until the dev server doesn't just accept connections but actually
     serves a real compiled page. `next dev` opens its port almost immediately
     on startup, long before webpack has compiled the "/" route for the first
@@ -546,11 +602,23 @@ def wait_for_preview_ready(port, timeout=90):
     if not wait_for_port(port, timeout=min(timeout, 25)):
         return False
     deadline = time.time() + timeout
-    url = f"http://127.0.0.1:{port}/"
+    if slug is None:
+        slug = next((s for s, info in RUNNING_PREVIEWS.items() if info["port"] == port), None)
+    # In proxy mode the site lives under its basePath; "/" would just 404.
+    url = f"http://127.0.0.1:{port}{preview_base_path(slug) if PREVIEW_PROXY and slug else ''}/"
+
+    def own_server_died():
+        # If this site's own dev server has exited (e.g. its port was taken),
+        # a 200 on that port is some OTHER site — never report that as ready.
+        info = RUNNING_PREVIEWS.get(slug) if slug else None
+        return bool(info) and info["process"].poll() is not None
+
     while time.time() < deadline:
+        if own_server_died():
+            return False
         try:
             resp = requests.get(url, timeout=10)
-            if resp.status_code == 200 and len(resp.text) > 500:
+            if resp.status_code == 200 and len(resp.text) > 500 and not own_server_died():
                 return True
         except requests.RequestException:
             pass
@@ -558,12 +626,29 @@ def wait_for_preview_ready(port, timeout=90):
     return False
 
 
-def kill_process_on_port(port):
+def _process_command_line(pid):
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             f"(Get-CimInstance Win32_Process -Filter 'ProcessId = {int(pid)}').CommandLine"],
+            capture_output=True, text=True, timeout=15,
+        )
+        return out.stdout
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return ""
+
+
+def kill_process_on_port(port, site_dir):
     """Windows: `npm run dev` spawns node.exe as a detached child of the
     npm.cmd shell, so terminating the Popen handle (or even /T tree-killing
     it) doesn't reliably reach the actual listening node.exe — it can be
-    reparented before we get to it. Killing whatever's actually bound to the
-    port is the only reliable way to free the node_modules file lock.
+    reparented before we get to it, so we also kill whatever's bound to the
+    site's port.
+
+    Only if that process is actually running THIS site, though: a port can
+    be reused by another site's preview after this one stopped, and killing
+    it blindly took down the wrong site (opening T-LEC's editor killed
+    Liberty Electrical's preview on the port T-LEC used to have).
     """
     if os.name != "nt":
         return
@@ -574,15 +659,15 @@ def kill_process_on_port(port):
     except Exception:
         return
     needle = f":{port} "
-    for line in result.stdout.splitlines():
-        if needle in line and "LISTENING" in line:
-            pid = line.split()[-1]
-            try:
-                subprocess.run(
-                    ["taskkill", "/F", "/PID", pid], capture_output=True, timeout=10
-                )
-            except Exception:
-                pass
+    site_marker = str(Path(site_dir).resolve()).lower()
+    for pid in {line.split()[-1] for line in result.stdout.splitlines()
+                if needle in line and "LISTENING" in line}:
+        if site_marker not in _process_command_line(pid).lower():
+            continue
+        try:
+            subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, timeout=10)
+        except Exception:
+            pass
 
 
 def run_npm_install(site_dir, log_path, attempts=2):
@@ -639,6 +724,17 @@ def start_preview_server(slug):
     # before claiming a fresh port, or we'll leak an orphaned node.exe.
     kill_stale_preview(site_dir)
 
+    if MAX_PREVIEWS:
+        others = sorted((info.get("last_used", 0), s) for s, info in list(RUNNING_PREVIEWS.items()) if s != slug)
+        for _, old in others[:max(0, len(others) - MAX_PREVIEWS + 1)]:
+            stop_preview_server(old)
+
+    env = os.environ.copy()
+    env["NEXT_TELEMETRY_DISABLED"] = "1"
+    if PREVIEW_PROXY:
+        ensure_preview_config(site_dir)
+        env["SITEFORGE_BASE_PATH"] = preview_base_path(slug)
+
     with _preview_lock:
         port = find_free_port()
         log_file = open(site_dir / "dev-server.log", "w", encoding="utf-8")
@@ -648,8 +744,12 @@ def start_preview_server(slug):
             stdout=log_file,
             stderr=subprocess.STDOUT,
             shell=(os.name == "nt"),
+            env=env,
+            # Linux: own process group, so stopping it also stops the node
+            # child that npm spawns (see _kill_pid_tree).
+            start_new_session=(os.name != "nt"),
         )
-        RUNNING_PREVIEWS[slug] = {"process": proc, "port": port, "log_file": log_file}
+        RUNNING_PREVIEWS[slug] = {"process": proc, "port": port, "log_file": log_file, "last_used": time.time()}
         # Persist pid+port to disk so a *future* SiteForge process (after a
         # restart) can still find and kill this server — RUNNING_PREVIEWS
         # lives only in this process's memory, but the spawned node.exe
@@ -664,6 +764,23 @@ def start_preview_server(slug):
         return port
 
 
+def start_preview_and_wait(slug, timeout=90):
+    """Start (or reuse) a site's preview and wait for it. If the site's own
+    server exits during startup — typically because another preview grabbed
+    its port — retry once on a fresh port instead of showing whatever else
+    is answering there. Returns (port, ready)."""
+    port = None
+    for _ in range(2):
+        port = start_preview_server(slug)
+        if wait_for_preview_ready(port, timeout, slug=slug):
+            return port, True
+        info = RUNNING_PREVIEWS.get(slug)
+        if info and info["process"].poll() is None:
+            return port, False  # still running, just slow to compile
+        stop_preview_server(slug)
+    return port, False
+
+
 def _kill_pid_tree(pid):
     try:
         if os.name == "nt":
@@ -672,7 +789,10 @@ def _kill_pid_tree(pid):
                 capture_output=True, timeout=10,
             )
         else:
-            os.kill(pid, 15)
+            try:
+                os.killpg(pid, 15)  # the whole group: npm + the node it spawned
+            except (ProcessLookupError, PermissionError):
+                os.kill(pid, 15)
     except Exception:
         pass
 
@@ -693,7 +813,7 @@ def kill_stale_preview(site_dir):
     if info.get("pid"):
         _kill_pid_tree(info["pid"])
     if info.get("port"):
-        kill_process_on_port(info["port"])
+        kill_process_on_port(info["port"], site_dir)
         with _preview_lock:
             _claimed_ports.discard(info["port"])
     marker.unlink(missing_ok=True)
@@ -714,7 +834,7 @@ def stop_preview_server(slug):
         # Belt and braces on Windows: the tree-kill above can miss node.exe if
         # npm.cmd already reparented it, so also kill whatever's actually
         # bound to the port before we try to delete node_modules.
-        kill_process_on_port(info["port"])
+        kill_process_on_port(info["port"], SITES_DIR / slug)
         try:
             info["log_file"].close()
         except Exception:
@@ -722,6 +842,73 @@ def stop_preview_server(slug):
         _claimed_ports.discard(info["port"])
         _devserver_marker_path(SITES_DIR / slug).unlink(missing_ok=True)
         time.sleep(0.5)  # give Windows a beat to release file handles
+
+
+# ---- Hosted preview proxy (PREVIEW_PROXY only)
+_HOP_BY_HOP = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te",
+               "trailer", "trailers", "transfer-encoding", "upgrade"}
+_PROXY_METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+
+
+def _proxy_to_preview(slug, upstream_path):
+    info = RUNNING_PREVIEWS.get(slug)
+    if not info or info["process"].poll() is not None:
+        return Response("This preview isn't running — open Edit Site again.", 503, mimetype="text/plain")
+    if request.headers.get("Upgrade", "").lower() == "websocket":
+        # No hot-reload socket through the proxy; the dashboard reloads the
+        # preview after each change instead.
+        return Response("", 501)
+    info["last_used"] = time.time()
+    url = f"http://127.0.0.1:{info['port']}{upstream_path}"
+    if request.query_string:
+        url += "?" + request.query_string.decode("latin-1")
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in _HOP_BY_HOP and k.lower() not in ("host", "content-length")}
+    try:
+        upstream = requests.request(request.method, url, headers=headers, data=request.get_data(),
+                                    stream=True, allow_redirects=False, timeout=(5, 300))
+    except requests.RequestException as exc:
+        return Response(f"Preview unreachable: {exc}", 502, mimetype="text/plain")
+
+    out_headers = []
+    for key, value in upstream.raw.headers.items():
+        if key.lower() in _HOP_BY_HOP:
+            continue
+        if key.lower() == "location":  # keep redirects on this origin
+            value = re.sub(rf"^https?://(?:127\.0\.0\.1|localhost):{info['port']}", "", value)
+        out_headers.append((key, value))
+
+    def body():
+        try:
+            yield from upstream.raw.stream(65536, decode_content=False)
+        finally:
+            upstream.close()
+
+    resp = Response(body(), status=upstream.status_code, headers=out_headers)
+    # Which preview a root-relative request (/hero.jpg, /api/contact) belongs to.
+    resp.set_cookie("sf_preview", slug, samesite="Lax", httponly=True, path="/")
+    return resp
+
+
+@app.route("/preview/<slug>", defaults={"rest": None}, methods=_PROXY_METHODS)
+@app.route("/preview/<slug>/", defaults={"rest": ""}, methods=_PROXY_METHODS)
+@app.route("/preview/<slug>/<path:rest>", methods=_PROXY_METHODS)
+def preview_proxy(slug, rest):
+    if not PREVIEW_PROXY:
+        return Response("Previews are served directly on localhost here.", 404, mimetype="text/plain")
+    path = preview_base_path(slug) + ("" if rest is None else f"/{rest}")
+    return _proxy_to_preview(slug, path)
+
+
+@app.errorhandler(404)
+def preview_fallback(err):
+    """A preview's own root-relative URLs (<img src="/hero.jpg">, the
+    /brand/ emblem, fetch("/api/contact")) aren't under /preview/<slug>, so
+    they land here: send them to the preview that was last opened."""
+    slug = request.cookies.get("sf_preview")
+    if PREVIEW_PROXY and slug in RUNNING_PREVIEWS and not request.path.startswith("/preview/"):
+        return _proxy_to_preview(slug, preview_base_path(slug) + request.path)
+    return err
 
 
 @atexit.register
@@ -859,9 +1046,9 @@ PLACES_FIELD_MASK = ",".join([
     "places.googleMapsUri", "nextPageToken",
 ])
 CACHE_TTL_SECONDS = 30 * 24 * 3600  # Google allows caching Places content for 30 days
-PLACES_CACHE_DIR = BASE_DIR / "cache" / "places"
-QUERY_CACHE_DIR = BASE_DIR / "cache" / "queries"
-LOGOS_DIR = BASE_DIR / "static" / "logos"
+PLACES_CACHE_DIR = DATA_DIR / "cache" / "places"
+QUERY_CACHE_DIR = DATA_DIR / "cache" / "queries"
+LOGOS_DIR = DATA_DIR / "static" / "logos"  # served at /static/logos/
 COUNTIES = json.loads((BASE_DIR / "data" / "ireland_counties.json").read_text(encoding="utf-8"))
 TRADE_PRESETS = ["Electrician", "Plumber", "Roofer", "Heating Engineer", "Painter", "Landscaper", "Builder"]
 _PLACE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,300}$")
@@ -1127,6 +1314,10 @@ def download_logo(candidates, place_id):
         if min(img.size) < 16:
             continue
         img = img.convert("RGBA")
+        try:  # full resolution, for emblem extraction
+            logo_lib.save_original(img, LOGO_DATA_DIR / place_id)
+        except OSError:
+            pass
         img.thumbnail((256, 256))
         LOGOS_DIR.mkdir(parents=True, exist_ok=True)
         img.save(LOGOS_DIR / f"{place_id}.png", "PNG")
@@ -1224,6 +1415,10 @@ def enrich_lead(lead):
     result["brand_colors"] = _distinct_colors(result.get("brand_colors") or [])
     if result.get("logo_path") and not (LOGOS_DIR / f"{lead['place_id']}.png").exists():
         result["logo_path"] = ""
+    if result.get("logo_path"):
+        # Pull the emblem out of the logo (heuristics, one vision call if unsure)
+        ensure_logo_extracted({"place_id": lead["place_id"]})
+    result.update(extracted_logo_summary({"place_id": lead["place_id"]}))
     merged = {**lead, **result}
     result["score"] = score_place_lead(merged)
     result["enrich_status"] = "done"
@@ -1291,7 +1486,8 @@ def _sync_enrichment_to_pipeline(place_id, updates):
 
 @app.route("/")
 def index():
-    return render_template("index.html", app_version=APP_VERSION, build_commit=BUILD_COMMIT)
+    return render_template("index.html", app_version=APP_VERSION, build_commit=BUILD_COMMIT,
+                           preview_proxy=PREVIEW_PROXY)
 
 
 @app.route("/api/regions", methods=["GET"])
@@ -1356,6 +1552,7 @@ def api_search():
                 if place.get("businessStatus", "OPERATIONAL") != "OPERATIONAL" or place["id"] in found:
                     continue
                 found[place["id"]] = place_to_lead(place, county, town_name)
+                found[place["id"]]["trade"] = trade
 
     print(f"[search] '{trade}' {counties or town}: {len(queries)} queries, {api_calls} Places API calls, "
           f"{len(found)} unique places", flush=True)
@@ -1402,7 +1599,13 @@ def api_search_status(job_id):
 
 @app.route("/api/pipeline", methods=["GET"])
 def api_pipeline_list():
-    return jsonify({"leads": read_leads()})
+    leads = read_leads()
+    for lead in leads:
+        try:
+            lead.update(lead_logo_summary(lead))
+        except OSError as exc:
+            print(f"[logo] {lead.get('slug')}: {exc}", flush=True)
+    return jsonify({"leads": leads})
 
 
 @app.route("/api/pipeline/add", methods=["POST"])
@@ -1450,6 +1653,7 @@ def api_pipeline_add():
                 "town": lead.get("town", ""),
                 "county": lead.get("county", ""),
                 "use_logo": "Yes" if logo_path else "No",
+                "trade": lead.get("trade", ""),
             })
             existing_keys.add(key)
             existing_slugs.add(slug)
@@ -1549,8 +1753,7 @@ def api_build_site():
             "log_tail": tail,
         }), 500
 
-    port = start_preview_server(lead["slug"])
-    ready = wait_for_preview_ready(port)
+    port, ready = start_preview_and_wait(lead["slug"])
     if not ready:
         return jsonify({
             "step": "preview_server",
@@ -1578,8 +1781,7 @@ def api_preview(slug):
         if not run_npm_install(site_dir, log_path):
             return jsonify({"error": "npm install failed"}), 500
 
-    port = start_preview_server(slug)
-    ready = wait_for_preview_ready(port)
+    port, ready = start_preview_and_wait(slug)
     return jsonify({"port": port, "ready": ready})
 
 
@@ -1887,8 +2089,11 @@ SLOT_FILE_MAP = {
     "reviews": "src/components/Reviews.tsx",
     "contact": "src/components/Contact.tsx",
     "footer": "src/components/Footer.tsx",
+    "logo": "src/components/BrandMark.tsx",
 }
 SLOT_SCOPE_EXTRA_FILES = ["tailwind.config.ts", "src/components/icons.tsx"]
+# Data files a slot's content actually lives in (the logo's name/size/mode).
+SLOT_DATA_FILES = {"logo": ["src/brand.json"]}
 
 
 @app.route("/api/pipeline/edit_site", methods=["POST"])
@@ -1912,7 +2117,7 @@ def api_edit_site():
         slot_file = SLOT_FILE_MAP.get(slot)
         if not slot_file:
             return jsonify({"error": f"unknown slot: {slot}"}), 400
-        scope_files = [slot_file] + SLOT_SCOPE_EXTRA_FILES
+        scope_files = [slot_file] + SLOT_DATA_FILES.get(slot, []) + SLOT_SCOPE_EXTRA_FILES
         label = f"[{slot}] {instruction}"
 
     written, error = apply_edit_instruction(
@@ -1971,12 +2176,15 @@ def backfill_slot_markers(site_dir):
             fp.write_text(new_content, encoding="utf-8")
             changed.append(rel)
 
+    # EditBridge is SiteForge's own tooling, not site content, so an outdated
+    # copy is simply replaced with the template's current one.
     edit_bridge_dest = site_dir / "src" / "components" / "EditBridge.tsx"
-    if not edit_bridge_dest.exists() and EDIT_BRIDGE_SOURCE_PATH.exists():
-        edit_bridge_dest.write_text(
-            EDIT_BRIDGE_SOURCE_PATH.read_text(encoding="utf-8"), encoding="utf-8"
-        )
-        changed.append("src/components/EditBridge.tsx")
+    if EDIT_BRIDGE_SOURCE_PATH.exists():
+        latest = EDIT_BRIDGE_SOURCE_PATH.read_text(encoding="utf-8")
+        current = edit_bridge_dest.read_text(encoding="utf-8") if edit_bridge_dest.exists() else None
+        if current != latest:
+            edit_bridge_dest.write_text(latest, encoding="utf-8")
+            changed.append("src/components/EditBridge.tsx")
 
     layout_path = site_dir / "src" / "app" / "layout.tsx"
     if layout_path.exists():
@@ -2014,6 +2222,133 @@ def api_backfill_slots():
         except OSError as exc:
             results[site_dir.name] = [f"error: {exc}"]
     return jsonify({"results": results})
+
+
+# ---------------------------------------------------------------------------
+# Inline text editing (double-click text in the preview)
+# ---------------------------------------------------------------------------
+
+# Rendered text vs. how it's written in source: the page shows "Dublin’s"
+# but the file says "Dublin&rsquo;s", so each character that could be an
+# entity in the source matches any of its spellings.
+_TEXT_EQUIVALENTS = {
+    "’": ["’", "&rsquo;", "&#8217;", "'", "&apos;", "&#39;"],
+    "'": ["'", "&apos;", "&#39;", "’", "&rsquo;"],
+    "‘": ["‘", "&lsquo;", "&#8216;"],
+    '"': ['"', "&quot;", "&#34;", "“", "”", "&ldquo;", "&rdquo;"],
+    "“": ["“", "&ldquo;", '"', "&quot;"],
+    "”": ["”", "&rdquo;", '"', "&quot;"],
+    "&": ["&amp;", "&"],
+    "—": ["—", "&mdash;", "&#8212;"],
+    "–": ["–", "&ndash;", "&#8211;"],
+    "…": ["…", "&hellip;", "..."],
+    "<": ["&lt;", "<"],
+    ">": ["&gt;", ">"],
+    "{": ["&#123;", '{"{"}'],
+    "}": ["&#125;", '{"}"}'],
+}
+MAX_TEXT_EDIT_LEN = 2000
+
+
+def _source_text_pattern(text):
+    parts = []
+    for ch in text:
+        if ch.isspace():
+            if not parts or parts[-1] != r"\s+":
+                parts.append(r"\s+")  # JSX text can wrap across lines
+        elif ch in _TEXT_EQUIVALENTS:
+            parts.append("(?:" + "|".join(re.escape(a) for a in _TEXT_EQUIVALENTS[ch]) + ")")
+        else:
+            parts.append(re.escape(ch))
+    return re.compile("".join(parts))
+
+
+def _match_context(src, start, end):
+    """'jsx' if the match is an element's whole text run (>...<), the quote
+    character if it's a whole JS string literal, else None — which rules
+    out hits on identifiers, imports, class names, etc."""
+    before, after = src[start - 1:start], src[end:end + 1]
+    if before and before == after and before in "\"'`":
+        return before
+    if src[:start].rstrip()[-1:] == ">" and src[end:].lstrip()[:1] == "<":
+        return "jsx"
+    return None
+
+
+def find_text_occurrences(site_dir, rel_paths, text):
+    pattern = _source_text_pattern(text)
+    found = []
+    for rel in rel_paths:
+        path = site_dir / rel
+        if not path.exists():
+            continue
+        src = path.read_text(encoding="utf-8")
+        for m in pattern.finditer(src):
+            ctx = _match_context(src, m.start(), m.end())
+            if ctx:
+                found.append((rel, m.start(), m.end(), ctx))
+    return found
+
+
+def _escape_for_source(text, ctx):
+    if ctx == "jsx":
+        # Always entity-escape what JSX/ESLint reject in text: a raw ' or "
+        # fails `next build` (react/no-unescaped-entities) on Vercel.
+        return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    .replace("{", "&#123;").replace("}", "&#125;")
+                    .replace("'", "&apos;").replace('"', "&quot;"))
+    escaped = text.replace("\\", "\\\\").replace(ctx, "\\" + ctx)
+    if ctx == "`":
+        escaped = escaped.replace("${", "\\${")
+    return escaped
+
+
+@app.route("/api/pipeline/text_edit", methods=["POST"])
+def api_text_edit():
+    data = request.get_json(force=True) or {}
+    site_dir = _resolve_site_dir(data.get("slug"))
+    if not site_dir:
+        return jsonify({"error": "site not found"}), 404
+    slot = (data.get("slot") or "").strip().lower()
+    old_text = re.sub(r"\s+", " ", data.get("oldText") or "").strip()
+    new_text = re.sub(r"\s+", " ", data.get("newText") or "").strip()
+    if slot not in SLOT_FILE_MAP:
+        return jsonify({"error": f"unknown section: {slot or '(none)'}"}), 400
+    if not old_text or not new_text:
+        return jsonify({"error": "text can't be empty"}), 400
+    if len(old_text) > MAX_TEXT_EDIT_LEN or len(new_text) > MAX_TEXT_EDIT_LEN:
+        return jsonify({"error": "text is too long to edit inline"}), 400
+    if old_text == new_text:
+        return jsonify({"ok": True, "method": "none"})
+
+    slot_file = SLOT_FILE_MAP[slot]
+    matches = find_text_occurrences(site_dir, SLOT_DATA_FILES.get(slot, []) + [slot_file], old_text)
+    if not matches:
+        # The text may live in a sub-component the section renders.
+        others = sorted(str(p.relative_to(site_dir)).replace("\\", "/")
+                        for p in (site_dir / "src").rglob("*.tsx"))
+        matches = find_text_occurrences(site_dir, [p for p in others if p != slot_file], old_text)
+
+    label = f'[{slot}] text: "{new_text[:60]}"'
+    if len(matches) == 1:
+        rel, start, end, ctx = matches[0]
+        snapshot_site(site_dir, label, "text edit")
+        path = site_dir / rel
+        src = path.read_text(encoding="utf-8")
+        path.write_text(src[:start] + _escape_for_source(new_text, ctx) + src[end:], encoding="utf-8")
+        return jsonify({"ok": True, "method": "instant", "changed_files": [rel]})
+
+    # Not found, or ambiguous: let Claude do it, scoped to the section.
+    # (apply_edit_instruction takes its own snapshot first.)
+    written, error = apply_edit_instruction(
+        site_dir, f'Change the text "{old_text}" to "{new_text}"',
+        history_label=label, history_source="text edit",
+        scope_files=[slot_file] + SLOT_DATA_FILES.get(slot, []) + SLOT_SCOPE_EXTRA_FILES,
+    )
+    if error:
+        return jsonify({"error": error}), 500
+    return jsonify({"ok": True, "method": "ai", "changed_files": written,
+                    "reason": "not found" if not matches else f"{len(matches)} matches"})
 
 
 TWENTYFIRST_MCP_URL = "https://21st.dev/api/mcp"
@@ -2138,6 +2473,12 @@ def api_component_apply():
     component_id = data.get("component_id")
     component_name = (data.get("component_name") or "").strip()
     section = (data.get("section") or "the most appropriate section").strip()
+    # An explicit section picked in the preview beats guessing from text.
+    slot = (data.get("slot") or "").strip().lower()
+    if slot and not re.fullmatch(r"[a-z0-9-]{1,40}", slot):
+        return jsonify({"error": "invalid section"}), 400
+    if slot:
+        section = f"the {slot} section"
     if not component_id:
         return jsonify({"error": "component_id is required"}), 400
 
@@ -2153,7 +2494,7 @@ def api_component_apply():
         return jsonify({"error": f"Could not fetch component: {text[:500]}"}), 502
 
     code = extract_component_code(text)
-    target_file = guess_section_file(section)
+    target_file = Path(SLOT_FILE_MAP[slot]).name if slot in SLOT_FILE_MAP else guess_section_file(section)
     target_hint = (
         f"This corresponds to src/components/{target_file}, shown among the files below. "
         f"You MUST rewrite that file's JSX — replace its current return()/content with a new "
@@ -2677,10 +3018,291 @@ def first_usable_brand_color(brand_colors):
     return None
 
 
-def apply_brand_logo(site_dir, lead):
-    """Copy the lead's logo into public/ and point src/brand.ts at it when
-    "Use their logo" is on; otherwise clear it. Sites built before the
-    template had brand.ts are left alone (returns False)."""
+# ---------------------------------------------------------------------------
+# Logos: extracted emblems, generated emblems, favicon + share image, and
+# the logo editor panel. The heavy lifting is in logos.py; this is storage,
+# lead fields, site files and routes. Per-lead files: data/logos/<key>/.
+# ---------------------------------------------------------------------------
+
+LOGO_DATA_DIR = DATA_DIR / "data" / "logos"
+DEFAULT_BRAND_COLOR = "#1D4ED8"
+LOGO_MODES = ("emblem_text", "emblem_only", "text_only")
+LOGO_COLORS = ("original", "accent", "white", "black")
+_LOGO_CHOICE_RE = re.compile(r"^(extracted|gen:[1-6]|ai:[1-3])$")
+MAX_LOGO_UPLOAD_BYTES = 5_000_000
+_logo_locks = {}
+_logo_locks_guard = threading.Lock()
+_logo_jobs = set()
+
+
+def _logo_lock(key):
+    with _logo_locks_guard:
+        return _logo_locks.setdefault(key, threading.Lock())
+
+
+def logo_key(lead):
+    """Folder name under data/logos: the Places id, or the slug for leads
+    that didn't come from a Places search."""
+    place_id = lead.get("place_id") or ""
+    if _PLACE_ID_RE.match(place_id):
+        return place_id
+    slug = re.sub(r"[^a-z0-9-]", "", (lead.get("slug") or "").lower())
+    return f"slug-{slug}" if slug else None
+
+
+def logo_dir(lead):
+    key = logo_key(lead)
+    return LOGO_DATA_DIR / key if key else None
+
+
+def lead_brand_color(lead):
+    """brand_colors[0], else the saved accent, else the template blue."""
+    colors = lead.get("brand_colors") or ""
+    for c in (colors.split(",") if isinstance(colors, str) else colors):
+        if _HEX6_RE.match(c.strip()):
+            return c.strip().upper()
+    accent = (lead.get("accent") or "").strip()
+    return accent.upper() if _HEX6_RE.match(accent) else DEFAULT_BRAND_COLOR
+
+
+def _has_emblem(d, meta):
+    return bool(d and meta and meta.get("type") != "text_only" and (d / "emblem.png").exists())
+
+
+def ensure_logo_extracted(lead, force_vision=False, strict_bg=None):
+    """Extract the emblem from a lead's downloaded logo if that hasn't been
+    done yet (or re-run it: force_vision / a new strict_bg). Logos saved
+    before this existed are picked up from static/logos. Returns meta, or
+    None when the lead has no logo."""
+    d = logo_dir(lead)
+    if d is None:
+        return None
+    with _logo_lock(d.name):
+        if not (d / "original.png").exists():
+            legacy = LOGOS_DIR / f"{lead.get('place_id')}.png" if lead.get("place_id") else None
+            if not legacy or not legacy.exists():
+                return None
+            try:
+                logo_lib.save_original(Image.open(legacy), d)
+            except (OSError, Image.DecompressionBombError):
+                return None  # e.g. an empty file from an interrupted download
+        meta = logo_lib.read_meta(d)
+        if meta and not force_vision and strict_bg is None:
+            return meta
+        if strict_bg is None:
+            strict_bg = bool(meta and meta.get("strict_bg"))
+        try:
+            return logo_lib.extract_emblem(d, _client, CLAUDE_MODEL, force_vision=force_vision,
+                                           strict_bg=strict_bg, source=(meta or {}).get("source", "download"))
+        except (OSError, ValueError, Image.DecompressionBombError) as exc:
+            print(f"[logo] extraction failed for {d.name}: {exc}", flush=True)
+            return meta
+
+
+def queue_logo_extraction(lead):
+    """Background extraction for leads whose logo predates this feature,
+    so listing the pipeline never waits on a vision call."""
+    key = logo_key(lead)
+    if not key or key in _logo_jobs:
+        return
+    _logo_jobs.add(key)
+
+    def run():
+        try:
+            ensure_logo_extracted(lead)
+        finally:
+            _logo_jobs.discard(key)
+
+    ENRICH_POOL.submit(run)
+
+
+def ensure_generated(lead, font_key=None):
+    """The six generated emblems, rebuilt only when name/trade/colour/font change."""
+    d = logo_dir(lead)
+    if d is None:
+        return None
+    gen = d / "generated"
+    inputs = {"name": lead.get("name", ""), "trade": lead.get("trade", ""),
+              "color": lead_brand_color(lead), "font": font_key or lead.get("font") or ""}
+    stamp = gen / "inputs.json"
+    try:
+        current = json.loads(stamp.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        current = None
+    if current != inputs or not (gen / "6.svg").exists():
+        logo_lib.generate_emblems(d, inputs["name"], inputs["trade"], inputs["color"], inputs["font"])
+        stamp.write_text(json.dumps(inputs), encoding="utf-8")
+    return gen
+
+
+def resolve_logo_choice(lead, meta=None):
+    """Which emblem the site shows: an explicit pick from the logo editor,
+    else their extracted emblem (when "Use their logo" is on), else the
+    default generated variant."""
+    d = logo_dir(lead)
+    if meta is None and d:
+        meta = logo_lib.read_meta(d)
+    choice = lead.get("logo_choice") or ""
+    if choice == "extracted" and _has_emblem(d, meta):
+        return choice
+    if choice.startswith("gen:") and _LOGO_CHOICE_RE.match(choice):
+        return choice
+    if choice.startswith("ai:") and _LOGO_CHOICE_RE.match(choice) and d and (d / "generated" / f"ai-{choice[3:]}.svg").exists():
+        return choice
+    if lead.get("use_logo") == "Yes" and _has_emblem(d, meta):
+        return "extracted"
+    return f"gen:{logo_lib.default_variant(lead.get('trade'), lead.get('name'))}"
+
+
+def logo_choice_path(lead, choice):
+    d = logo_dir(lead)
+    if choice == "extracted":
+        return d / "emblem.svg" if (d / "emblem.svg").exists() else d / "emblem.png"
+    if choice.startswith("gen:"):
+        return d / "generated" / f"{choice[4:]}.svg"
+    return d / "generated" / f"ai-{choice[3:]}.svg"
+
+
+def logo_tag(meta, choice):
+    if meta and meta.get("needs_check"):
+        return "needs check"
+    return "extracted" if choice == "extracted" else "generated"
+
+
+def logo_url(path):
+    return f"/logos/{path.relative_to(LOGO_DATA_DIR).as_posix()}?v={int(path.stat().st_mtime)}"
+
+
+def lead_logo_summary(lead):
+    """emblem_url + logo_tag for a pipeline card."""
+    d = logo_dir(lead)
+    if d is None:
+        return {}
+    meta = logo_lib.read_meta(d)
+    if meta is None and lead.get("logo_path"):
+        queue_logo_extraction(lead)
+    ensure_generated(lead)
+    choice = resolve_logo_choice(lead, meta)
+    path = logo_choice_path(lead, choice)
+    return {"emblem_url": logo_url(path) if path.exists() else "", "logo_tag": logo_tag(meta, choice)}
+
+
+def extracted_logo_summary(lead):
+    """emblem_url + logo_tag for a search result: only a real extracted
+    emblem (no generated files for every search hit)."""
+    d = logo_dir(lead)
+    meta = logo_lib.read_meta(d) if d else None
+    if not meta:
+        return {"emblem_url": "", "logo_tag": ""}
+    if _has_emblem(d, meta):
+        png = d / "emblem.png"
+        return {"emblem_url": logo_url(png), "logo_tag": logo_tag(meta, "extracted")}
+    return {"emblem_url": "", "logo_tag": "needs check" if meta.get("needs_check") else ""}
+
+
+@app.route("/logos/<path:rel>")
+def serve_logo_file(rel):
+    resp = send_from_directory(LOGO_DATA_DIR, rel, max_age=0)
+    resp.headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+    return resp
+
+
+if LOGOS_DIR != BASE_DIR / "static" / "logos":
+    # Downloaded logos live on the data volume; keep their /static/logos/ URLs working.
+    @app.route("/static/logos/<path:name>")
+    def serve_downloaded_logo(name):
+        return send_from_directory(LOGOS_DIR, name, max_age=0)
+
+
+def _read_brand_json(site_dir):
+    try:
+        data = json.loads((site_dir / "src" / "brand.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_brand_assets(site_dir, lead, emblem_path, brand_color, on_square):
+    """favicon.ico + apple icon + public/og.png from the chosen emblem."""
+    try:
+        img = logo_lib.load_emblem_image(emblem_path, 512)
+        app_dir = site_dir / "src" / "app"
+        logo_lib.write_favicons(img, brand_color, app_dir / "favicon.ico", app_dir / "apple-icon.png", on_square)
+        shutil.copy2(app_dir / "apple-icon.png", site_dir / "public" / "apple-touch-icon.png")
+        town = (lead.get("town") or (lead.get("location") or "").split(",")[0]).strip()
+        logo_lib.write_og_image(img, lead.get("name", ""), town, brand_color, site_dir / "public" / "og.png")
+    except Exception as exc:  # noqa: BLE001 - icons are a nicety; never fail a build on them
+        print(f"[logo] couldn't write favicon/share image: {exc}", flush=True)
+
+
+def apply_brand_logo(site_dir, lead, assets=True):
+    """Put the chosen emblem into the site: public/brand/emblem.(svg|png),
+    src/brand.json (mode/size/emblem), and — when assets=True — the favicon,
+    apple icon and share image. Sites built before BrandMark existed use the
+    old brand.ts behaviour. Returns False if the site can't take a logo."""
+    brand_json = site_dir / "src" / "brand.json"
+    if not brand_json.exists():
+        return _apply_legacy_brand_logo(site_dir, lead)
+    d = logo_dir(lead)
+    if d is None:
+        return False
+    ensure_logo_extracted(lead)
+    try:
+        theme = read_theme(site_dir)
+    except (OSError, ThemeError):
+        theme = {}
+    font_key = theme.get("font") or lead.get("font")
+    ensure_generated(lead, font_key)
+    choice = resolve_logo_choice(lead)
+    src = logo_choice_path(lead, choice)
+    brand_color = lead_brand_color(lead)
+    color = lead.get("logo_color") if lead.get("logo_color") in LOGO_COLORS else "original"
+    target = {"accent": theme.get("accent") or brand_color, "white": "#FFFFFF", "black": "#111111"}.get(color)
+
+    if src.suffix == ".svg" and target and choice.startswith("gen:"):
+        # A generated emblem keeps its shape: the chosen colour becomes the
+        # background, with auto-contrast initials/icon on top.
+        data = logo_lib.emblem_svg(int(choice[4:]), lead.get("name", ""), lead.get("trade", ""), target, font_key).encode("utf-8")
+    elif src.suffix == ".svg" and target:
+        data = logo_lib.recolor_svg(src.read_text(encoding="utf-8"), target).encode("utf-8")
+    else:
+        data = src.read_bytes()
+
+    public = site_dir / "public" / "brand"
+    public.mkdir(parents=True, exist_ok=True)
+    dest = public / f"emblem{src.suffix}"
+    for old in public.glob("emblem.*"):
+        if old != dest:
+            old.unlink(missing_ok=True)
+    if not dest.exists() or dest.read_bytes() != data:
+        dest.write_bytes(data)
+
+    brand = _read_brand_json(site_dir)
+    name = brand.get("name") if isinstance(brand.get("name"), str) and "{{" not in brand.get("name") else lead.get("name", "")
+    mode = lead.get("logo_mode") if lead.get("logo_mode") in LOGO_MODES else (brand.get("mode") if brand.get("mode") in LOGO_MODES else "emblem_text")
+    try:
+        size = int(lead.get("logo_size") or brand.get("size") or 36)
+    except (TypeError, ValueError):
+        size = 36
+    new_brand = {
+        "mode": mode,
+        "size": max(24, min(56, size)),
+        # ?v= busts the browser cache when the emblem changes but its path doesn't
+        "emblem": f"/brand/emblem{src.suffix}?v={hashlib.sha1(data).hexdigest()[:8]}",
+        "name": name,
+        "choice": choice,
+        "color": color,
+    }
+    if new_brand != brand:
+        brand_json.write_text(json.dumps(new_brand, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if assets:
+        _write_brand_assets(site_dir, lead, dest, brand_color, on_square=not choice == "extracted")
+    return True
+
+
+def _apply_legacy_brand_logo(site_dir, lead):
+    """Pre-BrandMark sites: copy the lead's logo into public/ and point
+    src/brand.ts at it when "Use their logo" is on; otherwise clear it."""
     brand_ts = site_dir / "src" / "brand.ts"
     if not brand_ts.exists():
         return False
@@ -2693,6 +3315,305 @@ def apply_brand_logo(site_dir, lead):
     brand_ts.write_text(re.sub(r"BRAND_LOGO: string \| null = [^;]+;", f"BRAND_LOGO: string | null = {value};", text),
                         encoding="utf-8")
     return True
+
+
+# ---- Upgrading sites built before BrandMark: only when their Nav/Footer
+# logo markup is still exactly the template's (never rewrites custom code).
+BRAND_MARK_SOURCE_PATH = TEMPLATE_SITE / "src" / "components" / "BrandMark.tsx"
+# Two template generations: {BRAND_LOGO && <img/>}, and the older
+# <Image src="/logo.png"/> — which was the template's own (Derek Doyle's)
+# logo, so those sites show someone else's logo until upgraded.
+_OLD_LOGO_EL = r'(?:\{BRAND_LOGO && \([\s\S]*?\)\}|<Image\s+src="/logo\.png"[^>]*?/>)'
+_NAV_LOGO_RE = re.compile(
+    r'<a href="#top" className="flex items-center gap-2\.5">\s*' + _OLD_LOGO_EL + r'\s*'
+    r'<span\s+className=\{`[^`]*`\}\s*>[^<{]*</span>\s*</a>')
+_NAV_LOGO_NEW = ('<a href="#top" className="flex items-center">\n'
+                 '            <BrandMark nameClassName="text-[15px] font-semibold tracking-tightest text-navy" />\n'
+                 '          </a>')
+_FOOTER_LOGO_RE = re.compile(
+    r'<div className="flex items-center gap-2\.5">\s*' + _OLD_LOGO_EL + r'\s*<div>\s*'
+    r'<p className="text-\[13\.5px\] font-semibold text-white">[^<{]*</p>\s*'
+    r'(<p className="text-\[11\.5px\][^"]*">[^<]*</p>)\s*</div>\s*</div>')
+_BRAND_IMPORT_RE = re.compile(r'import \{ BRAND_LOGO \} from "@/brand";')
+
+
+def upgrade_brand_mark(site_dir, lead):
+    """Returns "upgraded", "already" or "skipped: <why>"."""
+    if (site_dir / "src" / "brand.json").exists():
+        return "already"
+    nav_path, footer_path = site_dir / "src/components/Nav.tsx", site_dir / "src/components/Footer.tsx"
+    layout_path = site_dir / "src/app/layout.tsx"
+    if not (nav_path.exists() and footer_path.exists() and layout_path.exists()):
+        return "skipped: missing Nav/Footer/layout"
+    nav, n1 = _NAV_LOGO_RE.subn(_NAV_LOGO_NEW, nav_path.read_text(encoding="utf-8"), count=1)
+    footer, n2 = _FOOTER_LOGO_RE.subn(
+        lambda m: ('<div className="flex flex-col items-center gap-1.5 lg:items-start">\n'
+                   '          <BrandMark nameClassName="text-[13.5px] font-semibold text-white" />\n'
+                   f'          {m.group(1)}\n        </div>'),
+        footer_path.read_text(encoding="utf-8"), count=1)
+    if not (n1 and n2):
+        return "skipped: Nav/Footer logo markup was customised"
+    brand_import = 'import { BrandMark } from "./BrandMark";'
+    for_files = []
+    for text in (nav, footer):
+        if _BRAND_IMPORT_RE.search(text):
+            text = _BRAND_IMPORT_RE.sub(brand_import, text)
+        else:
+            # older generation: swap the now-unused next/image import (or add ours)
+            if "<Image" not in text:
+                text = re.sub(r'import Image from "next/image";\n', "", text, count=1)
+            last = None
+            for m in re.finditer(r"^import .+;$", text, re.MULTILINE):
+                last = m
+            text = (text[:last.end()] + "\n" + brand_import + text[last.end():]) if last else brand_import + "\n" + text
+        for_files.append(text)
+    nav, footer = for_files
+    if "BRAND_LOGO" in nav or "BRAND_LOGO" in footer:
+        return "skipped: BRAND_LOGO still used elsewhere"
+
+    layout = layout_path.read_text(encoding="utf-8")
+    if '"/og.png"' not in layout:
+        layout = re.sub(r'(\n(\s*)type: "website",\n)', r'\1\2images: [{ url: "/og.png", width: 1200, height: 630 }],\n', layout, count=1)
+        layout = re.sub(r'(\n(\s*)card: "summary_large_image",\n)', r'\1\2images: ["/og.png"],\n', layout, count=1)
+
+    snapshot_site(site_dir, "logo: upgrade to emblem + name", "logo")
+    (site_dir / "src/components/BrandMark.tsx").write_text(BRAND_MARK_SOURCE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    (site_dir / "src/brand.json").write_text(json.dumps(
+        {"mode": "emblem_text", "size": 36, "emblem": "", "name": lead.get("name", "")}, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    nav_path.write_text(nav, encoding="utf-8")
+    footer_path.write_text(footer, encoding="utf-8")
+    layout_path.write_text(layout, encoding="utf-8")
+    apply_brand_logo(site_dir, lead)
+    return "upgraded"
+
+
+@app.route("/api/admin/upgrade_logos", methods=["POST"])
+def api_upgrade_logos():
+    """Move already-built sites onto BrandMark (emblem + name). Optional
+    {"slug": ...} limits it to one site. Each upgrade is snapshotted."""
+    only = (request.get_json(silent=True) or {}).get("slug")
+    results = {}
+    for lead in read_leads():
+        if only and lead.get("slug") != only:
+            continue
+        site_dir = _resolve_site_dir(lead.get("slug"))
+        if not site_dir or site_dir == TEMPLATE_SITE.resolve():
+            continue
+        try:
+            results[lead["slug"]] = upgrade_brand_mark(site_dir, lead)
+        except OSError as exc:
+            results[lead["slug"]] = f"error: {exc}"
+    return jsonify({"results": results})
+
+
+# ---- Logo editor panel API
+
+def _logo_site_and_lead(slug):
+    site_dir = _resolve_site_dir(slug)
+    lead = find_lead(read_leads(), slug)
+    if not site_dir or not lead:
+        return None, None, (jsonify({"error": "site not found"}), 404)
+    if not (site_dir / "src" / "brand.json").exists():
+        return None, None, (jsonify({"error": "This site was built before the logo editor — "
+                                              "rebuild it (or run the logo upgrade) to use it."}), 409)
+    if logo_dir(lead) is None:
+        return None, None, (jsonify({"error": "lead has no id to store a logo under"}), 400)
+    return site_dir, lead, None
+
+
+def _update_lead_fields(slug, **fields):
+    with leads_transaction() as leads:
+        lead = find_lead(leads, slug)
+        if lead:
+            lead.update({k: str(v) for k, v in fields.items()})
+            return dict(lead)
+    return None
+
+
+def _sync_logo_fields_from_site(slug, site_dir, lead):
+    """Undo/restore rolls brand.json back but not the lead row; make the
+    lead follow the site so the next change starts from what's on screen."""
+    brand = _read_brand_json(site_dir)
+    wanted = {}
+    if _LOGO_CHOICE_RE.match(str(brand.get("choice") or "")) and brand["choice"] != lead.get("logo_choice"):
+        wanted["logo_choice"] = brand["choice"]
+    if brand.get("color") in LOGO_COLORS and brand["color"] != (lead.get("logo_color") or "original"):
+        wanted["logo_color"] = brand["color"]
+    if brand.get("mode") in LOGO_MODES and brand["mode"] != lead.get("logo_mode"):
+        wanted["logo_mode"] = brand["mode"]
+    if isinstance(brand.get("size"), int) and str(brand["size"]) != (lead.get("logo_size") or ""):
+        wanted["logo_size"] = brand["size"]
+    return (_update_lead_fields(slug, **wanted) or lead) if wanted else lead
+
+
+def logo_state(site_dir, lead):
+    d = logo_dir(lead)
+    meta = logo_lib.read_meta(d)
+    try:
+        font_key = read_theme(site_dir).get("font")
+    except (OSError, ThemeError):
+        font_key = None
+    gen = ensure_generated(lead, font_key)
+    choice = resolve_logo_choice(lead, meta)
+    brand = _read_brand_json(site_dir)
+
+    def url(p):
+        return logo_url(p) if p.exists() else ""
+
+    extracted = None
+    if _has_emblem(d, meta):
+        extracted = {"url": url(d / "emblem.svg") or url(d / "emblem.png"), "is_svg": (d / "emblem.svg").exists()}
+    return {
+        "choice": choice,
+        "is_svg": logo_choice_path(lead, choice).suffix == ".svg",
+        "site_emblem": brand.get("emblem") or "",  # what the preview shows (recoloured)
+        "original_url": url(d / "original.png"),
+        "extracted": extracted,
+        "meta": meta,
+        "generated": [url(gen / f"{i}.svg") for i in range(1, 7)],
+        "ai": [u for u in (url(gen / f"ai-{i}.svg") for i in range(1, 4)) if u],
+        "mode": brand.get("mode") or "emblem_text",
+        "size": brand.get("size") or 36,
+        "color": lead.get("logo_color") or "original",
+        "strict_bg": bool(meta and meta.get("strict_bg")),
+        "tag": logo_tag(meta, choice),
+        "ai_available": _client is not None,
+    }
+
+
+@app.route("/api/logo/<slug>", methods=["GET"])
+def api_logo_get(slug):
+    site_dir, lead, err = _logo_site_and_lead(slug)
+    if err:
+        return err
+    lead = _sync_logo_fields_from_site(slug, site_dir, lead)
+    ensure_logo_extracted(lead)
+    return jsonify(logo_state(site_dir, lead))
+
+
+@app.route("/api/logo/<slug>", methods=["POST"])
+def api_logo_set(slug):
+    """Choice / mode / size / colour / background removal. Snapshots first;
+    size and mode only rewrite brand.json (instant, no AI)."""
+    site_dir, lead, err = _logo_site_and_lead(slug)
+    if err:
+        return err
+    data = request.get_json(force=True) or {}
+    fields, labels = {}, []
+    if "choice" in data:
+        choice = str(data["choice"])
+        if not _LOGO_CHOICE_RE.match(choice):
+            return jsonify({"error": "invalid logo choice"}), 400
+        fields.update(logo_choice=choice, use_logo="Yes" if choice == "extracted" else "No")
+        labels.append(f"use {choice.replace('gen:', 'generated ').replace('ai:', 'AI ')}")
+    if "mode" in data:
+        if data["mode"] not in LOGO_MODES:
+            return jsonify({"error": "invalid mode"}), 400
+        fields["logo_mode"] = data["mode"]
+        labels.append({"emblem_text": "emblem + text", "emblem_only": "emblem only", "text_only": "text only"}[data["mode"]])
+    if "size" in data:
+        try:
+            fields["logo_size"] = max(24, min(56, int(data["size"])))
+        except (TypeError, ValueError):
+            return jsonify({"error": "invalid size"}), 400
+        labels.append(f"size {fields['logo_size']}px")
+    if "color" in data:
+        if data["color"] not in LOGO_COLORS:
+            return jsonify({"error": "invalid colour"}), 400
+        fields["logo_color"] = data["color"]
+        labels.append(f"colour {data['color']}")
+    strict = data.get("strict_bg")
+    if strict is not None:
+        labels.append("strict background removal " + ("on" if strict else "off"))
+    if not labels:
+        return jsonify({"error": "nothing to change"}), 400
+
+    snapshot_site(site_dir, "logo: " + ", ".join(labels), "logo")
+    lead = _update_lead_fields(slug, **fields) or lead
+    if strict is not None:
+        ensure_logo_extracted(lead, strict_bg=bool(strict))
+    assets = any(k in data for k in ("choice", "color", "strict_bg"))
+    apply_brand_logo(site_dir, lead, assets=assets)
+    return jsonify(logo_state(site_dir, lead))
+
+
+@app.route("/api/logo/<slug>/reextract", methods=["POST"])
+def api_logo_reextract(slug):
+    site_dir, lead, err = _logo_site_and_lead(slug)
+    if err:
+        return err
+    if not (logo_dir(lead) / "original.png").exists() and not lead.get("logo_path"):
+        return jsonify({"error": "There's no downloaded logo to re-extract — upload one instead."}), 400
+    if _client is None:
+        return jsonify({"error": "ANTHROPIC_API_KEY isn't set, so the vision check can't run."}), 400
+    snapshot_site(site_dir, "logo: re-extract", "logo")
+    meta = ensure_logo_extracted(lead, force_vision=True)
+    if meta and meta.get("method") != "vision":
+        return jsonify({"error": "The vision check failed — see the server log.", **logo_state(site_dir, lead)}), 502
+    if _has_emblem(logo_dir(lead), meta):
+        lead = _update_lead_fields(slug, logo_choice="extracted", use_logo="Yes") or lead
+    apply_brand_logo(site_dir, lead)
+    return jsonify(logo_state(site_dir, lead))
+
+
+@app.route("/api/logo/<slug>/upload", methods=["POST"])
+def api_logo_upload(slug):
+    site_dir, lead, err = _logo_site_and_lead(slug)
+    if err:
+        return err
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "no file"}), 400
+    raw = file.read(MAX_LOGO_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_LOGO_UPLOAD_BYTES:
+        return jsonify({"error": "That file is over 5MB."}), 400
+    try:
+        if (file.filename or "").lower().endswith(".svg") or raw.lstrip()[:5] in (b"<svg ", b"<?xml"):
+            svg = logo_lib.sanitize_svg(raw.decode("utf-8", errors="replace"))
+            if not svg:
+                return jsonify({"error": "That SVG couldn't be read."}), 400
+            img = logo_lib.rasterize_svg(svg, 1024)
+        else:
+            img = Image.open(io.BytesIO(raw))
+            img.load()
+    except (OSError, ValueError, RuntimeError, Image.DecompressionBombError):
+        return jsonify({"error": "That file isn't a PNG, JPG or SVG image."}), 400
+
+    snapshot_site(site_dir, "logo: upload new", "logo")
+    d = logo_dir(lead)
+    with _logo_lock(d.name):
+        logo_lib.save_original(img, d)
+        meta = logo_lib.extract_emblem(d, _client, CLAUDE_MODEL, source="upload")
+    if _has_emblem(d, meta):
+        lead = _update_lead_fields(slug, logo_choice="extracted", use_logo="Yes") or lead
+    apply_brand_logo(site_dir, lead)
+    state = logo_state(site_dir, lead)
+    if not _has_emblem(d, meta):
+        state["warning"] = "No emblem found in that image — it looks like text only, so a generated emblem is still used."
+    return jsonify(state)
+
+
+@app.route("/api/logo/<slug>/ai_variants", methods=["POST"])
+def api_logo_ai_variants(slug):
+    site_dir, lead, err = _logo_site_and_lead(slug)
+    if err:
+        return err
+    if _client is None:
+        return jsonify({"error": "ANTHROPIC_API_KEY isn't set."}), 400
+    colors = [c for c in (lead.get("brand_colors") or "").split(",") if _HEX6_RE.match(c.strip())] or [lead_brand_color(lead)]
+    try:
+        svgs = logo_lib.ai_emblems(_client, CLAUDE_MODEL, lead.get("name", ""), lead.get("trade", ""), colors)
+    except Exception as exc:  # noqa: BLE001 - API or JSON failure: report, don't crash
+        return jsonify({"error": f"AI variants failed: {exc}"}), 502
+    if not svgs:
+        return jsonify({"error": "The AI didn't return any valid SVGs — try again."}), 502
+    gen = ensure_generated(lead)
+    for old in gen.glob("ai-*.svg"):
+        old.unlink(missing_ok=True)
+    for i, svg in enumerate(svgs, 1):
+        (gen / f"ai-{i}.svg").write_text(svg, encoding="utf-8")
+    return jsonify(logo_state(site_dir, lead))
 
 
 def _resolve_site_dir(slug):
@@ -2784,6 +3705,14 @@ def api_theme_set(slug):
             lead = find_lead(leads, site_dir.name)
             if lead:
                 lead.update(saved)
+
+    # A colour/font/radius change makes Next rebuild the page (several
+    # seconds for a first change). Wait for that before reporting success,
+    # otherwise the panel says "done" while the preview still shows the old
+    # theme and it looks like nothing happened.
+    preview = RUNNING_PREVIEWS.get(site_dir.name)
+    if preview:
+        wait_for_preview_ready(preview["port"], timeout=60)
 
     return jsonify({"ok": True, "label": label, "theme": read_theme(site_dir)})
 
@@ -3044,13 +3973,15 @@ def api_use_logo():
         if not lead:
             return jsonify({"error": "lead not found"}), 404
         lead["use_logo"] = value
+        lead["logo_choice"] = ""  # back to the default: their emblem when on, generated when off
         lead = dict(lead)
 
     applied = False
     site_dir = _resolve_site_dir(slug)
-    if site_dir and (site_dir / "src" / "brand.ts").exists():
+    if site_dir and ((site_dir / "src" / "brand.json").exists() or (site_dir / "src" / "brand.ts").exists()):
         snapshot_site(site_dir, f"logo: {'on' if value == 'Yes' else 'off'}", "logo")
         applied = apply_brand_logo(site_dir, lead)
+    lead.update(lead_logo_summary(lead))
     return jsonify({"lead": lead, "applied": applied})
 
 
@@ -3063,7 +3994,7 @@ def open_browser(port):
 # the database/sites-folder set up — the __main__ block below never runs
 # under gunicorn.
 ensure_db()
-SITES_DIR.mkdir(exist_ok=True)
+SITES_DIR.mkdir(parents=True, exist_ok=True)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
