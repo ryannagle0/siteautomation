@@ -33,12 +33,21 @@ CATALOGUE_PATH = LIBRARY_DIR / "catalogue.json"
 UI_DEFAULTS_PATH = LIBRARY_DIR / "ui-defaults.json"
 
 PRESETS = ["heritage", "industrial", "clean-local", "bold"]
+# Templates: a style preset *and* a fixed page layout (TEMPLATE_SECTIONS),
+# built for electricians. Never picked by the AI composer; the operator
+# chooses one in the Style menu, and it then sticks through rebuilds.
+TEMPLATES = ["quote-box", "van", "spec-sheet"]
+STYLES = PRESETS + TEMPLATES
 PRESET_LABELS = {
     "heritage": "Heritage — Brygada / Libre Franklin",
     "industrial": "Industrial — Big Shoulders / Barlow",
     "clean-local": "Clean local — Bricolage / Figtree",
     "bold": "Bold — Epilogue / Hanken Grotesk",
+    "quote-box": "Template: Quote Box — domestic electricians",
+    "van": "Template: Van Livery — rural / branded van",
+    "spec-sheet": "Template: Spec Sheet — commercial electricians",
 }
+PRESET_RADIUS = {"heritage": 3, "industrial": 0, "clean-local": 14, "bold": 0, "quote-box": 12, "van": 6, "spec-sheet": 0}
 # Ground + surface of each preset: --accent-ink must clear 4.5:1 on both.
 # Keep in step with src/tokens.css and scripts/use-sample.mjs.
 PRESET_GROUNDS = {
@@ -46,6 +55,9 @@ PRESET_GROUNDS = {
     "industrial": ["#101010", "#262626"],
     "clean-local": ["#FFFFFF", "#EAEAEA"],
     "bold": ["#FFFFFF", "#E3E3E3"],
+    "quote-box": ["#FAF8F3", "#F1EDE4"],
+    "van": ["#FFFFFF", "#E8E8E8"],
+    "spec-sheet": ["#FFFFFF", "#E9E9E9"],
 }
 # next/font imports per preset: (import name, css variable, extra options).
 PRESET_FONTS = {
@@ -54,7 +66,28 @@ PRESET_FONTS = {
                    ("Barlow", "--font-barlow", 'weight: ["400", "500", "600", "700"], ')],
     "clean-local": [("Bricolage_Grotesque", "--font-bricolage", ""), ("Figtree", "--font-figtree", "")],
     "bold": [("Epilogue", "--font-epilogue", ""), ("Hanken_Grotesk", "--font-hanken", "")],
+    "quote-box": [("Manrope", "--font-manrope", "")],
+    "van": [("Big_Shoulders_Display", "--font-big-shoulders", ""), ("Inter", "--font-inter", "")],
+    "spec-sheet": [("Archivo", "--font-archivo", "")],
 }
+# Each template's page, in order. Sections whose content is missing render
+# nothing, so these hold for any lead.
+TEMPLATE_SECTIONS = {
+    "quote-box": [("nav", "nav-quote"), ("hero", "hero-quote-box"), ("process", "process-circles"),
+                  ("services", "services-grid"), ("reviews", "reviews-cards"), ("service-area", "area-towns"),
+                  ("contact", "contact-chips"), ("footer", "footer-simple")],
+    "van": [("nav", "nav-van"), ("hero", "hero-van"), ("service-area", "area-band"),
+            ("services", "services-checklist"), ("reviews", "reviews-cards", "surface"),
+            ("contact", "contact-form-split"), ("footer", "footer-columns")],
+    "spec-sheet": [("nav", "nav-spec"), ("hero", "hero-spec"), ("services", "services-spec"),
+                   ("reviews", "reviews-cards", "surface"), ("service-area", "area-towns"),
+                   ("contact", "contact-chips"), ("footer", "footer-simple")],
+}
+
+
+def template_sections(preset):
+    return [{"slot": row[0], "variant": row[1], **({"tone": row[2]} if len(row) > 2 else {})}
+            for row in TEMPLATE_SECTIONS[preset]]
 REQUIRED_SLOTS = ["nav", "hero", "contact", "footer"]
 SLOT_ORDER = ["nav", "hero", "trust", "services", "about", "process", "reviews", "gallery",
               "service-area", "cta", "contact", "footer"]
@@ -65,6 +98,7 @@ COPY_IGNORE = shutil.ignore_patterns(
     "node_modules", ".next", "samples", "scripts", "_samples", ".impeccable", "catalogue",
     "PRODUCT.md", "DESIGN.md", "catalogue.json", "ui-defaults.json", "next-env.d.ts", "*.tsbuildinfo",
     "npm-install.log", "dev-server.log", ".devserver.json", ".history", ".vercel", "README.md",
+    "inspiration", "INSPIRATION.md",  # design references (60MB of video): never shipped in a site
 )
 
 # Always removed: things no business data can back up on a demo site.
@@ -97,6 +131,19 @@ def load_catalogue():
 
 def catalogue_index():
     return {v["id"]: v for v in load_catalogue()["variants"]}
+
+
+def labs_enabled():
+    """Labs variants (catalogue "labs": true) are only composed when
+    SITEFORGE_LABS=1, so the stable library is the default."""
+    return os.environ.get("SITEFORGE_LABS") == "1"
+
+
+# What a labs variant becomes when labs are off (or its data is missing).
+LABS_STABLE = {"hero-editorial": "hero-full-bleed", "hero-colour-field": "hero-typographic",
+               "hero-quick-quote": "hero-typographic", "services-index": "services-grid",
+               "area-marquee": "area-towns", "footer-wordmark": "footer-simple",
+               "contact-chips": "contact-form-split"}
 
 
 def ui_defaults():
@@ -302,17 +349,33 @@ def fonts_ts(preset):
 
 def read_preset(site_dir):
     site = read_json(site_dir / "src" / "site.json", {}) or {}
-    return site.get("preset") if site.get("preset") in PRESETS else "clean-local"
+    return site.get("preset") if site.get("preset") in STYLES else "clean-local"
 
 
 def set_preset(site_dir, preset):
-    if preset not in PRESETS:
+    """Switch the site's style. A template also brings its own page layout:
+    the current sections.json is kept in sections.classic.json and comes
+    back when a classic preset is chosen again. Copy is never touched."""
+    if preset not in STYLES:
         raise ValueError("unknown preset")
-    site_path = site_dir / "src" / "site.json"
+    src = site_dir / "src"
+    old = read_preset(site_dir)
+    site_path = src / "site.json"
     site = read_json(site_path, {}) or {}
     site["preset"] = preset
     write_json(site_path, site)
-    (site_dir / "src" / "fonts.ts").write_text(fonts_ts(preset), encoding="utf-8")
+    (src / "fonts.ts").write_text(fonts_ts(preset), encoding="utf-8")
+    backup = src / "sections.classic.json"
+    if preset in TEMPLATES:
+        if old not in TEMPLATES and (src / "sections.json").exists():
+            shutil.copyfile(src / "sections.json", backup)
+        write_json(src / "sections.json", template_sections(preset))
+    elif old in TEMPLATES:
+        if backup.exists():
+            shutil.copyfile(backup, src / "sections.json")
+        else:
+            cat = catalogue_index()
+            write_json(src / "sections.json", [{"slot": cat[v]["slot"], "variant": v} for v in FALLBACK_SECTIONS[preset]])
 
 
 # ---------------------------------------------------------------------------
@@ -498,6 +561,8 @@ def _variant_ok(variant, facts):
         return facts.get("lat") is not None
     if variant in ("hero-image-grid",):
         return len(facts.get("images") or {}) >= 3
+    if variant == "area-marquee":
+        return len(facts.get("towns") or []) >= 3
     return True
 
 
@@ -527,8 +592,11 @@ def normalize_sections(raw, facts, preset):
             continue
         vid = str(entry.get("variant") or "")
         meta = cat.get(vid)
-        if not meta or meta["slot"] in chosen:
+        if not meta or meta["slot"] in chosen or meta.get("template"):
             continue
+        if vid in LABS_STABLE and (not labs_enabled() or not _variant_ok(vid, facts)):
+            vid = LABS_STABLE[vid]
+            meta = cat[vid]
         if not _variant_ok(vid, facts):
             if meta["slot"] == "hero":
                 vid = HERO_SWAPS.get(vid, "hero-typographic")
@@ -550,7 +618,7 @@ def normalize_sections(raw, facts, preset):
     # none, the typographic hero (or the review-led one when reviews exist).
     images = facts.get("images") or {}
     hero = chosen["hero"]
-    photo_heroes = {"hero-split-image", "hero-full-bleed"} | ({"hero-image-grid"} if len(images) >= 3 else set())
+    photo_heroes = {"hero-split-image", "hero-full-bleed", "hero-editorial"} | ({"hero-image-grid"} if len(images) >= 3 else set())
     if images.get("hero") and hero["variant"] not in photo_heroes:
         hero["variant"] = "hero-full-bleed" if preset in ("industrial", "bold") else "hero-split-image"
         hero.pop("tone", None)
@@ -563,6 +631,12 @@ def normalize_sections(raw, facts, preset):
             chosen["about"] = {"slot": "about", "variant": "about-split"}
         elif chosen["about"]["variant"] == "about-facts":
             chosen["about"]["variant"] = "about-split"
+
+    # Labs: the quick-quote hero and the services index send into the quote
+    # form, so the page needs a contact variant that has one.
+    if (hero["variant"] == "hero-quick-quote" or chosen["services"]["variant"] == "services-index") \
+            and chosen["contact"]["variant"] == "contact-details":
+        chosen["contact"]["variant"] = "contact-form-split"
 
     # One phone moment at the end of the page.
     footer = chosen["footer"]
@@ -584,7 +658,10 @@ def normalize_sections(raw, facts, preset):
     prev = None
     for item in ordered:
         tone = item.get("tone") or cat[item["variant"]].get("tone", "base")
-        if prev is not None and tone == prev["tone"] and tone in ("surface", "band", "accent"):
+        # In clean-local the band *is* the accent, so the two count as one colour.
+        same = tone == prev["tone"] or (preset == "clean-local" and {tone, prev["tone"]} == {"band", "accent"}) \
+            if prev is not None else False
+        if same and tone in ("surface", "band", "accent"):
             own = cat[item["variant"]].get("tone")
             if own in ("band", "accent") and prev["item"]["slot"] not in ("nav", "hero"):
                 prev["item"]["tone"] = "base"
@@ -825,7 +902,8 @@ def build_prompt(facts, catalogue):
     compact = {
         "presets": catalogue["presets"],
         "rules": catalogue["rules"],
-        "variants": [{k: v[k] for k in ("id", "slot", "desc", "needs", "best", "tone")} for v in catalogue["variants"]],
+        "variants": [{k: v[k] for k in ("id", "slot", "desc", "needs", "best", "tone")} for v in catalogue["variants"]
+                     if (labs_enabled() or not v.get("labs")) and not v.get("template")],
     }
     fact_lines = {k: facts.get(k) for k in ("name", "trade", "town", "county", "owner_first_name", "email",
                                             "rating", "review_count", "towns", "hours", "has_website")}
@@ -990,9 +1068,12 @@ def compose(facts, client=None, model=None, log=print):
             log(f"[compose] AI composition failed, using fallback: {exc}")
     if preset not in PRESETS:
         preset = facts.get("preset") if facts.get("preset") in PRESETS else default_preset(facts.get("trade"))
-    if facts.get("preset") in PRESETS:
+    if facts.get("preset") in STYLES:
         preset = facts["preset"]  # a style the operator picked earlier wins
-    sections = normalize_sections(raw_sections or [{"variant": v} for v in FALLBACK_SECTIONS[preset]], facts, preset)
+    if preset in TEMPLATES:
+        sections = template_sections(preset)  # a template's layout is fixed
+    else:
+        sections = normalize_sections(raw_sections or [{"variant": v} for v in FALLBACK_SECTIONS[preset]], facts, preset)
     content = sanitize_content(raw_content, facts) if raw_content else fallback_content(facts)
     content = finalize_content(content, facts, sections, facts.get("images") or {})
     facts["claims_removed"] = claim_guard(content, facts, log=log)

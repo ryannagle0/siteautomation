@@ -88,7 +88,7 @@ export type Content = {
 };
 
 export type SiteConfig = {
-  preset: "heritage" | "industrial" | "clean-local" | "bold";
+  preset: "heritage" | "industrial" | "clean-local" | "bold" | "quote-box" | "van" | "spec-sheet";
   slug?: string;
   siteUrl?: string;
   beaconUrl?: string;

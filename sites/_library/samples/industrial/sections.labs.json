@@ -1,0 +1,39 @@
+[
+  {
+    "slot": "nav",
+    "variant": "nav-phone-bar"
+  },
+  {
+    "slot": "hero",
+    "variant": "hero-editorial"
+  },
+  {
+    "slot": "trust",
+    "variant": "trust-grid"
+  },
+  {
+    "slot": "services",
+    "variant": "services-index"
+  },
+  {
+    "slot": "process",
+    "variant": "process-steps"
+  },
+  {
+    "slot": "reviews",
+    "variant": "reviews-grid"
+  },
+  {
+    "slot": "service-area",
+    "variant": "area-map"
+  },
+  {
+    "slot": "contact",
+    "variant": "contact-chips"
+  },
+  {
+    "slot": "footer",
+    "variant": "footer-wordmark",
+    "tone": "base"
+  }
+]

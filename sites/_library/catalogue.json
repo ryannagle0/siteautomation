@@ -18,7 +18,9 @@
   "Photos decide the hero: with a hero photo use hero-split-image or hero-full-bleed; with none use hero-typographic (or hero-review-led when reviews exist). SiteForge enforces this.",
   "A second photo goes in About: use about-split or about-owner-note, never about-facts, when about.image exists.",
   "The rating shows at most twice: once in the hero (badge OR review card) and once in reviews. Trust items never mention the rating; use area, hours or contact facts.",
-  "Every section's content starts on the same left edge as the nav logo; no centred or offset columns."
+  "Every section's content starts on the same left edge as the nav logo; no centred or offset columns.",
+  "Variants marked labs are only offered when SITEFORGE_LABS=1; SiteForge swaps them for a stable variant otherwise.",
+  "Variants marked template belong to the electrician templates (quote-box, van, spec-sheet); SiteForge places them when the operator picks that template, never in a composed page."
  ],
  "variants": [
   {
@@ -664,6 +666,343 @@
     "industrial"
    ],
    "tone": "band"
+  },
+  {
+   "id": "hero-editorial",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS. Their photo full-bleed under hairline grid columns; poster headline low, top services on a rule beneath, phone card in the bottom-right cell. Band tone grid without a photo.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.image",
+    "hero.subhead",
+    "services.items",
+    "business.phone"
+   ],
+   "best": [
+    "industrial",
+    "heritage",
+    "bold"
+   ],
+   "tone": "band",
+   "ref": "R2, R7"
+  },
+  {
+   "id": "hero-colour-field",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS. The brand colour drenches the hero with a one-hue tonal depth; headline mid-left with + marks, services as a ruled label row near the bottom. No photo needed.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "services.items",
+    "area.towns"
+   ],
+   "best": [
+    "bold",
+    "clean-local"
+   ],
+   "tone": "accent",
+   "ref": "R4"
+  },
+  {
+   "id": "hero-quick-quote",
+   "slot": "hero",
+   "labs": true,
+   "desc": "LABS. The hero is the start of the quote: 'What needs doing?' box with service chips that prefills the contact form; big phone beside it. Needs a contact variant with a form.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "contact.services",
+    "business.phone",
+    "business.hours"
+   ],
+   "best": [
+    "clean-local",
+    "heritage"
+   ],
+   "tone": "base",
+   "ref": "R3 (interaction only)"
+  },
+  {
+   "id": "services-index",
+   "slot": "services",
+   "labs": true,
+   "desc": "LABS. Services as one bordered table of shared hairlines; each cell (icon, name, one line) starts a quote for that service.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.intro"
+   ],
+   "best": [
+    "industrial",
+    "clean-local",
+    "bold"
+   ],
+   "tone": "base",
+   "ref": "R6"
+  },
+  {
+   "id": "area-marquee",
+   "slot": "service-area",
+   "labs": true,
+   "desc": "LABS. One slow loop of the town names at headline size on the brand colour; pauses on hover, static under reduced motion. Needs 3+ towns.",
+   "needs": [
+    "area.heading",
+    "area.towns"
+   ],
+   "optional": [
+    "area.intro"
+   ],
+   "best": [
+    "bold",
+    "clean-local"
+   ],
+   "tone": "accent",
+   "ref": "R1"
+  },
+  {
+   "id": "footer-wordmark",
+   "slot": "footer",
+   "labs": true,
+   "desc": "LABS. Phone, email and links on a rule, then the business name at poster size cropped by the page's bottom edge.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "business.phone",
+    "business.email",
+    "footer.legal"
+   ],
+   "best": [
+    "bold",
+    "industrial"
+   ],
+   "tone": "band",
+   "ref": "R5, R2"
+  },
+  {
+   "id": "contact-chips",
+   "slot": "contact",
+   "labs": true,
+   "desc": "LABS. Dark closing step: details left, quote form right that opens with tappable service chips instead of a dropdown.",
+   "needs": [
+    "contact.heading"
+   ],
+   "optional": [
+    "contact.intro",
+    "contact.services",
+    "business.email"
+   ],
+   "best": [
+    "industrial",
+    "clean-local",
+    "bold"
+   ],
+   "tone": "band",
+   "ref": "R6, R3"
+  },
+  {
+   "id": "nav-quote",
+   "slot": "nav",
+   "template": "quote-box",
+   "desc": "TEMPLATE Quote Box. Name left, the number right; nothing else.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "business.phone"
+   ],
+   "best": [
+    "quote-box"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-quote-box",
+   "slot": "hero",
+   "template": "quote-box",
+   "desc": "TEMPLATE Quote Box. Headline, a 'what needs doing?' box with service chips that prefills the quote form, their photo and the number beside it.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "hero.image",
+    "contact.services",
+    "business.phone",
+    "business.hours"
+   ],
+   "best": [
+    "quote-box"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "process-circles",
+   "slot": "process",
+   "template": "quote-box",
+   "desc": "TEMPLATE Quote Box. How it works in three or four numbered steps.",
+   "needs": [
+    "process.steps"
+   ],
+   "optional": [
+    "process.heading",
+    "process.intro"
+   ],
+   "best": [
+    "quote-box"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "reviews-cards",
+   "slot": "reviews",
+   "template": "all",
+   "desc": "TEMPLATE (all three). Rating up top, three real reviews as cards dressed by the template.",
+   "needs": [
+    "reviews.items"
+   ],
+   "optional": [
+    "reviews.heading",
+    "reviews.rating",
+    "reviews.link"
+   ],
+   "best": [
+    "quote-box",
+    "van",
+    "spec-sheet"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "nav-van",
+   "slot": "nav",
+   "template": "van",
+   "desc": "TEMPLATE Van Livery. The name signwritten in the brand colour, links, the number.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "nav.links",
+    "business.phone"
+   ],
+   "best": [
+    "van"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-van",
+   "slot": "hero",
+   "template": "van",
+   "desc": "TEMPLATE Van Livery. The phone number as the headline in signwriting, a raked livery sweep with a hi-vis stripe, their photo.",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "business.phone",
+    "hero.subhead",
+    "hero.image"
+   ],
+   "best": [
+    "van"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "area-band",
+   "slot": "service-area",
+   "template": "van",
+   "desc": "TEMPLATE Van Livery. Towns in a band of brand colour like a van door; home town marked.",
+   "needs": [
+    "area.towns"
+   ],
+   "optional": [
+    "area.heading"
+   ],
+   "best": [
+    "van"
+   ],
+   "tone": "band"
+  },
+  {
+   "id": "services-checklist",
+   "slot": "services",
+   "template": "van",
+   "desc": "TEMPLATE Van Livery. Two-column checklist with hi-vis markers; each line starts a quote.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.heading",
+    "services.intro"
+   ],
+   "best": [
+    "van"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "nav-spec",
+   "slot": "nav",
+   "template": "spec-sheet",
+   "desc": "TEMPLATE Spec Sheet. Black strip with the note and number, then name, links and a solid call button.",
+   "needs": [
+    "business.name"
+   ],
+   "optional": [
+    "nav.note",
+    "nav.links",
+    "nav.cta"
+   ],
+   "best": [
+    "spec-sheet"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "hero-spec",
+   "slot": "hero",
+   "template": "spec-sheet",
+   "desc": "TEMPLATE Spec Sheet. Heavy caps headline, last phrase highlighted; photo over a spec table (covering, hours, rating, phone).",
+   "needs": [
+    "hero.headline"
+   ],
+   "optional": [
+    "hero.subhead",
+    "hero.image",
+    "business.hours",
+    "reviews.rating"
+   ],
+   "best": [
+    "spec-sheet"
+   ],
+   "tone": "base"
+  },
+  {
+   "id": "services-spec",
+   "slot": "services",
+   "template": "spec-sheet",
+   "desc": "TEMPLATE Spec Sheet. Scope of work as one ruled table, first cell in the brand colour; each cell starts a quote.",
+   "needs": [
+    "services.items"
+   ],
+   "optional": [
+    "services.heading",
+    "services.intro"
+   ],
+   "best": [
+    "spec-sheet"
+   ],
+   "tone": "base"
   }
  ]
 }

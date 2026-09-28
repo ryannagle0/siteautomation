@@ -2069,7 +2069,7 @@ def apply_edit_instruction(site_dir, instruction, layout_image=None, layout_imag
         "You are editing the source of a Next.js (App Router, TypeScript, Tailwind) "
         "small-business demo website. Below are its content files, each preceded by "
         "'--- FILE: <path> ---'. Apply the requested change.\n\n"
-        + (LIBRARY_EDIT_GUIDANCE.replace("{variant_ids}", ", ".join(sorted(lib.catalogue_index()))) if is_lib else (
+        + (LIBRARY_EDIT_GUIDANCE.replace("{variant_ids}", ", ".join(sorted(v for v, m in lib.catalogue_index().items() if lib.labs_enabled() or not m.get("labs")))) if is_lib else (
         "Named colors (blue, navy, ink, base, grey-line, grey-section, etc.) used in "
         "className strings like 'text-blue' or 'bg-navy' are defined as hex values in "
         "tailwind.config.ts, NOT arbitrary Tailwind classes. If asked to change a color, "
@@ -3229,9 +3229,9 @@ def read_library_theme(site_dir):
         "accent_hex": accent,
         "font": preset,
         "font_title": "Style",
-        "radius": radius if radius is not None else {"heritage": 3, "industrial": 0, "clean-local": 14, "bold": 0}[preset],
+        "radius": radius if radius is not None else lib.PRESET_RADIUS.get(preset, 0),
         "palettes": [{"name": k, "hex": v} for k, v in PALETTE_PRESETS.items()],
-        "fonts": [{"key": k, "label": lib.PRESET_LABELS[k]} for k in lib.PRESETS],
+        "fonts": [{"key": k, "label": lib.PRESET_LABELS[k]} for k in lib.STYLES],
         "library": True,
     }
 
@@ -4005,7 +4005,7 @@ def api_theme_set(slug):
     elif kind == "font":
         key = data.get("font")
         if lib.is_library_site(site_dir):
-            if key not in lib.PRESETS:
+            if key not in lib.STYLES:
                 return jsonify({"error": "unknown style preset"}), 400
             label = f"theme: style {key}"
         elif key not in FONT_PRESETS:
