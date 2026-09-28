@@ -3229,9 +3229,9 @@ def read_library_theme(site_dir):
         "accent_hex": accent,
         "font": preset,
         "font_title": "Style",
-        "radius": radius if radius is not None else {"heritage": 3, "industrial": 0, "clean-local": 14, "bold": 0}[preset],
+        "radius": radius if radius is not None else lib.PRESET_RADIUS.get(preset, 0),
         "palettes": [{"name": k, "hex": v} for k, v in PALETTE_PRESETS.items()],
-        "fonts": [{"key": k, "label": lib.PRESET_LABELS[k]} for k in lib.PRESETS],
+        "fonts": [{"key": k, "label": lib.PRESET_LABELS[k]} for k in lib.STYLES],
         "library": True,
     }
 
@@ -4005,7 +4005,7 @@ def api_theme_set(slug):
     elif kind == "font":
         key = data.get("font")
         if lib.is_library_site(site_dir):
-            if key not in lib.PRESETS:
+            if key not in lib.STYLES:
                 return jsonify({"error": "unknown style preset"}), 400
             label = f"theme: style {key}"
         elif key not in FONT_PRESETS:

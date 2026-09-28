@@ -207,6 +207,144 @@
   --image-shadow: none;
 }
 
+/* ══ Electrician templates ══════════════════════════════════════════════
+   Each template is a preset *and* a page layout (site_library.TEMPLATES):
+   choosing one in the dashboard's Style menu swaps both. */
+
+/* ── quote-box: warm paper, one friendly grotesk, the quote box as hero. ── */
+[data-preset="quote-box"] {
+  --bg: #faf8f3;
+  --surface: #ffffff;
+  --surface-2: #f1ede4;
+  --text: #161512;
+  --muted: #625d52;
+  --border: #e3ddd0;
+  --band: #161512;
+  --band-text: #faf8f3;
+  --band-muted: #bdb7a9;
+  --band-border: rgb(255 255 255 / 0.14);
+
+  --font-display: var(--font-manrope), system-ui, sans-serif;
+  --font-body: var(--font-manrope), system-ui, sans-serif;
+  --display-weight: 700;
+  --display-case: none;
+  --display-tracking: -0.04em;
+  --display-leading: 0.98;
+  --heading-leading: 1.04;
+  --label-case: none;
+  --label-tracking: 0.01em;
+  --label-weight: 700;
+  --body-leading: 1.6;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.875rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.15rem, 1.05rem + 0.45vw, 1.35rem);
+  --step-2: clamp(1.3rem, 1.15rem + 0.7vw, 1.6rem);
+  --step-3: clamp(1.7rem, 1.35rem + 1.5vw, 2.4rem);
+  --step-4: clamp(2.2rem, 1.6rem + 2.6vw, 3.5rem);
+  --step-5: clamp(2.8rem, 1.7rem + 4.8vw, 5.75rem);
+
+  --radius: 12px;
+  --radius-lg: 20px;
+  --btn-radius: 12px;
+  --border-w: 1px;
+  --section-y: clamp(4rem, 8vw, 7rem);
+  --image-shadow: 0 30px 60px -30px rgb(40 30 10 / 0.35);
+}
+
+/* ── van: the livery. White, the brand colour as the body of the van, a
+      hi-vis stripe, the number in condensed signwriting. ─────────────── */
+[data-preset="van"] {
+  --bg: #ffffff;
+  --surface: #f3f3f3;
+  --surface-2: #e8e8e8;
+  --text: #111111;
+  --muted: #4a4a4a;
+  --border: #e0e0e0;
+  --band: var(--accent);
+  --band-text: var(--accent-fg);
+  --band-muted: var(--accent-fg);
+  --band-border: color-mix(in oklab, var(--accent-fg) 24%, transparent);
+  /* The livery's second colour: hi-vis, the trade's own signal colour. */
+  --livery: #ffd21f;
+  --livery-fg: #111111;
+
+  --font-display: var(--font-big-shoulders), "Arial Narrow", sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --display-weight: 900;
+  --display-case: uppercase;
+  --display-tracking: 0;
+  --display-leading: 0.9;
+  --heading-leading: 0.95;
+  --label-case: uppercase;
+  --label-tracking: 0.12em;
+  --label-weight: 700;
+  --body-leading: 1.6;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.8125rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.2rem, 1.1rem + 0.5vw, 1.45rem);
+  --step-2: clamp(1.45rem, 1.25rem + 0.9vw, 1.9rem);
+  --step-3: clamp(2rem, 1.55rem + 2vw, 3rem);
+  --step-4: clamp(2.6rem, 1.8rem + 3.6vw, 4.6rem);
+  --step-5: clamp(3.4rem, 1.9rem + 6.6vw, 6rem);
+
+  --radius: 6px;
+  --radius-lg: 10px;
+  --btn-radius: 6px;
+  --border-w: 1px;
+  --section-y: clamp(4rem, 8vw, 7rem);
+  --image-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.55);
+}
+
+/* ── spec-sheet: a contractor's spec sheet. Black 2px rules, one heavy
+      grotesk in caps, the brand colour as a highlighter. ─────────────── */
+[data-preset="spec-sheet"] {
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --surface-2: #e9e9e9;
+  --text: #0b0b0b;
+  --muted: #444444;
+  --border: #0b0b0b;
+  --band: #0b0b0b;
+  --band-text: #ffffff;
+  --band-muted: #b5b5b5;
+  --band-border: rgb(255 255 255 / 0.24);
+
+  --font-display: var(--font-archivo), system-ui, sans-serif;
+  --font-body: var(--font-archivo), system-ui, sans-serif;
+  --display-weight: 800;
+  --display-case: uppercase;
+  --display-tracking: -0.04em;
+  --display-leading: 0.92;
+  --heading-leading: 0.95;
+  --label-case: uppercase;
+  --label-tracking: 0.1em;
+  --label-weight: 700;
+  --body-leading: 1.55;
+
+  --step--2: 0.8125rem;
+  --step--1: 0.8125rem;
+  --step-small: 0.9375rem;
+  --step-0: 1.0625rem;
+  --step-1: clamp(1.15rem, 1.05rem + 0.45vw, 1.35rem);
+  --step-2: clamp(1.35rem, 1.2rem + 0.7vw, 1.65rem);
+  --step-3: clamp(1.9rem, 1.45rem + 2vw, 2.9rem);
+  --step-4: clamp(2.5rem, 1.7rem + 3.6vw, 4.2rem);
+  --step-5: clamp(3rem, 1.6rem + 6.2vw, 6rem);
+
+  --radius: 0px;
+  --radius-lg: 0px;
+  --btn-radius: 0px;
+  --border-w: 2px;
+  --section-y: clamp(4rem, 8vw, 7rem);
+  --image-shadow: none;
+}
+
 /* SITE:BEGIN — written by SiteForge (brand colour + contrast companions). */
 :root {
   --accent: #2f7d4f;
@@ -216,4 +354,7 @@
 [data-preset="industrial"] { --accent-ink: #619c79; }
 [data-preset="clean-local"] { --accent-ink: #2b7349; }
 [data-preset="bold"] { --accent-ink: #296e46; }
+[data-preset="quote-box"] { --accent-ink: #2b7349; }
+[data-preset="van"] { --accent-ink: #296e46; }
+[data-preset="spec-sheet"] { --accent-ink: #296e46; }
 /* SITE:END */

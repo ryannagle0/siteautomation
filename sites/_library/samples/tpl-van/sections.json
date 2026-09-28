@@ -1,0 +1,31 @@
+[
+  {
+    "slot": "nav",
+    "variant": "nav-van"
+  },
+  {
+    "slot": "hero",
+    "variant": "hero-van"
+  },
+  {
+    "slot": "service-area",
+    "variant": "area-band"
+  },
+  {
+    "slot": "services",
+    "variant": "services-checklist"
+  },
+  {
+    "slot": "reviews",
+    "variant": "reviews-cards",
+    "tone": "surface"
+  },
+  {
+    "slot": "contact",
+    "variant": "contact-form-split"
+  },
+  {
+    "slot": "footer",
+    "variant": "footer-columns"
+  }
+]

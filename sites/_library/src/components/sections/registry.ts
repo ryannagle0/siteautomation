@@ -44,6 +44,18 @@ import FooterBigPhone from "./footer/footer-big-phone";
 import FooterColumns from "./footer/footer-columns";
 import FooterSimple from "./footer/footer-simple";
 import FooterWordmark from "./footer/footer-wordmark";
+// Electrician templates (site_library.TEMPLATES).
+import NavQuote from "./nav/nav-quote";
+import HeroQuoteBox from "./hero/hero-quote-box";
+import ProcessCircles from "./process/process-circles";
+import ReviewsCards from "./reviews/reviews-cards";
+import NavVan from "./nav/nav-van";
+import HeroVan from "./hero/hero-van";
+import AreaBand from "./service-area/area-band";
+import ServicesChecklist from "./services/services-checklist";
+import NavSpec from "./nav/nav-spec";
+import HeroSpec from "./hero/hero-spec";
+import ServicesSpec from "./services/services-spec";
 
 export type SectionEntry = { slot: string; variant: string; tone?: Tone };
 export type SectionProps = { tone?: Tone };
@@ -99,4 +111,16 @@ export const SECTIONS: Record<string, ComponentType<SectionProps>> = {
   "footer-columns": FooterColumns,
   "footer-simple": FooterSimple,
   "footer-wordmark": FooterWordmark,
+  // Electrician templates.
+  "nav-quote": NavQuote,
+  "hero-quote-box": HeroQuoteBox,
+  "process-circles": ProcessCircles,
+  "reviews-cards": ReviewsCards,
+  "nav-van": NavVan,
+  "hero-van": HeroVan,
+  "area-band": AreaBand,
+  "services-checklist": ServicesChecklist,
+  "nav-spec": NavSpec,
+  "hero-spec": HeroSpec,
+  "services-spec": ServicesSpec,
 };

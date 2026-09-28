@@ -85,7 +85,8 @@
     --surface: rgb(255 255 255 / 0.06);
     --surface-2: rgb(255 255 255 / 0.1);
   }
-  [data-preset="clean-local"] [data-tone="band"] {
+  [data-preset="clean-local"] [data-tone="band"],
+  [data-preset="van"] [data-tone="band"] {
     --btn-bg: var(--band-text);
     --btn-fg: var(--band);
     --btn-bg-hover: color-mix(in oklab, var(--band-text) 88%, var(--band));
@@ -390,4 +391,43 @@
   .marquee-row[aria-hidden="true"] {
     display: none;
   }
+}
+
+/* ── Electrician templates ───────────────────────────────────────────── */
+/* Van Livery: a raked block of brand colour with a hi-vis pinstripe. */
+.van-sweep {
+  background: linear-gradient(104deg, transparent 0 14%, var(--livery) 14% 16.5%, transparent 16.5% 19.5%,
+    var(--accent) 19.5% 100%);
+}
+.van-number {
+  font-size: clamp(3.2rem, 1.2rem + 6.4vw, 6rem);
+  line-height: 0.9;
+}
+.van-home {
+  text-decoration: underline 5px var(--livery);
+  text-underline-offset: 0.18em;
+}
+[data-preset="van"] .hero-van .btn-secondary {
+  background: var(--livery);
+  color: var(--livery-fg);
+  border-color: var(--livery);
+}
+[data-preset="van"] .hero-van .btn-secondary:hover {
+  background: color-mix(in oklab, var(--livery) 85%, black);
+}
+.review-card {
+  border-radius: var(--radius-lg);
+}
+/* Van Livery: square panels with a stripe of brand colour, like vinyl on a van. */
+[data-preset="van"] .review-card {
+  border-top: 6px solid var(--accent);
+  border-radius: 0;
+}
+/* Spec Sheet: the brand colour as a highlighter across the last phrase. */
+.spec-mark {
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: 0 0.08em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }

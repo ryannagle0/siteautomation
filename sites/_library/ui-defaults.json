@@ -43,5 +43,11 @@
   "quickQuoteSubmit": "Get a quote",
   "orCall": "Or ring",
   "servicesTableHint": "Tap a service to ask for a quote",
-  "areaMarquee": "Towns we cover"
+  "areaMarquee": "Towns we cover",
+  "orJustRing": "Or just ring",
+  "quoteBoxLabel": "Tell {name} about the job",
+  "quoteBoxPlaceholder": "e.g. the RCD keeps tripping",
+  "quoteBoxSubmit": "Get a price",
+  "specCovering": "Covering",
+  "specRating": "Rating"
 }

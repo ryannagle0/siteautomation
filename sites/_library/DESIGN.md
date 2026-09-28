@@ -197,3 +197,20 @@ Seven variants built from the Dribbble study in `INSPIRATION.md` are marked `"la
 | `contact-chips` | contact | Quote form that opens with tappable service chips | R6, R3 |
 
 **Labs rules:** the quick-quote hero and the services index need a form contact (SiteForge swaps `contact-details` for `contact-form-split`). In clean-local the band *is* the accent, so band and accent count as one colour in the tone rhythm. "+" marks (`GridMark`) are decoration only and never sit in the text flow, so they don't shift the left edge.
+
+## Electrician templates
+
+Three templates for electricians. Each one is a style preset **and** a fixed page layout (`site_library.TEMPLATES` / `TEMPLATE_SECTIONS`). The AI composer never picks them. The operator chooses one in the dashboard's **Style** menu:
+- **Choosing a template:** swaps the fonts and colours and replaces `sections.json` with the template's layout. The previous layout is kept in `sections.classic.json`.
+- **Choosing a classic preset again:** restores that layout.
+- **What never changes:** copy is never touched by a switch, and Undo covers it (snapshots include all of `src/`).
+
+| Template | For | Look | Signature sections |
+|---|---|---|---|
+| `quote-box` | Domestic electricians | Warm paper (#FAF8F3), Manrope throughout, soft cards | `hero-quote-box`: a "Tell Tom about the job" box with service chips that prefills the contact form, their photo and the number beside it. `process-circles`. |
+| `van` | Rural / branded-van electricians | White with the brand colour as the van body, a hi-vis `--livery` stripe (#FFD21F), Big Shoulders signwriting + Inter | `hero-van`: the phone number as the headline, with a raked livery sweep. `area-band`: towns like a van door. `services-checklist`. |
+| `spec-sheet` | Commercial electricians | White, black 2px rules, Archivo in heavy caps, the brand colour as a highlighter | `hero-spec`: the last phrase of the headline highlighted, with a spec table (covering, hours, rating, phone) under their photo. `services-spec`: one ruled table. |
+
+All three share `reviews-cards`, and each template dresses the cards through `.review-card` in globals.css. Every string comes from `content.json` via `data-edit`. The new interface strings are `orJustRing`, `quoteBoxLabel`, `quoteBoxPlaceholder`, `quoteBoxSubmit`, `specCovering` and `specRating`.
+
+**Exception:** `--livery` is the one sanctioned second colour. It's the trade's hi-vis signal colour, used for stripes and markers, never for text on white.

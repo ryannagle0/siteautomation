@@ -1,0 +1,188 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped.",
+  "business": {
+    "name": "Kavanagh Electrical",
+    "trade": "Electrician",
+    "town": "Kilkenny",
+    "county": "Kilkenny",
+    "ownerFirstName": "Tom",
+    "phone": {
+      "display": "056 776 2143",
+      "tel": "0567762143",
+      "intl": "+353567762143",
+      "wa": ""
+    },
+    "email": "tomkavanagh.electrical@gmail.com",
+    "hours": "Mon–Fri 8am–6pm · Sat 9am–1pm",
+    "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Kavanagh+Electrical+Kilkenny",
+    "lat": 52.6541,
+    "lng": -7.2448
+  },
+  "seo": {
+    "title": "Kavanagh Electrical | Electrician in Kilkenny",
+    "description": "Domestic electrician covering Kilkenny City, Thomastown, Callan and Castlecomer. Fuse boards, rewires, EV chargers and fault finding. Call Tom on 056 776 2143."
+  },
+  "nav": {
+    "links": [
+      {
+        "label": "How it works",
+        "href": "#process"
+      },
+      {
+        "label": "Services",
+        "href": "#services"
+      },
+      {
+        "label": "Reviews",
+        "href": "#reviews"
+      },
+      {
+        "label": "Contact",
+        "href": "#contact"
+      }
+    ],
+    "cta": "Call Tom",
+    "note": "Electrical work across Co. Kilkenny"
+  },
+  "hero": {
+    "headline": "What needs fixing, Kilkenny?",
+    "subhead": "Fuse boards, rewires, EV chargers and faults found. Tom answers the phone himself.",
+    "primaryCta": "Call 056 776 2143",
+    "secondaryCta": "Request a quote",
+    "image": {
+      "src": "/_samples/industrial-2.jpg",
+      "alt": "An electrician testing a new consumer unit",
+      "width": 1920,
+      "height": 1080,
+      "credit": "Photo: Tom Kavanagh on Google"
+    }
+  },
+  "services": {
+    "heading": "What Tom does",
+    "intro": "Domestic electrical work across the county, from a tripping switch to a full rewire.",
+    "items": [
+      {
+        "icon": "lightbulb",
+        "title": "Fuse board upgrades",
+        "text": "Old boards replaced with modern RCBO boards, labelled and tested."
+      },
+      {
+        "icon": "ev-charger",
+        "title": "EV chargers",
+        "text": "Home chargers fitted on the wall or driveway, grant paperwork handled."
+      },
+      {
+        "icon": "cable",
+        "title": "Rewires",
+        "text": "Full and partial rewires, planned so you're not left in the dark."
+      },
+      {
+        "icon": "zap",
+        "title": "Fault finding",
+        "text": "Tripping switches, dead sockets and flickering lights traced and fixed."
+      },
+      {
+        "icon": "lightbulb",
+        "title": "Lighting",
+        "text": "New lights, dimmers and outside lighting."
+      },
+      {
+        "icon": "siren",
+        "title": "Smoke & heat alarms",
+        "text": "Mains-wired, interlinked alarms for every floor."
+      }
+    ]
+  },
+  "process": {
+    "heading": "How it works",
+    "intro": "No call centre, no waiting in for a window that never comes.",
+    "steps": [
+      {
+        "title": "Tell us what's wrong",
+        "text": "A line and a photo is plenty. WhatsApp works too."
+      },
+      {
+        "title": "Get a fixed price",
+        "text": "Same day for most jobs, before anything starts."
+      },
+      {
+        "title": "Sorted and certified",
+        "text": "Tested, tidied, and a cert for your records."
+      }
+    ]
+  },
+  "reviews": {
+    "heading": "What Kilkenny says",
+    "rating": 4.9,
+    "count": 63,
+    "source": "Google",
+    "link": "https://www.google.com/maps/search/?api=1&query=Kavanagh+Electrical+Kilkenny",
+    "linkLabel": "Read all 63 reviews on Google",
+    "items": [
+      {
+        "author": "Siobhán D.",
+        "rating": 5,
+        "text": "Half the house went dead on a Sunday night. Tom was out first thing Monday and had everything back on by lunchtime.",
+        "when": "2 months ago"
+      },
+      {
+        "author": "Pádraig M.",
+        "rating": 5,
+        "text": "New fuse board and an EV charger. Tidy, on time, and the price didn't move.",
+        "when": "5 months ago"
+      },
+      {
+        "author": "Helen R.",
+        "rating": 5,
+        "text": "Found a fault two other lads couldn't. Honest and fair.",
+        "when": "a year ago"
+      }
+    ]
+  },
+  "area": {
+    "heading": "Where we work",
+    "intro": "Based in Kilkenny City and out every day across the county.",
+    "towns": [
+      "Kilkenny City",
+      "Thomastown",
+      "Callan",
+      "Castlecomer",
+      "Bennettsbridge",
+      "Freshford",
+      "Graiguenamanagh",
+      "Paulstown"
+    ],
+    "note": "Just outside these? Ring and ask."
+  },
+  "contact": {
+    "heading": "Get a price",
+    "intro": "Tell Tom a bit about the job and he'll come back to you, usually the same day.",
+    "formHeading": "Send us the details",
+    "services": [
+      "Fuse board",
+      "Sockets & switches",
+      "EV charger",
+      "Lighting",
+      "No power",
+      "Something else"
+    ],
+    "submit": "Send to Tom",
+    "success": "Thanks, that's with us. We'll be in touch today or first thing tomorrow.",
+    "labels": {
+      "name": "Your name",
+      "phone": "Phone",
+      "email": "Email",
+      "service": "What's it about?",
+      "message": "Details"
+    }
+  },
+  "footer": {
+    "blurb": "Domestic electrician in Kilkenny.",
+    "legal": "© Kavanagh Electrical"
+  },
+  "mobileBar": {
+    "call": "Call Tom",
+    "whatsapp": "WhatsApp",
+    "quote": "Get a quote"
+  }
+}

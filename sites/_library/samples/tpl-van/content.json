@@ -1,0 +1,156 @@
+{
+  "_sample": "Synthetic demo business for the library's quality pass. Never shipped.",
+  "business": {
+    "name": "Nolan Electrical",
+    "trade": "Electrician",
+    "town": "Castlebar",
+    "county": "Mayo",
+    "ownerFirstName": "Pat",
+    "phone": {
+      "display": "094 555 0187",
+      "tel": "0945550187",
+      "intl": "+353945550187",
+      "wa": ""
+    },
+    "email": "pat@nolanelectrical.ie",
+    "hours": "Mon–Sat · 8am–6pm",
+    "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Nolan+Electrical+Castlebar",
+    "lat": 53.855,
+    "lng": -9.298
+  },
+  "seo": {
+    "title": "Nolan Electrical | Electrician in Castlebar, Co. Mayo",
+    "description": "Electrician for houses, farms and shops across Mayo. Call Pat on 094 555 0187."
+  },
+  "nav": {
+    "links": [
+      {
+        "label": "Services",
+        "href": "#services"
+      },
+      {
+        "label": "Areas",
+        "href": "#area"
+      },
+      {
+        "label": "Reviews",
+        "href": "#reviews"
+      }
+    ],
+    "cta": "Call Pat",
+    "note": "Electrician · Co. Mayo"
+  },
+  "hero": {
+    "headline": "Electrician for houses, farms and shops across Mayo. Ring it and you get Pat.",
+    "primaryCta": "Call Pat now",
+    "secondaryCta": "Get a quote",
+    "image": {
+      "src": "/_samples/industrial-4.jpg",
+      "alt": "Pat's van parked outside a farmhouse job",
+      "width": 1920,
+      "height": 1080,
+      "credit": "Photo: Pat Nolan on Google"
+    }
+  },
+  "services": {
+    "heading": "Houses, farms and shops",
+    "intro": "One electrician for the whole county: the house, the yard and the shop.",
+    "items": [
+      {
+        "title": "Fuse board upgrades"
+      },
+      {
+        "title": "Full & part rewires"
+      },
+      {
+        "title": "Farm & yard electrics"
+      },
+      {
+        "title": "EV chargers"
+      },
+      {
+        "title": "Fault finding"
+      },
+      {
+        "title": "Outdoor & security lights"
+      },
+      {
+        "title": "Heat pump wiring"
+      },
+      {
+        "title": "Smoke alarms"
+      }
+    ]
+  },
+  "reviews": {
+    "heading": "What Mayo says",
+    "rating": 5.0,
+    "count": 41,
+    "source": "Google",
+    "link": "https://www.google.com/maps/search/?api=1&query=Nolan+Electrical+Castlebar",
+    "linkLabel": "Read all 41 reviews on Google",
+    "items": [
+      {
+        "author": "Martin G.",
+        "rating": 5,
+        "text": "Out to the farm the same evening when the parlour tripped. Top man.",
+        "when": "3 months ago"
+      },
+      {
+        "author": "Orla B.",
+        "rating": 5,
+        "text": "Rewired our cottage and kept us in the loop the whole way.",
+        "when": "6 months ago"
+      },
+      {
+        "author": "Kevin D.",
+        "rating": 5,
+        "text": "Fair price, tidy work, turned up when he said.",
+        "when": "a year ago"
+      }
+    ]
+  },
+  "area": {
+    "heading": "Where Pat works",
+    "intro": "",
+    "towns": [
+      "Castlebar",
+      "Westport",
+      "Ballina",
+      "Claremorris",
+      "Swinford",
+      "Newport",
+      "Ballinrobe"
+    ]
+  },
+  "contact": {
+    "heading": "Get a quote from Pat",
+    "intro": "Leave your details and Pat will ring you back, usually the same day.",
+    "formHeading": "Send us the details",
+    "services": [
+      "Fuse board",
+      "Rewire",
+      "Farm or yard",
+      "EV charger",
+      "Something else"
+    ],
+    "submit": "Send to Pat",
+    "success": "Thanks, that's with us. We'll be in touch today or first thing tomorrow.",
+    "labels": {
+      "name": "Your name",
+      "phone": "Phone",
+      "email": "Email",
+      "service": "What's it about?",
+      "message": "Details"
+    }
+  },
+  "footer": {
+    "blurb": "Electrician for houses, farms and shops across Co. Mayo.",
+    "legal": "© Nolan Electrical"
+  },
+  "mobileBar": {
+    "call": "Call Pat",
+    "whatsapp": "WhatsApp",
+    "quote": "Get a quote"
+  }
+}
