@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zambia Debt KB</title>
+<!--
+  Zambia Debt Burden — Leaving Cert Economics research knowledge base.
+  One self-contained file: vanilla HTML + CSS + JS, no libraries, no build step.
+  Open it by double-clicking. Your edits are saved in this browser's localStorage.
+
+  HOW TO ADD NOTES IN CODE (optional — you can also use the "+ New note" button):
+    Find DEFAULT_NOTES in the <script> below and add an object:
+      { id: 'my-note', title: 'My Note', folder: 'Data', type: 'note', body: `...markdown...` }
+    Note: DEFAULT_NOTES are only used the first time (or after "Reset").
+    Once you have edited anything, your saved copy in localStorage is used instead.
+
+  NOTE SYNTAX (markdown-lite):
+    # / ## / ###          headings
+    **bold**  *italic*    inline formatting
+    - item / 1. item      bullets / numbered lists (indent 2 spaces to nest)
+    - [ ] task / - [x]    checkboxes (click to tick)
+    | a | b |             tables (second line must be |---|---|)
+    > [!warning] Title    callout box (types: note, info, warning, danger, question)
+    [[Note title]]        wikilink   ·   [[Note title|shown text]] with alias
+    #tag                  tag
+    {{fact:STATUS|Source}}        status badge + source label
+    {{field:STATUS|value|id}}     editable data field (empty value = MISSING)
+    {{tasks:Note title}}          embed the checkboxes from another note
+    {{dashboard:counts}}          VERIFIED / NEEDS CHECK / MISSING counts
+    {{status-list:MISSING}}       live list of every item with that status
+    ~~~chart ... ~~~              line chart (see the Measure 1 note for the format;
+                                  "@id" pulls a value from a {{field}} with that id)
+  STATUS is one of: VERIFIED, NEEDS CHECK, MISSING
+-->
+<style>
+/* ==========================================================================
+   THEME TOKENS (dark, Obsidian-like)
+   ========================================================================== */
+:root {
+  --bg: #1e1e1e;
+  --bg-side: #191919;
+  --bg-panel: #232323;
+  --bg-input: #161616;
+  --bg-btn: #2a2a2a;
+  --bg-hover: #2c2c2c;
+  --bg-active: #3a3352;
+  --border: #303030;
+  --border-strong: #444;
+  --text: #dcddde;
+  --text-soft: #c4c4c4;
+  --muted: #9a9a9a;
+  --faint: #6b6b6b;
+  --accent: #a882ff;
+  --accent-soft: rgba(168, 130, 255, 0.14);
+  --ok: #4cc38a;
+  --ok-bg: rgba(76, 195, 138, 0.12);
+  --warn: #e8b04b;
+  --warn-bg: rgba(232, 176, 75, 0.12);
+  --bad: #f0645a;
+  --bad-bg: rgba(240, 100, 90, 0.12);
+  --info: #5ba4f0;
+  --info-bg: rgba(91, 164, 240, 0.10);
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, "Liberation Mono", monospace;
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   BASE + LAYOUT
+   ========================================================================== */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.6 var(--sans); overflow: hidden; }
+input, select, textarea, button { font: inherit; color: inherit; }
+a { color: var(--accent); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #353535; border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+#app { display: grid; grid-template-columns: 272px minmax(0, 1fr) 290px; height: 100vh; }
+
+/* ---------- Left sidebar ---------- */
+#sidebar { background: var(--bg-side); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+.side-head { padding: 14px 12px 10px 14px; display: flex; align-items: center; gap: 8px; }
+.brand { flex: 1; font-weight: 650; font-size: 14px; line-height: 1.3; }
+.brand small { display: block; color: var(--muted); font-weight: 400; font-size: 11.5px; }
+.side-filters { padding: 0 12px 10px; display: grid; gap: 6px; }
+.inp { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 13px; }
+.inp:focus, .field-input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+.filter-info { font-size: 11.5px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; min-height: 16px; }
+.filter-info button { all: unset; cursor: pointer; color: var(--accent); }
+#tree { flex: 1; overflow: auto; padding: 2px 6px 14px; }
+.folder { margin-bottom: 2px; }
+.folder-head { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 7px; width: 100%; padding: 4px 8px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted); border-radius: 5px; }
+.folder-head:hover { background: var(--bg-hover); color: var(--text); }
+.folder-head:focus-visible { outline: 1px solid var(--accent); }
+.chev { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; transition: transform .15s; flex: none; }
+.folder.collapsed .chev { transform: rotate(-90deg); }
+.folder.collapsed .folder-notes { display: none; }
+.count { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--faint); }
+.tree-note { display: flex; gap: 7px; align-items: baseline; padding: 3px 8px 3px 21px; color: var(--text-soft); text-decoration: none; font-size: 13.5px; line-height: 1.4; border-radius: 5px; }
+.tree-note:hover { background: var(--bg-hover); color: var(--text); }
+.tree-note.active { background: var(--bg-active); color: #fff; }
+.tree-note .ico { color: var(--faint); font-size: 10px; width: 11px; flex: none; text-align: center; }
+.tree-note.active .ico { color: var(--accent); }
+.tree-snippet { display: block; font-size: 11.5px; color: var(--faint); padding: 0 8px 4px 39px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-snippet mark { background: var(--accent-soft); color: var(--text); border-radius: 2px; }
+.side-foot { border-top: 1px solid var(--border); padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* ---------- Buttons ---------- */
+.btn { background: var(--bg-btn); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; white-space: nowrap; line-height: 1.4; }
+.btn:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.btn:focus-visible { outline: 1px solid var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #17131f; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: #fff; }
+.btn.danger:hover { border-color: var(--bad); color: var(--bad); }
+.icon-btn { padding: 5px 8px; }
+
+/* ---------- Main pane ---------- */
+#main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border); min-height: 46px; }
+.crumbs { flex: 1; min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumbs b { color: var(--text); font-weight: 500; }
+#menuBtn, #linksBtn { display: none; }
+#view { flex: 1; overflow: auto; position: relative; }
+
+/* ---------- Right panel ---------- */
+#right { background: var(--bg-side); border-left: 1px solid var(--border); overflow: auto; padding: 14px 14px 30px; font-size: 13px; }
+#right h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; font-weight: 600; display: flex; justify-content: space-between; }
+#right h3:first-child { margin-top: 4px; }
+.rlist { list-style: none; margin: 0; padding: 0; }
+.rlist li { padding: 6px 8px; border-radius: 6px; margin-bottom: 3px; background: var(--bg-panel); }
+.rlist li .snip { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; margin-top: 2px; }
+.rlist a { text-decoration: none; }
+.muted { color: var(--muted); }
+.mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.mini-stats div { background: var(--bg-panel); border-radius: 6px; padding: 6px; text-align: center; font-size: 10px; letter-spacing: .03em; }
+.mini-stats b { display: block; font-size: 17px; letter-spacing: 0; }
+
+/* ==========================================================================
+   NOTE CONTENT
+   ========================================================================== */
+.note { max-width: 880px; margin: 0 auto; padding: 26px 40px 90px; }
+.note-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.pill { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--muted); }
+.pill.type-data { border-color: var(--info); color: var(--info); }
+.pill.type-dashboard { border-color: var(--accent); color: var(--accent); }
+.note-title { font-size: 30px; line-height: 1.2; margin: 4px 0 18px; font-weight: 700; letter-spacing: -0.01em; }
+.note-body h1, .note-body h2, .note-body h3, .note-body h4 { line-height: 1.3; margin: 1.6em 0 .5em; }
+.note-body h1 { font-size: 24px; }
+.note-body h2 { font-size: 19px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.note-body h3 { font-size: 16px; }
+.note-body h4 { font-size: 14.5px; color: var(--text-soft); }
+.note-body p { margin: .6em 0; }
+.note-body ul, .note-body ol { padding-left: 1.4em; margin: .5em 0; }
+.note-body li { margin: .22em 0; }
+.note-body li::marker { color: var(--faint); }
+.note-body li.task-item { list-style: none; margin-left: -1.3em; }
+.note-body strong { color: #fff; font-weight: 650; }
+.note-body em { color: var(--text-soft); }
+.note-body code { font-family: var(--mono); font-size: .88em; background: var(--bg-panel); padding: 1px 5px; border-radius: 4px; }
+.note-body pre { background: var(--bg-panel); padding: 12px 14px; border-radius: 8px; overflow: auto; }
+.note-body pre code { background: none; padding: 0; }
+.note-body hr { border: 0; border-top: 1px solid var(--border); margin: 1.6em 0; }
+.note-body blockquote { margin: .8em 0; padding: 2px 14px; border-left: 3px solid var(--border-strong); color: var(--text-soft); }
+
+.wikilink { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(168,130,255,.35); cursor: pointer; }
+.wikilink:hover { border-bottom-color: var(--accent); }
+.wikilink.unresolved { color: #8f7fb6; border-bottom-style: dashed; opacity: .85; }
+.tag { display: inline-block; background: var(--accent-soft); color: #c5adff; text-decoration: none; font-size: .82em; padding: 0 7px; border-radius: 999px; line-height: 1.6; }
+.tag:hover { background: rgba(168,130,255,.26); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin: .8em 0; border: 1px solid var(--border); border-radius: 8px; }
+.note-body table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.note-body th, .note-body td { padding: 7px 11px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+.note-body th { background: var(--bg-panel); font-weight: 600; font-size: 12.5px; color: var(--text-soft); }
+.note-body tr:last-child td { border-bottom: 0; }
+.note-body td + td, .note-body th + th { border-left: 1px solid var(--border); }
+
+/* Callouts: > [!type] Title */
+.callout { margin: 1em 0; border-radius: 8px; padding: 10px 14px; border-left: 3px solid var(--info); background: var(--info-bg); }
+.callout-title { font-weight: 650; margin-bottom: 2px; }
+.callout-body > :first-child { margin-top: 2px; }
+.callout-body > :last-child { margin-bottom: 0; }
+.callout-warning { border-color: var(--warn); background: var(--warn-bg); }
+.callout-warning .callout-title { color: var(--warn); }
+.callout-danger { border-color: var(--bad); background: var(--bad-bg); }
+.callout-danger .callout-title { color: var(--bad); }
+.callout-question { border-color: var(--accent); background: var(--accent-soft); }
+.callout-question .callout-title { color: #c5adff; }
+.callout-note .callout-title, .callout-info .callout-title { color: var(--info); }
+
+/* Status badges (click to cycle) */
+.fact { white-space: normal; }
+.badge { font: 650 10px/1 var(--sans); letter-spacing: .05em; padding: 3px 6px 3px; border-radius: 4px; border: 1px solid; cursor: pointer; vertical-align: 1px; white-space: nowrap; background: transparent; margin-left: 2px; }
+.badge:hover { filter: brightness(1.25); }
+.badge:focus-visible { outline: 1px solid #fff; }
+.s-verified { color: var(--ok); border-color: rgba(76,195,138,.55); background: var(--ok-bg); }
+.s-needs { color: var(--warn); border-color: rgba(232,176,75,.55); background: var(--warn-bg); }
+.s-missing { color: var(--bad); border-color: rgba(240,100,90,.6); background: var(--bad-bg); }
+.src { font-size: 12px; color: var(--muted); margin-left: 6px; font-style: italic; }
+.src::before { content: "— "; }
+
+/* Editable data fields */
+.field { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.field-input { background: var(--bg-input); border: 1px dashed rgba(240,100,90,.6); border-radius: 5px; padding: 2px 7px; font-size: 13.5px; min-width: 6em; max-width: 100%; }
+.field.filled .field-input { border-style: solid; border-color: var(--border-strong); }
+.field-input::placeholder { color: #8a5550; font-style: italic; }
+
+/* Tasks */
+.task { display: inline-flex; gap: 9px; align-items: baseline; }
+.task input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; transform: translateY(2px); flex: none; }
+.task.done > span { color: var(--faint); text-decoration: line-through; }
+.task-list { list-style: none; padding-left: 0 !important; }
+.task-progress { font-size: 12px; color: var(--muted); margin: -2px 0 6px; }
+
+/* Dashboard tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 16px 0 8px; }
+.stat { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-panel); }
+.stat-n { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-l { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.stat.s-verified .stat-n { color: var(--ok); }
+.stat.s-needs .stat-n { color: var(--warn); }
+.stat.s-missing .stat-n { color: var(--bad); }
+.stat.s-verified, .stat.s-needs, .stat.s-missing { background: var(--bg-panel); }
+.stackbar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--bg-panel); margin-bottom: 18px; gap: 2px; }
+.stackbar span { display: block; height: 100%; border: 0; }
+.stackbar .s-verified { background: var(--ok); }
+.stackbar .s-needs { background: var(--warn); }
+.stackbar .s-missing { background: var(--bad); }
+.slist { margin: .4em 0 1em; }
+.slist details { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-panel); }
+.slist summary { cursor: pointer; padding: 8px 12px; font-size: 13.5px; color: var(--text-soft); }
+.slist-inner { padding: 0 12px 10px; }
+.slist-group { margin-top: 8px; }
+.slist-group > .wikilink { font-weight: 600; font-size: 13.5px; }
+.slist ul { list-style: none; padding-left: 0; margin: 4px 0 0; }
+.slist li { font-size: 13.5px; padding: 3px 0 3px 2px; display: flex; gap: 8px; align-items: baseline; }
+.slist li .ctx { color: var(--text-soft); }
+.slist li .where { color: var(--faint); font-size: 12px; }
+
+/* Charts */
+.chart { margin: 1.2em 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 14px 10px; }
+.chart-title { font-weight: 650; font-size: 14.5px; margin-bottom: 4px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.chart .grid { stroke: #343434; stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-size: 11.5px; font-family: var(--sans); }
+.chart .legend { fill: var(--text-soft); font-size: 12px; font-family: var(--sans); }
+.chart .val { font-size: 10.5px; font-weight: 600; font-family: var(--sans); }
+.chart .series-line { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+.chart .proj-bg { fill: rgba(255,255,255,.035); }
+.chart .proj-label { fill: var(--faint); font-size: 11px; font-family: var(--sans); font-style: italic; }
+.chart .empty-msg { fill: var(--muted); font-size: 13px; font-family: var(--sans); }
+.chart-error { color: var(--bad); font-size: 13px; padding: 8px 12px; border: 1px dashed var(--bad); border-radius: 8px; }
+
+/* ==========================================================================
+   EDITOR
+   ========================================================================== */
+.editor { padding: 14px 18px 18px; display: flex; flex-direction: column; height: 100%; gap: 10px; }
+.props { display: grid; grid-template-columns: 2fr 1.4fr 1fr; gap: 10px; }
+.props label { font-size: 11.5px; color: var(--muted); display: grid; gap: 3px; }
+.ed-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.ed-help { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; line-height: 1.7; columns: 2; column-gap: 28px; }
+.ed-help code { font-family: var(--mono); color: #c5adff; font-size: 12px; }
+.ed-split { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
+#edBody { width: 100%; height: 100%; min-height: 300px; resize: none; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font: 13.5px/1.6 var(--mono); color: var(--text); tab-size: 2; }
+.ed-preview { overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 18px 20px; min-height: 0; }
+
+/* ==========================================================================
+   GRAPH VIEW
+   ========================================================================== */
+.graph-wrap { position: absolute; inset: 0; }
+#graphSvg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#graphSvg .edge { stroke: #4a4a4a; stroke-width: 1.2; }
+#graphSvg .node circle { stroke: var(--bg); stroke-width: 2; cursor: pointer; }
+#graphSvg .node text { fill: var(--muted); font-size: 11.5px; font-family: var(--sans); pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+#graphSvg .node.current circle { stroke: #fff; }
+#graphSvg .node.current text { fill: #fff; }
+#graphSvg.dim .edge { opacity: .12; }
+#graphSvg.dim .node { opacity: .25; }
+#graphSvg.dim .edge.hl { opacity: 1; stroke: var(--accent); }
+#graphSvg.dim .node.hl { opacity: 1; }
+#graphSvg.dim .node.hl text { fill: #fff; }
+.legend-list { list-style: none; padding: 0; margin: 0; }
+.legend-list li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+/* Toast */
+#toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2d2d2d; border: 1px solid var(--border-strong); padding: 8px 16px; border-radius: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; z-index: 50; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ==========================================================================
+   RESPONSIVE: right panel and sidebar become slide-over drawers
+   ========================================================================== */
+@media (max-width: 1150px) {
+  #app { grid-template-columns: 250px minmax(0, 1fr); }
+  #right { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; z-index: 30; transform: translateX(100%); transition: transform .2s; box-shadow: -8px 0 24px rgba(0,0,0,.4); }
+  body.right-open #right { transform: none; }
+  #linksBtn { display: inline-block; }
+  .ed-split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  #app { grid-template-columns: minmax(0, 1fr); }
+  #sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 286px; z-index: 30; transform: translateX(-100%); transition: transform .2s; box-shadow: 8px 0 24px rgba(0,0,0,.4); }
+  body.side-open #sidebar { transform: none; }
+  #menuBtn { display: inline-block; }
+  .note { padding: 18px 16px 70px; }
+  .note-title { font-size: 25px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .props { grid-template-columns: 1fr; }
+  .ed-help { columns: 1; }
+  .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ===== LEFT: file tree ===== -->
+  <aside id="sidebar" aria-label="Notes">
+    <div class="side-head">
+      <div class="brand">Zambia Debt KB<small>LC Economics · 2027 brief</small></div>
+      <button class="btn primary" data-action="new" title="New note">+ New</button>
+    </div>
+    <div class="side-filters">
+      <input id="search" class="inp" type="search" placeholder="Search titles and text…  (Ctrl+K)" autocomplete="off">
+      <select id="tagFilter" class="inp" aria-label="Filter by tag"></select>
+      <div class="filter-info" id="filterInfo"></div>
+    </div>
+    <nav id="tree"></nav>
+    <div class="side-foot">
+      <button class="btn" data-action="export-md" title="Download every note as one combined Markdown file">Export .md</button>
+      <button class="btn" data-action="backup" title="Download a JSON backup you can import later">Backup JSON</button>
+      <button class="btn" data-action="import" title="Restore from a JSON backup">Import JSON</button>
+      <button class="btn danger" data-action="reset" title="Discard all edits and restore the original notes">Reset…</button>
+    </div>
+  </aside>
+
+  <!-- ===== CENTRE: note view / editor / graph ===== -->
+  <main id="main">
+    <header id="toolbar">
+      <button class="btn icon-btn" id="menuBtn" data-action="toggle-side" aria-label="Show notes">☰</button>
+      <div class="crumbs" id="crumbs"></div>
+      <button class="btn" data-action="home" title="Dashboard">Home</button>
+      <button class="btn" data-action="graph" id="graphBtn" title="Graph view">Graph</button>
+      <button class="btn" data-action="edit" id="editBtn" title="Edit note (Ctrl+E)">Edit</button>
+      <button class="btn hide-sm" data-action="export-note" id="exportNoteBtn" title="Download this note as .md">⤓ .md</button>
+      <button class="btn danger hide-sm" data-action="delete" id="deleteBtn" title="Delete note">Delete</button>
+      <button class="btn icon-btn" id="linksBtn" data-action="toggle-right" aria-label="Show links panel">Links</button>
+    </header>
+    <div id="view"></div>
+  </main>
+
+  <!-- ===== RIGHT: backlinks / outgoing links ===== -->
+  <aside id="right" aria-label="Links"></aside>
+</div>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ==========================================================================
+   1. CONFIG
+   ========================================================================== */
+const STORE_KEY = 'zambia-econ-kb-v1';           // localStorage key
+const STATUSES = ['VERIFIED', 'NEEDS CHECK', 'MISSING'];   // click order when cycling
+const FOLDER_ORDER = [                            // sidebar folder order
+  'Overview', 'Data', 'Government response', 'Timeline',
+  'Course links', 'Report plan', 'Intro ideas', 'To-do and data gaps'
+];
+const NOTE_TYPES = { note: 'Note', data: 'Data', dashboard: 'Dashboard' };
+const TYPE_ICONS = { note: '▫', data: '▤', dashboard: '◆' };
+const SERIES_COLORS = ['#a882ff', '#4fb8b0', '#e8b04b', '#f0645a'];
+const FOLDER_COLORS = ['#a882ff', '#5ba4f0', '#4fb8b0', '#e8b04b', '#f0645a', '#c77dba', '#8bc34a', '#f08a5d', '#9aa0a6'];
+
+/* Regexes shared by the renderer, scanner and exporter */
+const TOKEN_RE = /\{\{([a-z-]+):([^}\n]*)\}\}/g;   // {{kind:arg|arg|arg}}
+const LINK_RE = /\[\[([^\]\n]+)\]\]/g;             // [[Target]] or [[Target|alias]]
+const TAG_RE = /(^|[\s(])#([A-Za-z][\w\-\/]*)/g;    // #tag (not headings)
+const PH_RE = /\u0001(\d+)\u0002/g;                // internal placeholder
+const LIST_RE = /^\s*([-*+]|\d+[.)])\s+/;
+const TABLE_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+const BLOCK_TOKENS = ['dashboard', 'status-list', 'tasks'];
+
+/* ==========================================================================
+   2. DEFAULT NOTES
+   Edit or add notes here. Use ~~~ (not backticks) for chart blocks.
+   Only numbers supplied for the project are used — nothing is filled in.
+   ========================================================================== */
+const DEFAULT_NOTES = [
+
+/* ---------------- Overview ---------------- */
+{ id: 'dashboard', title: 'Dashboard', folder: 'Overview', type: 'dashboard', body:
+`Home for the **Zambia debt burden** research study — Leaving Cert Economics, 2027 brief. Start with [[Project Overview]], then [[Line of Enquiry]] and [[Aims]]. #dashboard
+
+{{dashboard:counts}}
+
+> [!danger] IMPORTANT CORRECTION — debt-to-GDP
+> Earlier work wrongly said debt hit **133% of GDP at end-2021** (taken from a 2022 news report).
+> The current IMF series shows **112.1% in 2021** and the **133.4% peak in 2023**.
+> **Always use the IMF series.** See [[Measure 1 - Public Debt % of GDP]] and [[Sources Disagree (Data Limitation)]].
+
+## To-do
+Ticking a box here also ticks it in [[To-do]].
+
+{{tasks:To-do}}
+
+## Still MISSING
+{{status-list:MISSING}}
+
+## Needs checking
+{{status-list:NEEDS CHECK|collapsed}}
+
+## Verified
+{{status-list:VERIFIED|collapsed}}
+
+## Map of the project
+| Folder | Notes |
+|---|---|
+| Overview | [[Project Overview]] · [[Line of Enquiry]] · [[Aims]] |
+| Data | [[Measure 1 - Public Debt % of GDP]] · [[Measure 2 - Debt Servicing Cost]] · [[Trading Economics - Government Debt]] · [[Impact Data]] · [[Sources Disagree (Data Limitation)]] |
+| Government response | [[Government Response]] |
+| Timeline | [[Timeline]] |
+| Course links | [[Course Links]] |
+| Report plan | [[Report Structure]] |
+| Intro ideas | [[Introduction Ideas]] |
+| To-do and data gaps | [[To-do]] · [[Data Gaps]] |
+
+*Tip: click any status badge to cycle VERIFIED → NEEDS CHECK → MISSING. Everything saves automatically in this browser.*`
+},
+
+{ id: 'project', title: 'Project Overview', folder: 'Overview', type: 'note', body:
+`## The brief
+Leaving Cert Economics research study, **2027 brief**. #overview
+
+- **Country:** Zambia, a Least Developed Country (LDC). #LDC
+- **Main challenge:** the **debt burden**. #debt
+- **Impacts** (not separate challenges): education, health, growth, the kwacha, inflation.
+- **Causes:** copper dependence, borrowing for infrastructure, external shocks (COVID, drought).
+
+## Two measures of the debt burden
+1. **Government debt as % of GDP** — the *stock*. → [[Measure 1 - Public Debt % of GDP]]
+2. **Debt servicing cost** — the yearly *flow*. → [[Measure 2 - Debt Servicing Cost]]
+
+## Where everything is
+- The question: [[Line of Enquiry]] · the aims: [[Aims]] · the plan: [[Report Structure]]
+- What happened: [[Timeline]] · what the government did: [[Government Response]]
+- Impact evidence: [[Impact Data]] · syllabus: [[Course Links]]
+- Gaps and tasks: [[Data Gaps]] · [[To-do]]`
+},
+
+{ id: 'enquiry', title: 'Line of Enquiry', folder: 'Overview', type: 'note', body:
+`## Working line of enquiry {{fact:NEEDS CHECK|Check against the 2027 brief wording}}
+> "To what extent has the Zambian government overcome the economic challenges caused by its debt burden, and what has been the impact on its economy and people?"
+
+## Alternatives
+1. "What economic challenges does Zambia face because of its debt burden, what has been their impact, and how far has the government overcome them?"
+2. "An analysis of Zambia's debt burden, its impact on the economy and living standards, and the government's attempts to overcome it."
+
+## Notes
+- "To what extent" means the conclusion must give a clear judgement — section 7 of [[Report Structure]].
+- The question splits into the two [[Aims]]: analyse the burden and its impact (Aim 1), evaluate the response (Aim 2).
+- Still to do: find the exact brief wording → [[To-do]]. #enquiry`
+},
+
+{ id: 'aims', title: 'Aims', folder: 'Overview', type: 'note', body:
+`## Aim 1 — Analyse
+Analyse Zambia's debt burden and its impact on the economy and people.
+- **Stock and flow:** [[Measure 1 - Public Debt % of GDP]] and [[Measure 2 - Debt Servicing Cost]]
+- **Causes:** copper dependence, borrowing for infrastructure, external shocks (COVID, drought)
+- **Impact** on education, health, growth and the kwacha: [[Impact Data]], [[Trading Economics - Government Debt]]
+
+## Aim 2 — Evaluate
+Evaluate how far the government has overcome the debt burden.
+- **Response:** [[Government Response]]
+- **Results:** [[Timeline]]
+- **What is still fragile in 2026:** [[Government Response]] (last section)
+
+#aims`
+},
+
+/* ---------------- Data ---------------- */
+{ id: 'measure-1', title: 'Measure 1 - Public Debt % of GDP', folder: 'Data', type: 'data', body:
+`The **stock** measure: total government debt as a share of the economy. #data #debt #IMF
+
+**Source:** IMF Country Report, Zambia, sixth and final ECF review. {{fact:VERIFIED|IMF Country Report, Zambia — sixth and final ECF review}}
+
+~~~chart
+title: Zambia — public debt and government revenue (% of GDP), 2021–2027
+years: 2021, 2022, 2023, 2024, 2025, 2026, 2027
+projection-from: 2026
+unit: % of GDP
+series: Public debt (% of GDP) | 112.1, 110.9, 133.4, 101.8, 87.6, 78.3, 68.5
+series: Revenue (% of GDP) | 22.4, 20.4, 21.9, 23.1, 23.3, 24.3, 23.5
+source: IMF Country Report, Zambia, sixth and final ECF review (same table for both lines). 2026 and 2027 are projections (dashed).
+~~~
+
+## The IMF series
+| Year | Public debt % of GDP | Revenue % of GDP | Note |
+|---|---|---|---|
+| 2021 | 112.1 | 22.4 | |
+| 2022 | 110.9 | 20.4 | |
+| 2023 | **133.4** | 21.9 | Peak |
+| 2024 | 101.8 | 23.1 | |
+| 2025 | 87.6 | 23.3 | |
+| 2026 | 78.3 | 24.3 | Projection |
+| 2027 | 68.5 | 23.5 | Projection |
+
+- Public debt series {{fact:VERIFIED|IMF Country Report, sixth and final ECF review}}
+- Revenue series {{fact:VERIFIED|IMF Country Report, same table}}
+
+> [!danger] Correction
+> Do **not** use "133% of GDP at end-2021" (from a 2022 news report). The IMF series shows 112.1% in 2021 and the 133.4% peak in 2023. Always use the IMF series — see [[Dashboard]].
+
+## External debt (a different measure)
+- External debt about **63% of GDP** at end-2025. {{fact:NEEDS CHECK|Coface country risk file}}
+- Do **not** put this on the same graph as the public debt series without clear labelling.
+
+## Creditor mix, end-September 2025
+- About **two-thirds** of debt held by foreign creditors in foreign currency. {{fact:NEEDS CHECK|Coface}}
+
+| Creditor type | Share of debt | Status |
+|---|---|---|
+| Multilateral | 17% | {{fact:NEEDS CHECK|Coface}} |
+| Bilateral (China, Paris Club, Saudi Arabia, India) | 22% | {{fact:NEEDS CHECK|Coface}} |
+| Private | 20% | {{fact:NEEDS CHECK|Coface}} |
+
+*Check when verifying: the three shares listed add to 59%, while the headline says about two-thirds — find out exactly what Coface's shares are measured against before using them.*
+
+## Other sources disagree
+FocusEconomics, Coface and Trading Economics give different debt-to-GDP figures. Decision: **use the IMF series** and state this as a data limitation → [[Sources Disagree (Data Limitation)]].
+
+## Course links
+4.2 Fiscal Policy and the Budget Framework · 4.1 National Income (GDP is the denominator) · 1.3 Sustainability · 5.1 Economic Growth and Development → [[Course Links]]`
+},
+
+{ id: 'measure-2', title: 'Measure 2 - Debt Servicing Cost', folder: 'Data', type: 'data', body:
+`The **flow** measure: how much the government pays on its debt each year, compared with its revenue. #data #debt-service
+
+## What we have so far
+- Before the 2020 default, debt service was **more than 50% of public revenue**. {{fact:NEEDS CHECK|Coface}}
+- AFRODAD projected **at least 30% of revenue** going to debt payments over 2022–2024. {{fact:NEEDS CHECK|AFRODAD}}
+- IMF-supported programme target: debt service-to-revenue ratio of **14% by 2025**. {{fact:NEEDS CHECK|IMF/World Bank debt sustainability document}}
+- Interest due on restructured external debt added to the 2025 deficit. {{fact:NEEDS CHECK|Coface}}
+
+## MISSING: debt service as % of revenue, 2019–2025
+Source to use: **IMF DSA tables**. Type each value in when found — the chart below fills in automatically.
+
+| Year | Debt service % of revenue |
+|---|---|
+| 2019 | {{field:MISSING||ds-2019}} |
+| 2020 | {{field:MISSING||ds-2020}} |
+| 2021 | {{field:MISSING||ds-2021}} |
+| 2022 | {{field:MISSING||ds-2022}} |
+| 2023 | {{field:MISSING||ds-2023}} |
+| 2024 | {{field:MISSING||ds-2024}} |
+| 2025 | {{field:MISSING||ds-2025}} |
+
+~~~chart
+title: Debt service as % of government revenue, 2019–2025
+years: 2019, 2020, 2021, 2022, 2023, 2024, 2025
+unit: % of revenue
+series: Debt service (% of revenue) | @ds-2019, @ds-2020, @ds-2021, @ds-2022, @ds-2023, @ds-2024, @ds-2025
+source: IMF DSA tables (values typed into the fields above).
+~~~
+
+## MISSING: interest payments
+Source to use: IMF fiscal tables or the Ministry of Finance budget. Say whether each figure is **% of spending** or **% of revenue**, and which year.
+
+| Interest payments | Value |
+|---|---|
+| Before restructuring | {{field:MISSING||interest-before}} |
+| After restructuring | {{field:MISSING||interest-after}} |
+
+## Course links
+- 4.2: current vs capital expenditure; the national debt burden — deadweight vs self-liquidating debt, foreign-held debt and the interest burden.
+- 1.2 Scarcity, Choice and Opportunity Cost.
+- 4.4 Monetary Policy and Price Level (kwacha, interest rates).
+→ [[Course Links]]`
+},
+
+{ id: 'tradingeconomics', title: 'Trading Economics - Government Debt', folder: 'Data', type: 'data', body:
+`Facts read from the Trading Economics "Zambia Government Debt" page (data from the Bank of Zambia), accessed 6 October 2026. Marked VERIFIED **as read from the page**. #data #tradingeconomics
+
+## Government debt in US dollars
+- Government debt 2025: **USD 16,145.2m**, up from **USD 15,434m** in 2024. {{fact:VERIFIED|Trading Economics / Bank of Zambia, accessed 6 Oct 2026}}
+- This is the **all-time high** in a series running from 2002. {{fact:VERIFIED|Trading Economics / Bank of Zambia, accessed 6 Oct 2026}}
+- Record low: **USD 1,106.5m** in 2007. {{fact:VERIFIED|Trading Economics / Bank of Zambia, accessed 6 Oct 2026}}
+- Average 2002–2025: about **USD 7,327m**. {{fact:VERIFIED|Trading Economics / Bank of Zambia, accessed 6 Oct 2026}}
+
+## Other indicators on the page
+- Government debt to GDP: **60.9%** (Dec 2025), previous 66.4%. {{fact:VERIFIED|Trading Economics / Bank of Zambia, accessed 6 Oct 2026}}
+- Budget balance: deficit of **3.8% of GDP** (Dec 2025), previous 3.5%. {{fact:VERIFIED|Trading Economics / Bank of Zambia, accessed 6 Oct 2026}}
+- Credit rating score: **33.75**. {{fact:VERIFIED|Trading Economics, accessed 6 Oct 2026}}
+
+> [!warning] Do not mix measures
+> The 60.9% debt-to-GDP figure does **not** match the IMF's 87.6% for 2025 ([[Measure 1 - Public Debt % of GDP]]). It is a different measure. Never plot the two on one graph. See [[Sources Disagree (Data Limitation)]].
+
+## Headlines listed on the page (dates not shown)
+- "S&P Removes Zambia's Default Status" {{fact:NEEDS CHECK|Trading Economics headline — date not shown}}
+- "Zambian Kwacha Plunges to Record Low" {{fact:NEEDS CHECK|Trading Economics headline — date not shown}}
+- "Zambia Inflation Rate Eases to Fresh 2018-Low" {{fact:NEEDS CHECK|Trading Economics headline — date not shown}}
+- "Central Bank of Zambia Lowers Interest Rates" {{fact:NEEDS CHECK|Trading Economics headline — date not shown}}
+
+> [!question] Point to investigate (do not state a cause yet)
+> Debt in US dollars is at a **record high** while the debt **ratio** is falling. Find a source that explains this before writing anything about why.
+
+## Citation
+> Trading Economics, "Zambia Government Debt", tradingeconomics.com/zambia/government-debt, source: Bank of Zambia, accessed 6 October 2026.`
+},
+
+{ id: 'impact', title: 'Impact Data', folder: 'Data', type: 'data', body:
+`Education evidence is **supporting evidence only** — the data is patchy and old. #data #impact #education
+
+## Education indicators
+- Adult literacy **~72% (2024)**, but **~80% in 2022** — likely a data revision; treat with caution. {{fact:NEEDS CHECK|Source not recorded yet}}
+- Gross primary enrolment **~95% (2020)**. {{fact:NEEDS CHECK|Source not recorded yet}}
+- Primary completion **~83% (2013 — old)**. {{fact:NEEDS CHECK|Source not recorded yet}}
+- Mean years of schooling **~7.2**, against a global average of **~8.7**. {{fact:NEEDS CHECK|Source not recorded yet}}
+- HDI **0.595 (2023, medium)**. {{fact:NEEDS CHECK|Source not recorded yet}}
+
+## MISSING: education and health spending
+Find these as % of the budget or % of GDP (say which), before and after the 2020 default.
+
+| Spending share | Before the default | After the default |
+|---|---|---|
+| Education | {{field:MISSING||edu-before}} | {{field:MISSING||edu-after}} |
+| Health | {{field:MISSING||health-before}} | {{field:MISSING||health-after}} |
+
+## Better sources to try
+- UNESCO UIS
+- UNDP country profile
+- ZamStats (Zambia Statistics Agency)
+- Ministry of Education statistical bulletin
+
+## Other impacts — no data collected yet
+- **Health:** spending shares MISSING (above).
+- **Growth:** nothing collected yet.
+- **Kwacha:** headline "Zambian Kwacha Plunges to Record Low" (date not shown) → [[Trading Economics - Government Debt]]
+- **Inflation:** back in the 6–8% target band by early 2026 → [[Timeline]]
+
+> [!note] For the limitations section
+> Patchy statistics is itself a feature of LDCs — say this in the report. → [[Data Gaps]]`
+},
+
+{ id: 'sources-disagree', title: 'Sources Disagree (Data Limitation)', folder: 'Data', type: 'data', body:
+`Different sources give different debt-to-GDP figures for the same year. #data #limitation
+
+| Year | IMF (used) | FocusEconomics | Coface |
+|---|---|---|---|
+| 2023 | 133.4 | 129.1 | not given |
+| 2024 | 101.8 | 125.2 | 124 |
+| 2025 | 87.6 | 86.0 | 92 |
+
+- IMF series {{fact:VERIFIED|IMF Country Report, sixth and final ECF review}}
+- FocusEconomics figures {{fact:NEEDS CHECK|FocusEconomics}}
+- Coface figures {{fact:NEEDS CHECK|Coface}}
+- Trading Economics gives 60.9% for Dec 2025 — a different measure → [[Trading Economics - Government Debt]]
+
+## Decision
+Use the **IMF series** for every debt-to-GDP figure, and say so in the report. → [[To-do]]
+
+## For the limitations section
+- State plainly that sources disagree, give one example from the table above, and explain that the IMF series is used throughout for consistency.
+- Possible reasons to look into (do not state any as fact without a source): different definitions of "debt", different GDP figures, data revisions, different reference dates.
+- Links: [[Measure 1 - Public Debt % of GDP]] · [[Data Gaps]]`
+},
+
+/* ---------------- Government response ---------------- */
+{ id: 'response', title: 'Government Response', folder: 'Government response', type: 'note', body:
+`How the government has tried to overcome the debt burden — four strands. Dates and figures are in [[Timeline]]; this feeds Aim 2 in [[Aims]]. #response
+
+## 1. External support
+- IMF **Extended Credit Facility** (ECF) — approved Aug 2022, raised in 2024 (see [[Timeline]]).
+- **G20 Common Framework** for restructuring.
+
+## 2. Creditor negotiations
+- **China**, other **bilateral** creditors, and **Eurobond holders**.
+- Who is owed what: creditor mix in [[Measure 1 - Public Debt % of GDP]].
+- Progress (Eurobond exchange 2024; share of restructuring perimeter agreed by early 2026): [[Timeline]].
+
+## 3. Domestic fiscal reform
+- Wider tax base.
+- Better tax administration.
+- Spending reprioritisation.
+- Evidence to use: revenue % of GDP in [[Measure 1 - Public Debt % of GDP]].
+
+## 4. Protecting social spending
+- Hiring teachers and health workers under the programme. {{fact:NEEDS CHECK|Source to add}}
+- Evidence needed: education and health spending shares — MISSING in [[Impact Data]].
+
+## Results and what is still fragile (for the evaluation)
+**What has improved** (IMF series and [[Timeline]]):
+- Debt ratio down from the 2023 peak of 133.4% to 87.6% of GDP in 2025.
+- Programme completed early 2026; inflation back in the target band; reserves about $6.4bn.
+
+**Still fragile in 2026:**
+- IMF: debt sustainable but at **high risk** of overall and external debt distress.
+- Fiscal pressure rising again: election spending, weaker tax collection, civil service wage adjustment, agricultural subsidy overruns.
+- Primary surplus 3.1% of GDP in 2025, projected 1.1% in 2026.
+- Debt in USD at a record high while the ratio falls — to investigate → [[Trading Economics - Government Debt]]
+
+Course links: 4.2 fiscal policy, 1.3 sustainability → [[Course Links]]`
+},
+
+/* ---------------- Timeline ---------------- */
+{ id: 'timeline', title: 'Timeline', folder: 'Timeline', type: 'note', body:
+`Key events in Zambia's debt story. **Exact dates need checking** before they go in the report. #timeline
+
+| When | Event | Status |
+|---|---|---|
+| Mid-2000s | Major international debt relief (HIPC). Exact dates: {{field:MISSING||hipc-dates}} Amount: {{field:MISSING||hipc-amount}} | {{fact:NEEDS CHECK|Verify HIPC dates}} |
+| Nov 2020 | Zambia defaults on a Eurobond — the first African default of the COVID era. | {{fact:NEEDS CHECK|Source to add}} |
+| 2021 | Public debt 112.1% of GDP. | {{fact:VERIFIED|IMF Country Report}} |
+| Aug 2022 | IMF Extended Credit Facility of $1.3bn approved; raised to $1.7bn in 2024. | {{fact:NEEDS CHECK|Source to add}} |
+| 2022–2024 | Restructuring under the G20 Common Framework; negotiations with China, other official creditors and bondholders. | {{fact:NEEDS CHECK|Source to add}} |
+| 2023 | Debt peaks at 133.4% of GDP. | {{fact:VERIFIED|IMF Country Report}} |
+| 2024 | Over 90% of Eurobond holders approve the debt exchange. | {{fact:NEEDS CHECK|Source to add}} |
+| 2025 | IMF completes the sixth and final review of the 38-month programme. Public debt assessed sustainable but at high risk of overall and external debt distress. | {{fact:NEEDS CHECK|IMF — check date}} |
+| Early 2026 | Programme completed; about 94% of the restructuring perimeter agreed; inflation back in the 6–8% target band; reserves about $6.4bn; new growth-focused IMF programme being negotiated. | {{fact:NEEDS CHECK|Source to add}} |
+| 2026 | Fiscal pressure rising again: election spending, weaker tax collection, civil service wage adjustment, agricultural subsidy overruns. | {{fact:NEEDS CHECK|Source to add}} |
+| 2025–2026 | Primary surplus 3.1% of GDP in 2025, projected 1.1% in 2026. | {{fact:NEEDS CHECK|Source to add}} |
+
+Related: [[Government Response]] · [[Measure 1 - Public Debt % of GDP]] · [[Introduction Ideas]]`
+},
+
+/* ---------------- Course links ---------------- */
+{ id: 'course', title: 'Course Links', folder: 'Course links', type: 'note', body:
+`Match each item to the **exact learning outcome numbers in my textbook** — every number below NEEDS CHECKING. #course
+
+## Measure 1 — public debt % of GDP
+| Outcome | Topic | Use in the report | Status |
+|---|---|---|---|
+| 4.2 | Fiscal Policy and the Budget Framework | National debt, borrowing, deficit | {{fact:NEEDS CHECK|Textbook LO number}} |
+| 4.1 | National Income | GDP is the denominator; growth lowers the ratio | {{fact:NEEDS CHECK|Textbook LO number}} |
+| 1.3 | Sustainability | Debt sustainability | {{fact:NEEDS CHECK|Textbook LO number}} |
+| 5.1 | Economic Growth and Development | LDC challenges | {{fact:NEEDS CHECK|Textbook LO number}} |
+
+## Measure 2 — debt servicing cost
+| Outcome | Topic | Use in the report | Status |
+|---|---|---|---|
+| 4.2 | Fiscal Policy and the Budget Framework | Current vs capital expenditure | {{fact:NEEDS CHECK|Textbook LO number}} |
+| 1.2 | Scarcity, Choice and Opportunity Cost | Opportunity cost of debt payments | {{fact:NEEDS CHECK|Textbook LO number}} |
+| 4.2 | National debt burden | Deadweight vs self-liquidating debt; foreign-held debt and the interest burden | {{fact:NEEDS CHECK|Textbook LO number}} |
+| 4.4 | Monetary Policy and Price Level | Kwacha, interest rates | {{fact:NEEDS CHECK|Textbook LO number}} |
+
+## Concepts to name in the report
+- Budget deficit
+- Government borrowing
+- Debt-to-GDP ratio
+- Current vs capital spending
+- Opportunity cost
+- Deadweight debt
+- Foreign debt interest burden
+- Economic sustainability
+- Terms of trade and elasticity — the copper link (2.2) {{fact:NEEDS CHECK|Textbook LO number}}
+
+Every section of [[Report Structure]] needs at least one named concept.`
+},
+
+/* ---------------- Report plan ---------------- */
+{ id: 'report', title: 'Report Structure', folder: 'Report plan', type: 'note', body:
+`Seven sections. **Rule: name a course concept and use sourced data in every section.** #report
+
+| # | Section | What goes in | Concepts to name | Notes |
+|---|---|---|---|---|
+| 1 | Introduction and line of enquiry | Personal link, why Zambia, the question | LDC, debt burden | [[Line of Enquiry]] · [[Introduction Ideas]] |
+| 2 | The debt burden | Measure 1 (stock) and Measure 2 (flow) | Debt-to-GDP ratio, budget deficit, government borrowing | [[Measure 1 - Public Debt % of GDP]] · [[Measure 2 - Debt Servicing Cost]] |
+| 3 | Causes | Copper dependence, borrowing for infrastructure, external shocks (COVID, drought) | Terms of trade and elasticity (2.2), capital spending, deadweight vs self-liquidating debt | [[Project Overview]] · [[Timeline]] |
+| 4 | Impact | Education, health, growth, the kwacha, inflation | Opportunity cost, foreign debt interest burden | [[Impact Data]] · [[Trading Economics - Government Debt]] |
+| 5 | Government response | The four strands | Fiscal policy, debt sustainability | [[Government Response]] |
+| 6 | Evaluation | What worked, what is still fragile in 2026 | Economic sustainability | [[Government Response]] · [[Timeline]] |
+| 7 | Conclusion | Answer "to what extent" directly | — | [[Aims]] |
+
+## Graphs and tables to build (3–4 graphs)
+- Public debt % of GDP, 2021–2027, projections dashed (IMF) → [[Measure 1 - Public Debt % of GDP]]
+- Revenue % of GDP (same IMF table) → [[Measure 1 - Public Debt % of GDP]]
+- Debt service % of revenue, 2019–2025 — data MISSING → [[Measure 2 - Debt Servicing Cost]]
+- Before/after table: 2020/21 vs latest → [[To-do]]
+
+## Limitations section
+- Sources disagree on debt-to-GDP → [[Sources Disagree (Data Limitation)]]
+- Patchy, old statistics are a feature of LDCs → [[Impact Data]]`
+},
+
+/* ---------------- Intro ideas ---------------- */
+{ id: 'intro', title: 'Introduction Ideas', folder: 'Intro ideas', type: 'note', body:
+`Draft notes. **Only use what is true about me.** #intro
+
+## Personal link — options
+1. I run a small web design business, so I deal with costs and revenue.
+2. Ireland's 2010 bailout and the IMF.
+3. Working at a garden centre — seeing spending depend on income.
+4. Short and direct (no personal story).
+
+## Making Zambia unique
+- Copper wealth, yet a default → [[Timeline]]
+- Debt returning after mid-2000s relief. {{fact:NEEDS CHECK|Verify HIPC dates}}
+- Independence built on copper.
+- Hydropower and the Kariba drought — load-shedding 2023–24. {{fact:NEEDS CHECK|Verify Kariba claims}}
+- Young population.
+
+Goes into section 1 of [[Report Structure]] with the [[Line of Enquiry]].`
+},
+
+/* ---------------- To-do and data gaps ---------------- */
+{ id: 'todo', title: 'To-do', folder: 'To-do and data gaps', type: 'note', body:
+`Click a box to tick it off. These also appear on the [[Dashboard]]. #todo
+
+- [ ] Find the exact 2027 brief wording and the 4.2 and 5.1 learning outcomes.
+- [ ] Download the IMF Zambia Country Report and pull the debt service % revenue series.
+- [ ] Pull interest payments % of spending/revenue.
+- [ ] Pull education and health spending shares.
+- [ ] Verify HIPC dates and the Kariba claims.
+- [ ] Choose one source (IMF) for all debt-to-GDP figures and state it.
+- [ ] Build 3-4 graphs and a before/after table (2020/21 vs latest).
+- [ ] Name a course concept and use data in every section.
+
+See also [[Data Gaps]].`
+},
+
+{ id: 'gaps', title: 'Data Gaps', folder: 'To-do and data gaps', type: 'note', body:
+`Everything still missing or unverified. The live list updates as you fill in fields or click badges. #gaps
+
+## Live list: MISSING fields
+{{status-list:MISSING}}
+
+## Gaps to close
+- Yearly debt service % of revenue, 2019–2025 (IMF DSA tables) → [[Measure 2 - Debt Servicing Cost]]
+- Interest payments as % of spending or revenue, before and after restructuring → [[Measure 2 - Debt Servicing Cost]]
+- Education and health spending as % of budget/GDP, before and after the default → [[Impact Data]]
+- HIPC dates and amount → [[Timeline]]
+- Dates of the Trading Economics headlines → [[Trading Economics - Government Debt]]
+- Sources for the education indicators → [[Impact Data]]
+- Exact 2027 brief wording → [[Line of Enquiry]]
+- Exact textbook learning outcome numbers → [[Course Links]]
+
+## Limitations to mention in the report
+- Sources disagree on debt-to-GDP → [[Sources Disagree (Data Limitation)]]
+- Patchy, old education statistics — itself a feature of LDCs.
+- Trading Economics' debt-to-GDP (60.9%) is a different measure from the IMF series (87.6%) for 2025.`
+}
+];
+
+/* ==========================================================================
+   3. STATE & STORAGE
+   ========================================================================== */
+const state = {
+  notes: [],
+  current: null,        // id of the open note
+  mode: 'view',         // 'view' | 'edit' | 'graph'
+  pendingEdit: false,   // open the next routed note in edit mode
+  search: '',
+  tag: '',
+  collapsed: {}         // folder name -> true when collapsed
+};
+
+function loadNotes() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.notes) && data.notes.length) {
+        state.collapsed = data.collapsed || {};
+        return data.notes;
+      }
+    }
+  } catch (e) { /* storage blocked or corrupt: fall back to defaults */ }
+  return JSON.parse(JSON.stringify(DEFAULT_NOTES));
+}
+
+let saveWarned = false;
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, notes: state.notes, collapsed: state.collapsed }));
+  } catch (e) {
+    if (!saveWarned) { toast('Could not save in this browser — use "Backup JSON" to keep your work.'); saveWarned = true; }
+  }
+}
+
+/* ==========================================================================
+   4. SMALL HELPERS
+   ========================================================================== */
+const $ = (sel, el = document) => el.querySelector(sel);
+const view = $('#view');
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+/* Case/dash-insensitive key so [[measure 1 – public debt % of gdp]] still resolves */
+function normTitle(t) {
+  return String(t).toLowerCase().replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim();
+}
+function getNote(id) { return state.notes.find(n => n.id === id); }
+function findByTitle(t) { const k = normTitle(t); return state.notes.find(n => normTitle(n.title) === k); }
+function homeId() { return getNote('dashboard') ? 'dashboard' : (state.notes[0] && state.notes[0].id); }
+function folderRank(f) { const i = FOLDER_ORDER.indexOf(f); return i < 0 ? 999 : i; }
+function folderColor(f) {
+  const all = allFolders();
+  return FOLDER_COLORS[Math.max(0, all.indexOf(f)) % FOLDER_COLORS.length];
+}
+function allFolders() {
+  return [...new Set(state.notes.map(n => n.folder || 'Unfiled'))]
+    .sort((a, b) => folderRank(a) - folderRank(b) || a.localeCompare(b));
+}
+function parseLink(inner) {
+  const bar = inner.indexOf('|');
+  const target = (bar < 0 ? inner : inner.slice(0, bar)).trim();
+  const label = (bar < 0 ? target : inner.slice(bar + 1)).trim() || target;
+  return { target, label };
+}
+function normStatus(s) {
+  s = String(s || '').trim().toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return STATUSES.includes(s) ? s : 'NEEDS CHECK';
+}
+function statusClass(s) { return { 'VERIFIED': 's-verified', 'NEEDS CHECK': 's-needs', 'MISSING': 's-missing' }[s]; }
+function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50); }
+function uniqueId(title) {
+  const base = slug(title) || 'note';
+  let id = base, i = 2;
+  while (getNote(id)) id = base + '-' + i++;
+  return id;
+}
+/* Strip markup from one line so it can be shown as a plain snippet */
+function plainText(s) {
+  return String(s)
+    .replace(TOKEN_RE, ' ')
+    .replace(LINK_RE, (m, inner) => parseLink(inner).label)
+    .replace(/^\s*(#{1,6}|>|[-*+]|\d+[.)])\s+/, '')
+    .replace(/\[![a-z]+\]\s*/i, '')
+    .replace(/\[[ xX]\]\s*/, '')
+    .replace(/\*\*|__|`/g, '')
+    .replace(/\|/g, ' · ')
+    .replace(/(\s*·\s*){2,}/g, ' · ')
+    .replace(/^\s*·\s*|\s*·\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ---------- Link / tag analysis ---------- */
+function outgoingLinks(note) {
+  const out = [];
+  for (const m of note.body.matchAll(LINK_RE)) {
+    const { target } = parseLink(m[1]);
+    if (!out.some(o => normTitle(o) === normTitle(target))) out.push(target);
+  }
+  return out;
+}
+function backlinks(note) {
+  const key = normTitle(note.title);
+  return state.notes.filter(n => n.id !== note.id && outgoingLinks(n).some(t => normTitle(t) === key));
+}
+function tagsOf(note) {
+  const body = note.body
+    .replace(/^\s*(```|~~~)[\s\S]*?^\s*\1/gm, ' ')
+    .replace(TOKEN_RE, ' ')
+    .replace(LINK_RE, ' ');
+  const set = new Set();
+  for (const m of body.matchAll(TAG_RE)) set.add(m[2].toLowerCase());
+  return [...set];
+}
+
+/* ==========================================================================
+   5. STATUS ITEMS (facts + fields)
+   Every {{fact:...}} and {{field:...}} in a note gets an index k (0, 1, 2…)
+   in order of appearance. Badges carry data-note + data-k so a click can
+   find and rewrite exactly that token in the note's text.
+   ========================================================================== */
+function editStatusToken(note, k, mutate) {
+  let n = -1;
+  note.body = note.body.replace(TOKEN_RE, (m, kind, args) => {
+    if (kind !== 'fact' && kind !== 'field') return m;
+    n++;
+    if (n !== k) return m;
+    const a = args.split('|');
+    mutate(kind, a);
+    return '{{' + kind + ':' + a.join('|') + '}}';
+  });
+}
+
+function scanStatusItems() {
+  const items = [];
+  for (const note of state.notes) {
+    let k = 0, heading = '';
+    for (const line of note.body.split('\n')) {
+      const h = line.match(/^#{1,6}\s+(.*)$/);
+      if (h) heading = plainText(h[1]);
+      for (const m of line.matchAll(TOKEN_RE)) {
+        if (m[1] !== 'fact' && m[1] !== 'field') continue;
+        const a = m[2].split('|');
+        items.push({
+          note, k: k++, kind: m[1],
+          status: normStatus(a[0]),
+          label: m[1] === 'fact' ? a.slice(1).join('|').trim() : (a[1] || '').trim(),
+          id: m[1] === 'field' ? (a[2] || '').trim() : '',
+          context: plainText(line),
+          heading
+        });
+      }
+    }
+  }
+  return items;
+}
+
+function countStatuses(items) {
+  const c = { 'VERIFIED': 0, 'NEEDS CHECK': 0, 'MISSING': 0 };
+  items.forEach(i => c[i.status]++);
+  return c;
+}
+
+/* Value of a {{field:...|value|id}} anywhere in the vault (used by charts: @id) */
+function fieldValueById(id) {
+  for (const n of state.notes) {
+    for (const m of n.body.matchAll(TOKEN_RE)) {
+      if (m[1] !== 'field') continue;
+      const a = m[2].split('|');
+      if ((a[2] || '').trim() === id) return (a[1] || '').trim();
+    }
+  }
+  return '';
+}
+
+function cycleStatus(noteId, k) {
+  const note = getNote(noteId);
+  if (!note) return;
+  editStatusToken(note, k, (kind, a) => {
+    const cur = normStatus(a[0]);
+    a[0] = STATUSES[(STATUSES.indexOf(cur) + 1) % STATUSES.length];
+  });
+  afterDataChange();
+}
+
+function setFieldValue(noteId, k, value) {
+  const note = getNote(noteId);
+  if (!note) return;
+  const val = value.replace(/[|{}\r\n]/g, ' ').trim();   // keep the token syntax intact
+  editStatusToken(note, k, (kind, a) => {
+    if (a.length < 2) a[1] = '';
+    a[1] = val;
+    const cur = normStatus(a[0]);
+    if (!val) a[0] = 'MISSING';                    // emptied → MISSING
+    else if (cur === 'MISSING') a[0] = 'NEEDS CHECK';  // newly filled → needs checking
+  });
+  afterDataChange();
+}
+
+function toggleTask(noteId, lineNo, checked) {
+  const note = getNote(noteId);
+  if (!note) return;
+  const lines = note.body.split('\n');
+  if (lines[lineNo] === undefined) return;
+  lines[lineNo] = lines[lineNo].replace(/\[( |x|X)\]/, checked ? '[x]' : '[ ]');
+  note.body = lines.join('\n');
+  afterDataChange();
+}
+
+/* Save, then re-render on the next tick (so Tab-focus moves are kept) */
+function afterDataChange() {
+  save();
+  setTimeout(() => {
+    const a = document.activeElement;
+    const focusKey = a && a.classList && a.classList.contains('field-input') ? [a.dataset.note, a.dataset.k] : null;
+    const scroller = state.mode === 'edit' ? $('#edPreview') : view;
+    const top = scroller ? scroller.scrollTop : 0;
+    if (state.mode === 'edit') {
+      const note = getNote(state.current), ta = $('#edBody'), pv = $('#edPreview');
+      if (note && ta && ta.value !== note.body) ta.value = note.body;
+      if (note && pv) pv.innerHTML = renderBody(note);
+    } else {
+      renderMain();
+    }
+    renderTree();
+    renderRight();
+    const sc = state.mode === 'edit' ? $('#edPreview') : view;
+    if (sc) sc.scrollTop = top;
+    if (focusKey) {
+      const el = document.querySelector(`.field-input[data-note="${CSS.escape(focusKey[0])}"][data-k="${focusKey[1]}"]`);
+      if (el) el.focus();
+    }
+  }, 0);
+}
+
+/* ==========================================================================
+   6. MARKDOWN-LITE RENDERER
+   Step 1: swap every {{token}} and [[link]] for a placeholder so pipes
+           inside them can't break tables.
+   Step 2: parse blocks line by line (headings, lists, tables, callouts…).
+   Step 3: inline formatting, then placeholders become HTML.
+   ========================================================================== */
+function renderBody(note) {
+  const slots = [];
+  let k = 0;
+  const src = note.body.replace(/\r/g, '')
+    .replace(TOKEN_RE, (m, kind, args) => {
+      const s = { t: 'token', kind, args: args.split('|'), raw: m };
+      if (kind === 'fact' || kind === 'field') s.k = k++;
+      slots.push(s);
+      return '\u0001' + (slots.length - 1) + '\u0002';
+    })
+    .replace(LINK_RE, (m, inner) => {
+      slots.push({ t: 'link', inner, raw: m });
+      return '\u0001' + (slots.length - 1) + '\u0002';
+    });
+  const ctx = { note, slots };
+  return parseBlocks(src.split('\n'), 0, ctx) || '<p class="muted"><em>Empty note — click Edit to start writing.</em></p>';
+}
+
+function restoreRaw(s, ctx) { return s.replace(PH_RE, (m, n) => ctx.slots[+n].raw); }
+
+function isBlockTokenLine(line, ctx) {
+  const m = line.trim().match(/^\u0001(\d+)\u0002$/);
+  const s = m && ctx.slots[+m[1]];
+  return s && s.t === 'token' && BLOCK_TOKENS.includes(s.kind) ? s : null;
+}
+
+function isTableStart(lines, i) {
+  return lines[i].includes('|') && i + 1 < lines.length && lines[i + 1].includes('|') && TABLE_SEP.test(lines[i + 1]);
+}
+
+function startsBlock(lines, i, ctx) {
+  const l = lines[i];
+  return /^\s*(```|~~~)/.test(l) || /^#{1,6}\s/.test(l) || /^\s*>/.test(l) || LIST_RE.test(l) ||
+    /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l) || isTableStart(lines, i) || !!isBlockTokenLine(l, ctx);
+}
+
+function splitRow(line) {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|')) s = s.slice(0, -1);
+  return s.split('|').map(c => c.trim());
+}
+
+/* offset = line number of lines[0] inside the note body (used for task ticking) */
+function parseBlocks(lines, offset, ctx) {
+  let html = '', i = 0, m;
+  const blank = l => /^\s*$/.test(l);
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (blank(line)) { i++; continue; }
+
+    // Fenced block: ~~~chart / ```chart → SVG chart; anything else → code
+    if ((m = line.match(/^\s*(```|~~~)\s*([\w-]*)\s*$/))) {
+      const fence = m[1], lang = m[2].toLowerCase(), buf = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith(fence)) buf.push(lines[i++]);
+      i++;
+      const raw = restoreRaw(buf.join('\n'), ctx);
+      html += lang === 'chart' ? renderChart(raw) : `<pre><code>${esc(raw)}</code></pre>`;
+      continue;
+    }
+
+    // Heading
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+      const lvl = m[1].length;
+      html += `<h${lvl}>${inline(m[2], ctx)}</h${lvl}>`;
+      i++; continue;
+    }
+
+    // Horizontal rule
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { html += '<hr>'; i++; continue; }
+
+    // Blockquote or Obsidian-style callout: > [!warning] Title
+    if (/^\s*>/.test(line)) {
+      const start = i, buf = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ''));
+      const cm = buf[0].match(/^\[!(\w+)\]\s*(.*)$/);
+      if (cm) {
+        const type = cm[1].toLowerCase();
+        html += `<div class="callout callout-${esc(type)}"><div class="callout-title">${inline(cm[2] || type, ctx)}</div>` +
+                `<div class="callout-body">${parseBlocks(buf.slice(1), offset + start + 1, ctx)}</div></div>`;
+      } else {
+        html += `<blockquote>${parseBlocks(buf, offset + start, ctx)}</blockquote>`;
+      }
+      continue;
+    }
+
+    // Table
+    if (isTableStart(lines, i)) {
+      const header = splitRow(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && lines[i].includes('|') && !blank(lines[i])) rows.push(splitRow(lines[i++]));
+      html += '<div class="table-wrap"><table><thead><tr>' +
+        header.map(c => `<th>${inline(c, ctx)}</th>`).join('') + '</tr></thead><tbody>' +
+        rows.map(r => '<tr>' + header.map((_, j) => `<td>${inline(r[j] || '', ctx)}</td>`).join('') + '</tr>').join('') +
+        '</tbody></table></div>';
+      continue;
+    }
+
+    // List (bullets, numbers, tasks)
+    if (LIST_RE.test(line)) {
+      const r = parseList(lines, i, offset, ctx);
+      html += r.html; i = r.next; continue;
+    }
+
+    // A line holding only a block token, e.g. {{dashboard:counts}}
+    const bt = isBlockTokenLine(line, ctx);
+    if (bt) { html += renderSlot(bt, ctx); i++; continue; }
+
+    // Paragraph (single newlines become <br>)
+    const buf = [];
+    while (i < lines.length && !blank(lines[i]) && (buf.length === 0 || !startsBlock(lines, i, ctx))) buf.push(lines[i++]);
+    html += `<p>${buf.map(l => inline(l, ctx)).join('<br>')}</p>`;
+  }
+  return html;
+}
+
+function parseList(lines, i, offset, ctx) {
+  const items = [];
+  while (i < lines.length) {
+    const m = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+    if (!m) {
+      // indented continuation line belongs to the previous item
+      if (items.length && /^\s{2,}\S/.test(lines[i]) && !LIST_RE.test(lines[i])) {
+        items[items.length - 1].text += ' ' + lines[i].trim(); i++; continue;
+      }
+      break;
+    }
+    items.push({ indent: m[1].replace(/\t/g, '    ').length, ordered: /\d/.test(m[2]), text: m[3], lineNo: offset + i });
+    i++;
+  }
+
+  let html = '';
+  const stack = [];   // open lists: { indent, tag }
+  for (const it of items) {
+    while (stack.length > 1 && it.indent < stack[stack.length - 1].indent) html += '</li></' + stack.pop().tag + '>';
+    const top = stack[stack.length - 1];
+    if (!top || it.indent > top.indent) {
+      const tag = it.ordered ? 'ol' : 'ul';
+      stack.push({ indent: it.indent, tag });
+      html += `<${tag}>`;
+    } else {
+      html += '</li>';
+    }
+    const task = it.text.match(/^\[( |x|X)\]\s+(.*)$/);
+    if (task) {
+      const done = task[1] !== ' ';
+      html += `<li class="task-item">${taskHTML(ctx.note.id, it.lineNo, done, inline(task[2], ctx))}`;
+    } else {
+      html += `<li>${inline(it.text, ctx)}`;
+    }
+  }
+  while (stack.length) html += '</li></' + stack.pop().tag + '>';
+  return { html, next: i };
+}
+
+function inline(text, ctx) {
+  let s = esc(text);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?![*\w])/g, '$1<em>$2</em>');
+  s = s.replace(TAG_RE, '$1<a href="#" class="tag" data-tag="$2">#$2</a>');
+  s = s.replace(PH_RE, (m, n) => renderSlot(ctx.slots[+n], ctx));
+  return s;
+}
+
+/* Turn one placeholder back into HTML */
+function renderSlot(s, ctx) {
+  if (!s) return '';
+  if (s.t === 'link') {
+    const { target, label } = parseLink(s.inner);
+    const n = findByTitle(target);
+    return `<a href="#" class="wikilink${n ? '' : ' unresolved'}" data-target="${esc(target)}"` +
+      `${n ? ` data-id="${esc(n.id)}"` : ''} title="${n ? esc(n.title) : 'Not created yet — click to create'}">${esc(label)}</a>`;
+  }
+  const a = s.args, noteId = ctx.note.id;
+  switch (s.kind) {
+    case 'fact': {
+      const source = a.slice(1).join('|').trim();
+      return `<span class="fact">${badgeHTML(noteId, s.k, normStatus(a[0]))}${source ? `<span class="src">${esc(source)}</span>` : ''}</span>`;
+    }
+    case 'field': return fieldHTML(noteId, s.k, a);
+    case 'dashboard': return (a[0] || '').trim() === 'counts' ? renderCounts() : '';
+    case 'status-list': return renderStatusList(normStatus(a[0]), (a[1] || '').trim() === 'collapsed');
+    case 'tasks': return renderEmbeddedTasks((a[0] || '').trim());
+    default: return esc(s.raw);
+  }
+}
+
+function badgeHTML(noteId, k, status) {
+  return `<button type="button" class="badge ${statusClass(status)}" data-note="${esc(noteId)}" data-k="${k}" title="Click to change status">${status}</button>`;
+}
+
+function fieldHTML(noteId, k, a) {
+  const status = normStatus(a[0]);
+  const val = (a[1] || '').trim();
+  const id = (a[2] || '').trim();
+  return `<span class="field${val ? ' filled' : ''}">` +
+    `<input class="field-input" data-note="${esc(noteId)}" data-k="${k}" value="${esc(val)}" placeholder="add value" ` +
+    `size="${Math.max(9, val.length + 2)}" title="${id ? 'Field: ' + esc(id) + ' — ' : ''}Type a value, then press Enter" aria-label="Data value${id ? ' ' + esc(id) : ''}">` +
+    badgeHTML(noteId, k, status) + '</span>';
+}
+
+function taskHTML(noteId, lineNo, done, textHTML) {
+  return `<span class="task${done ? ' done' : ''}"><input type="checkbox" class="task-check" data-note="${esc(noteId)}" data-line="${lineNo}"${done ? ' checked' : ''} aria-label="Done"><span>${textHTML}</span></span>`;
+}
+
+/* ---------- Dashboard widgets ---------- */
+function renderCounts() {
+  const items = scanStatusItems();
+  const c = countStatuses(items);
+  const total = items.length || 1;
+  return '<div class="stats">' +
+    STATUSES.map(s => `<div class="stat ${statusClass(s)}"><div class="stat-n">${c[s]}</div><div class="stat-l">${s}</div></div>`).join('') +
+    `<div class="stat"><div class="stat-n">${items.length}</div><div class="stat-l">Items tracked</div></div></div>` +
+    '<div class="stackbar" title="Share of items by status">' +
+    STATUSES.map(s => c[s] ? `<span class="${statusClass(s)}" style="width:${(c[s] / total * 100).toFixed(2)}%"></span>` : '').join('') +
+    '</div>';
+}
+
+function renderStatusList(status, collapsed) {
+  const items = scanStatusItems().filter(i => i.status === status);
+  if (!items.length) return `<p class="muted">Nothing is marked ${status} right now.</p>`;
+  const groups = new Map();
+  items.forEach(i => { if (!groups.has(i.note.id)) groups.set(i.note.id, []); groups.get(i.note.id).push(i); });
+  let inner = '';
+  for (const [id, list] of groups) {
+    const note = getNote(id);
+    inner += `<div class="slist-group"><a href="#" class="wikilink" data-id="${esc(id)}" data-target="${esc(note.title)}">${esc(note.title)}</a> <span class="muted">(${list.length})</span><ul>` +
+      list.map(i => {
+        let ctxText = i.context || i.id || i.heading || '';
+        if (i.kind === 'field' && i.heading && !ctxText.includes(i.heading)) ctxText = i.heading + ' › ' + ctxText;
+        const detail = i.kind === 'fact' ? i.label : (i.label ? 'value: ' + i.label : (i.id ? 'field ' + i.id : ''));
+        return `<li>${badgeHTML(id, i.k, i.status)}<span><span class="ctx">${esc(truncate(ctxText, 140))}</span>` +
+          `${detail ? ` <span class="where">· ${esc(detail)}</span>` : ''}</span></li>`;
+      }).join('') + '</ul></div>';
+  }
+  return `<div class="slist"><details${collapsed ? '' : ' open'}><summary>${items.length} item${items.length === 1 ? '' : 's'} marked <b>${status}</b></summary><div class="slist-inner">${inner}</div></details></div>`;
+}
+
+function renderEmbeddedTasks(title) {
+  const src = findByTitle(title);
+  if (!src) return `<p class="muted">No note called "${esc(title)}".</p>`;
+  const tasks = [];
+  src.body.split('\n').forEach((line, lineNo) => {
+    const m = line.match(/^\s*[-*+]\s+\[( |x|X)\]\s+(.*)$/);
+    if (m) tasks.push({ lineNo, done: m[1] !== ' ', text: m[2] });
+  });
+  if (!tasks.length) return '<p class="muted">No tasks yet.</p>';
+  const done = tasks.filter(t => t.done).length;
+  const mini = { note: src, slots: [] };
+  return `<div class="task-progress">${done} of ${tasks.length} done</div><ul class="task-list">` +
+    tasks.map(t => {
+      const text = t.text.replace(TOKEN_RE, '').replace(LINK_RE, (m, inner) => { mini.slots.push({ t: 'link', inner, raw: m }); return '\u0001' + (mini.slots.length - 1) + '\u0002'; });
+      return `<li class="task-item">${taskHTML(src.id, t.lineNo, t.done, inline(text, mini))}</li>`;
+    }).join('') + '</ul>';
+}
+
+/* ==========================================================================
+   7. SVG LINE CHARTS
+   ~~~chart
+   title: …
+   years: 2021, 2022, …
+   projection-from: 2026          (optional: from this year on, lines are dashed)
+   unit: % of GDP
+   series: Name | 1.2, 3.4, , 5.6  (blank = gap; @field-id = value from a field)
+   source: …
+   ~~~
+   ========================================================================== */
+function parseChartValue(s) {
+  s = String(s).trim();
+  if (s.startsWith('@')) s = fieldValueById(s.slice(1).trim());
+  const v = parseFloat(String(s).replace(/[%\s]/g, '').replace(/,/g, '.'));
+  return Number.isFinite(v) ? v : null;
+}
+function niceStep(raw) {
+  if (!(raw > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+function fmt(v) { return String(Math.round(v * 100) / 100); }
+
+function renderChart(raw) {
+  const cfg = { series: [] };
+  raw.split('\n').forEach(l => {
+    const m = l.match(/^\s*([\w-]+)\s*:\s*(.*)$/);
+    if (!m) return;
+    const key = m[1].toLowerCase(), val = m[2].trim();
+    if (key === 'series') {
+      const bar = val.indexOf('|');
+      const name = (bar < 0 ? val : val.slice(0, bar)).trim();
+      const vals = bar < 0 ? '' : val.slice(bar + 1);
+      cfg.series.push({ name, values: vals.split(',').map(parseChartValue) });
+    } else cfg[key] = val;
+  });
+  const years = (cfg.years || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!years.length || !cfg.series.length) return '<div class="chart-error">A chart needs a "years:" line and at least one "series:" line.</div>';
+
+  const W = 680, H = 340, L = 50, R = 18, T = 54, B = 40;
+  const pw = W - L - R, ph = H - T - B;
+  const vals = cfg.series.flatMap(s => s.values.slice(0, years.length)).filter(v => v != null);
+  const maxV = vals.length ? Math.max(...vals, 0) : 10;
+  const step = niceStep(maxV / 5);
+  const top = Math.max(step, Math.ceil((maxV * 1.08) / step) * step);
+  const x = i => L + (years.length === 1 ? pw / 2 : (i * pw) / (years.length - 1));
+  const y = v => T + ph - (v / top) * ph;
+  const projIdx = cfg['projection-from'] ? years.indexOf(cfg['projection-from'].trim()) : -1;
+  let svg = '';
+
+  // projection shading
+  if (projIdx > 0) {
+    const xs = (x(projIdx - 1) + x(projIdx)) / 2;
+    svg += `<rect class="proj-bg" x="${xs}" y="${T}" width="${L + pw + R / 2 - xs}" height="${ph}"/>` +
+           `<text class="proj-label" x="${xs + 6}" y="${T + 14}">Projections</text>`;
+  }
+  // gridlines + y labels
+  for (let v = 0; v <= top + 1e-9; v += step) {
+    const yy = y(v).toFixed(1);
+    svg += `<line class="grid" x1="${L}" x2="${L + pw}" y1="${yy}" y2="${yy}"/>` +
+           `<text class="axis" x="${L - 8}" y="${+yy + 4}" text-anchor="end">${fmt(v)}</text>`;
+  }
+  if (cfg.unit) svg += `<text class="axis" x="4" y="${T - 14}">${esc(cfg.unit)}</text>`;
+  // x labels
+  years.forEach((yr, i) => { svg += `<text class="axis" x="${x(i)}" y="${T + ph + 22}" text-anchor="middle">${esc(yr)}</text>`; });
+
+  if (!vals.length) {
+    svg += `<text class="empty-msg" x="${L + pw / 2}" y="${T + ph / 2}" text-anchor="middle">No data yet — fill in the MISSING fields and the chart will draw itself.</text>`;
+  }
+
+  // series lines + points + value labels
+  cfg.series.forEach((s, si) => {
+    const col = SERIES_COLORS[si % SERIES_COLORS.length];
+    for (let i = 0; i < years.length - 1; i++) {
+      const a = s.values[i], b = s.values[i + 1];
+      if (a == null || b == null) continue;
+      const dashed = projIdx >= 0 && i + 1 >= projIdx;
+      svg += `<line class="series-line" stroke="${col}" x1="${x(i)}" y1="${y(a)}" x2="${x(i + 1)}" y2="${y(b)}"${dashed ? ' stroke-dasharray="6 6"' : ''}/>`;
+    }
+    s.values.forEach((v, i) => {
+      if (v == null || i >= years.length) return;
+      const proj = projIdx >= 0 && i >= projIdx;
+      svg += `<circle cx="${x(i)}" cy="${y(v)}" r="4" stroke="${col}" stroke-width="2" fill="${proj ? '#232323' : col}">` +
+             `<title>${esc(s.name)}, ${esc(years[i])}: ${fmt(v)}${proj ? ' (projection)' : ''}</title></circle>` +
+             `<text class="val" x="${x(i)}" y="${y(v) - 10}" text-anchor="middle" fill="${col}">${fmt(v)}</text>`;
+    });
+  });
+
+  // legend
+  let lx = L;
+  cfg.series.forEach((s, si) => {
+    const col = SERIES_COLORS[si % SERIES_COLORS.length];
+    svg += `<line x1="${lx}" x2="${lx + 22}" y1="18" y2="18" stroke="${col}" stroke-width="3" stroke-linecap="round"/>` +
+           `<text class="legend" x="${lx + 28}" y="22">${esc(s.name)}</text>`;
+    lx += 28 + s.name.length * 6.6 + 22;
+  });
+  if (projIdx >= 0) {
+    svg += `<line x1="${lx}" x2="${lx + 22}" y1="18" y2="18" stroke="#9a9a9a" stroke-width="2" stroke-dasharray="5 4"/>` +
+           `<text class="legend" x="${lx + 28}" y="22">Projection</text>`;
+  }
+
+  return `<figure class="chart">${cfg.title ? `<div class="chart-title">${esc(cfg.title)}</div>` : ''}` +
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.title || 'Line chart')}">${svg}</svg>` +
+    `${cfg.source ? `<figcaption>Source: ${esc(cfg.source)}</figcaption>` : ''}</figure>`;
+}
+
+/* ==========================================================================
+   8. SIDEBAR (tree, search, tag filter)
+   ========================================================================== */
+function noteMatches(n) {
+  const q = state.search.toLowerCase().trim();
+  if (q && !n.title.toLowerCase().includes(q) && !n.body.toLowerCase().includes(q)) return false;
+  if (state.tag && !tagsOf(n).includes(state.tag)) return false;
+  return true;
+}
+
+function searchSnippet(n, q) {
+  if (!q || n.title.toLowerCase().includes(q)) return '';
+  const line = n.body.split('\n').find(l => l.toLowerCase().includes(q));
+  if (!line) return '';
+  const text = plainText(line);
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx < 0) return esc(truncate(text, 60));
+  const start = Math.max(0, idx - 20);
+  const part = (start ? '…' : '') + text.slice(start, idx + q.length + 40);
+  const j = part.toLowerCase().indexOf(q);
+  return esc(part.slice(0, j)) + '<mark>' + esc(part.slice(j, j + q.length)) + '</mark>' + esc(part.slice(j + q.length));
+}
+
+function renderTree() {
+  const q = state.search.toLowerCase().trim();
+  const filtering = !!(q || state.tag);
+  const visible = state.notes.filter(noteMatches);
+  let html = '';
+  for (const f of allFolders()) {
+    const notes = visible.filter(n => (n.folder || 'Unfiled') === f);
+    if (!notes.length && filtering) continue;
+    const collapsed = state.collapsed[f] && !filtering;
+    html += `<div class="folder${collapsed ? ' collapsed' : ''}">` +
+      `<button class="folder-head" data-folder="${esc(f)}" aria-expanded="${!collapsed}"><span class="chev"></span>${esc(f)}<span class="count">${notes.length}</span></button>` +
+      '<div class="folder-notes">' +
+      notes.map(n => {
+        const snip = searchSnippet(n, q);
+        return `<a href="#note/${encodeURIComponent(n.id)}" class="tree-note${n.id === state.current && state.mode !== 'graph' ? ' active' : ''}" data-id="${esc(n.id)}">` +
+          `<span class="ico">${TYPE_ICONS[n.type] || TYPE_ICONS.note}</span><span>${esc(n.title)}</span></a>` +
+          (snip ? `<span class="tree-snippet">${snip}</span>` : '');
+      }).join('') + '</div></div>';
+  }
+  if (!visible.length) html += '<p class="muted" style="padding:6px 10px;font-size:13px">No notes match.</p>';
+  $('#tree').innerHTML = html;
+
+  $('#filterInfo').innerHTML = filtering
+    ? `<span>${visible.length} of ${state.notes.length} notes</span><button data-action="clear-filters">Clear filters</button>`
+    : '';
+  renderTagOptions();
+}
+
+function renderTagOptions() {
+  const counts = {};
+  state.notes.forEach(n => tagsOf(n).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+  const tags = Object.keys(counts).sort();
+  if (state.tag && !counts[state.tag]) counts[state.tag] = 0, tags.push(state.tag);
+  $('#tagFilter').innerHTML = '<option value="">All tags</option>' +
+    tags.map(t => `<option value="${esc(t)}"${t === state.tag ? ' selected' : ''}>#${esc(t)} (${counts[t]})</option>`).join('');
+}
+
+/* ==========================================================================
+   9. RIGHT PANEL (backlinks, outgoing links, tags, status)
+   ========================================================================== */
+function renderRight() {
+  const right = $('#right');
+  if (state.mode === 'graph') {
+    right.innerHTML = '<h3>Graph view</h3><p class="muted">Each dot is a note; each line is a [[wikilink]]. Bigger dots have more links. Click a dot to open it, drag to rearrange, hover to highlight neighbours.</p>' +
+      '<h3>Folders</h3><ul class="legend-list">' +
+      allFolders().map(f => `<li><span class="dot" style="background:${folderColor(f)}"></span>${esc(f)}</li>`).join('') + '</ul>';
+    return;
+  }
+  const note = getNote(state.current);
+  if (!note) { right.innerHTML = ''; return; }
+
+  const back = backlinks(note);
+  const out = outgoingLinks(note);
+  const tags = tagsOf(note);
+  const c = countStatuses(scanStatusItems().filter(i => i.note.id === note.id));
+  const key = normTitle(note.title);
+
+  let html = `<h3>Backlinks <span>${back.length}</span></h3>`;
+  html += back.length ? '<ul class="rlist">' + back.map(n => {
+    const line = n.body.split('\n').find(l => [...l.matchAll(LINK_RE)].some(m => normTitle(parseLink(m[1]).target) === key)) || '';
+    return `<li><a href="#" class="wikilink" data-id="${esc(n.id)}" data-target="${esc(n.title)}">${esc(n.title)}</a><span class="snip">${esc(truncate(plainText(line), 110))}</span></li>`;
+  }).join('') + '</ul>' : '<p class="muted">No other notes link here yet.</p>';
+
+  html += `<h3>Outgoing links <span>${out.length}</span></h3>`;
+  html += out.length ? '<ul class="rlist">' + out.map(t => {
+    const n = findByTitle(t);
+    return `<li><a href="#" class="wikilink${n ? '' : ' unresolved'}" data-target="${esc(t)}"${n ? ` data-id="${esc(n.id)}"` : ''}>${esc(n ? n.title : t)}</a>${n ? '' : '<span class="snip">Not created yet — click to create</span>'}</li>`;
+  }).join('') + '</ul>' : '<p class="muted">This note has no [[links]].</p>';
+
+  html += '<h3>Tags</h3>' + (tags.length ? tags.map(t => `<a href="#" class="tag" data-tag="${esc(t)}">#${esc(t)}</a>`).join(' ') : '<p class="muted">No tags.</p>');
+
+  html += '<h3>Fact status in this note</h3><div class="mini-stats">' +
+    STATUSES.map(s => `<div class="${statusClass(s)}"><b>${c[s]}</b>${s}</div>`).join('') + '</div>';
+  right.innerHTML = html;
+}
+
+/* ==========================================================================
+   10. MAIN PANE (note view / editor / graph)
+   ========================================================================== */
+let graphAnim = null;
+
+function renderToolbar() {
+  const note = getNote(state.current);
+  const graph = state.mode === 'graph';
+  $('#crumbs').innerHTML = graph ? '<b>Graph view</b>'
+    : note ? `${esc(note.folder || 'Unfiled')} / <b>${esc(note.title)}</b>` : '';
+  $('#graphBtn').classList.toggle('on', graph);
+  const editBtn = $('#editBtn');
+  editBtn.textContent = state.mode === 'edit' ? 'Done' : 'Edit';
+  editBtn.classList.toggle('on', state.mode === 'edit');
+  editBtn.hidden = graph;
+  $('#deleteBtn').hidden = graph;
+  $('#exportNoteBtn').hidden = graph;
+}
+
+function renderMain() {
+  if (graphAnim) { cancelAnimationFrame(graphAnim); graphAnim = null; }
+  renderToolbar();
+  if (state.mode === 'graph') return renderGraph();
+  const note = getNote(state.current);
+  if (!note) { view.innerHTML = '<div class="note"><p class="muted">Note not found.</p></div>'; return; }
+  if (state.mode === 'edit') return renderEditor(note);
+  view.innerHTML = `<article class="note">` +
+    `<div class="note-meta"><span class="pill type-${esc(note.type || 'note')}">${NOTE_TYPES[note.type] || 'Note'}</span><span>${esc(note.folder || 'Unfiled')}</span></div>` +
+    `<h1 class="note-title">${esc(note.title)}</h1>` +
+    `<div class="note-body">${renderBody(note)}</div></article>`;
+}
+
+function render() { renderMain(); renderTree(); renderRight(); }
+
+/* ---------- Editor ---------- */
+const SNIPPETS = {
+  fact: () => ' {{fact:NEEDS CHECK|Source name}}',
+  field: () => ' {{field:MISSING||f-' + Date.now().toString(36) + '}}',
+  link: () => '[[Note title]]',
+  task: () => '\n- [ ] New task',
+  table: () => '\n| Column | Column |\n|---|---|\n| | |\n',
+  chart: () => '\n~~~chart\ntitle: Chart title\nyears: 2021, 2022, 2023\nunit: %\nseries: Series name | , , \nsource: \n~~~\n',
+  callout: () => '\n> [!warning] Title\n> Text\n'
+};
+
+function renderEditor(note) {
+  const folders = [...new Set([...FOLDER_ORDER, ...state.notes.map(n => n.folder || 'Unfiled')])];
+  view.innerHTML = `<div class="editor">
+    <div class="props">
+      <label>Title<input id="edTitle" class="inp" value="${esc(note.title)}"></label>
+      <label>Folder<input id="edFolder" class="inp" list="folderList" value="${esc(note.folder || '')}">
+        <datalist id="folderList">${folders.map(f => `<option value="${esc(f)}">`).join('')}</datalist></label>
+      <label>Type<select id="edType" class="inp">${Object.entries(NOTE_TYPES).map(([k, v]) => `<option value="${k}"${note.type === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+    </div>
+    <div class="ed-tools">
+      <button class="btn" data-insert="fact">+ Fact badge</button>
+      <button class="btn" data-insert="field">+ MISSING field</button>
+      <button class="btn" data-insert="link">+ [[Link]]</button>
+      <button class="btn" data-insert="task">+ Task</button>
+      <button class="btn" data-insert="table">+ Table</button>
+      <button class="btn" data-insert="callout">+ Callout</button>
+      <button class="btn" data-insert="chart">+ Chart</button>
+      <button class="btn" data-action="toggle-help">Syntax help</button>
+    </div>
+    <div class="ed-help" id="edHelp" hidden>
+      <div><code># Heading</code> · <code>## Sub</code> · <code>**bold**</code> · <code>*italic*</code></div>
+      <div><code>- bullet</code> · <code>1. numbered</code> · <code>- [ ] task</code></div>
+      <div><code>| a | b |</code> then <code>|---|---|</code> for tables</div>
+      <div><code>[[Note title]]</code> or <code>[[Note title|text]]</code></div>
+      <div><code>#tag</code> · <code>&gt; [!warning] Title</code> callout</div>
+      <div><code>{{fact:VERIFIED|Source}}</code> status badge</div>
+      <div><code>{{field:MISSING||my-id}}</code> empty data field</div>
+      <div><code>{{tasks:To-do}}</code> embed another note's tasks</div>
+      <div><code>{{status-list:MISSING}}</code> live list of items</div>
+      <div>Charts: <code>~~~chart</code> block — see the Measure 1 note. <code>@my-id</code> uses a field value.</div>
+    </div>
+    <div class="ed-split">
+      <textarea id="edBody" spellcheck="true" aria-label="Note text">${esc(note.body)}</textarea>
+      <div class="ed-preview note-body" id="edPreview">${renderBody(note)}</div>
+    </div>
+  </div>`;
+
+  const ta = $('#edBody');
+  let timer;
+  ta.addEventListener('input', () => {
+    note.body = ta.value;
+    note.updated = Date.now();
+    clearTimeout(timer);
+    timer = setTimeout(() => { $('#edPreview').innerHTML = renderBody(note); renderRight(); renderTree(); save(); }, 250);
+  });
+  $('#edTitle').addEventListener('change', e => renameNote(note, e.target.value));
+  $('#edFolder').addEventListener('change', e => { note.folder = e.target.value.trim() || 'Unfiled'; save(); renderTree(); renderToolbar(); });
+  $('#edType').addEventListener('change', e => { note.type = e.target.value; save(); renderTree(); });
+  ta.focus();
+}
+
+function insertAtCursor(text) {
+  const ta = $('#edBody');
+  if (!ta) return;
+  ta.focus();
+  ta.setRangeText(text, ta.selectionStart, ta.selectionEnd, 'end');
+  ta.dispatchEvent(new Event('input'));
+}
+
+/* Rename a note and update every [[link]] / {{tasks:}} that points at it */
+function renameNote(note, newTitle) {
+  newTitle = newTitle.replace(/[\[\]|{}]/g, '').trim();
+  if (!newTitle || newTitle === note.title) { $('#edTitle').value = note.title; return; }
+  const clash = findByTitle(newTitle);
+  if (clash && clash !== note) { toast('A note with that title already exists.'); $('#edTitle').value = note.title; return; }
+  const old = normTitle(note.title);
+  let changed = 0;
+  state.notes.forEach(n => {
+    const before = n.body;
+    n.body = n.body
+      .replace(LINK_RE, (m, inner) => {
+        const { target, label } = parseLink(inner);
+        if (normTitle(target) !== old) return m;
+        return inner.includes('|') ? `[[${newTitle}|${label}]]` : `[[${newTitle}]]`;
+      })
+      .replace(TOKEN_RE, (m, kind, args) => (kind === 'tasks' && normTitle(args) === old ? `{{tasks:${newTitle}}}` : m));
+    if (n.body !== before && n !== note) changed++;
+  });
+  note.title = newTitle;
+  $('#edTitle').value = newTitle;
+  const ta = $('#edBody');
+  if (ta && ta.value !== note.body) ta.value = note.body;
+  save(); renderTree(); renderRight(); renderToolbar();
+  if (changed) toast(`Renamed — updated links in ${changed} note${changed === 1 ? '' : 's'}.`);
+}
+
+/* ---------- Note actions ---------- */
+function currentFolder() {
+  const n = getNote(state.current);
+  return (n && n.folder) || 'Overview';
+}
+function createNote(title, folder) {
+  title = String(title || '').replace(/[\[\]|{}]/g, '').trim();
+  if (!title) return;
+  const existing = findByTitle(title);
+  if (existing) { open(existing.id); return; }
+  const id = uniqueId(title);
+  state.notes.push({ id, title, folder: folder || 'Overview', type: 'note', body: '', created: Date.now() });
+  save();
+  open(id, true);
+}
+function deleteNote() {
+  const note = getNote(state.current);
+  if (!note) return;
+  if (!confirm(`Delete "${note.title}"? Links to it will show as uncreated.`)) return;
+  state.notes = state.notes.filter(n => n !== note);
+  save();
+  toast('Note deleted.');
+  open(homeId());
+}
+
+/* ==========================================================================
+   11. GRAPH VIEW (simple force-directed layout in SVG)
+   ========================================================================== */
+function renderGraph() {
+  view.innerHTML = '<div class="graph-wrap"><svg id="graphSvg" aria-label="Graph of notes and links"></svg></div>';
+  const svg = $('#graphSvg');
+  const box = svg.getBoundingClientRect();
+  const W = Math.max(320, box.width), H = Math.max(320, box.height);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const NS = 'http://www.w3.org/2000/svg';
+
+  // Nodes start on a circle; edges come from resolved [[links]]
+  const nodes = state.notes.map((n, i, arr) => {
+    const ang = (2 * Math.PI * i) / arr.length;
+    return { id: n.id, title: n.title, folder: n.folder || 'Unfiled', x: W / 2 + Math.cos(ang) * Math.min(W, H) * 0.35, y: H / 2 + Math.sin(ang) * Math.min(W, H) * 0.35, vx: 0, vy: 0, deg: 0, fixed: false };
+  });
+  const index = new Map(nodes.map((n, i) => [n.id, i]));
+  const edges = [], seen = new Set();
+  state.notes.forEach(n => outgoingLinks(n).forEach(t => {
+    const target = findByTitle(t);
+    if (!target || target.id === n.id) return;
+    const a = index.get(n.id), b = index.get(target.id);
+    const key = a < b ? a + '-' + b : b + '-' + a;
+    if (seen.has(key)) return;
+    seen.add(key);
+    edges.push({ a, b });
+    nodes[a].deg++; nodes[b].deg++;
+  }));
+
+  // Build SVG elements once; the simulation only moves them
+  const gE = document.createElementNS(NS, 'g'), gN = document.createElementNS(NS, 'g');
+  svg.append(gE, gN);
+  edges.forEach(e => { e.el = document.createElementNS(NS, 'line'); e.el.setAttribute('class', 'edge'); gE.appendChild(e.el); });
+  nodes.forEach((n, i) => {
+    n.r = 5 + Math.sqrt(n.deg) * 2.6;
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'node' + (n.id === state.current ? ' current' : ''));
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('r', n.r);
+    c.setAttribute('fill', folderColor(n.folder));
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dy', n.r + 14);
+    t.textContent = n.title;
+    const title = document.createElementNS(NS, 'title');
+    title.textContent = n.title + ' (' + n.folder + ')';
+    g.append(c, t, title);
+    gN.appendChild(g);
+    n.el = g;
+    n.i = i;
+  });
+
+  // Hover: highlight a node and its neighbours
+  const neighbours = nodes.map(() => new Set());
+  edges.forEach(e => { neighbours[e.a].add(e.b); neighbours[e.b].add(e.a); });
+  nodes.forEach(n => {
+    n.el.addEventListener('pointerenter', () => {
+      svg.classList.add('dim');
+      n.el.classList.add('hl');
+      neighbours[n.i].forEach(j => nodes[j].el.classList.add('hl'));
+      edges.forEach(e => { if (e.a === n.i || e.b === n.i) e.el.classList.add('hl'); });
+    });
+    n.el.addEventListener('pointerleave', () => {
+      svg.classList.remove('dim');
+      svg.querySelectorAll('.hl').forEach(el => el.classList.remove('hl'));
+    });
+  });
+
+  // Physics
+  let alpha = 1;
+  function draw() {
+    edges.forEach(e => {
+      const A = nodes[e.a], B = nodes[e.b];
+      e.el.setAttribute('x1', A.x); e.el.setAttribute('y1', A.y);
+      e.el.setAttribute('x2', B.x); e.el.setAttribute('y2', B.y);
+    });
+    nodes.forEach(n => n.el.setAttribute('transform', `translate(${n.x},${n.y})`));
+  }
+  function tick() {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {          // repulsion
+        const A = nodes[i], B = nodes[j];
+        let dx = A.x - B.x, dy = A.y - B.y;
+        const d2 = Math.max(dx * dx + dy * dy, 90), d = Math.sqrt(d2);
+        const f = 26000 / d2;
+        dx /= d; dy /= d;
+        A.vx += dx * f; A.vy += dy * f; B.vx -= dx * f; B.vy -= dy * f;
+      }
+    }
+    edges.forEach(e => {                                     // springs
+      const A = nodes[e.a], B = nodes[e.b];
+      const dx = B.x - A.x, dy = B.y - A.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const f = (d - 200) * 0.01;
+      A.vx += (dx / d) * f; A.vy += (dy / d) * f; B.vx -= (dx / d) * f; B.vy -= (dy / d) * f;
+    });
+    nodes.forEach(n => {                                     // gravity + move
+      n.vx += (W / 2 - n.x) * 0.004; n.vy += (H / 2 - n.y) * 0.006;
+      if (n.fixed) { n.vx = n.vy = 0; return; }
+      n.vx *= 0.6; n.vy *= 0.6;
+      n.x = Math.min(W - 30, Math.max(30, n.x + n.vx * alpha));
+      n.y = Math.min(H - 30, Math.max(20, n.y + n.vy * alpha));
+    });
+    draw();
+    alpha *= 0.99;
+    graphAnim = alpha > 0.02 && state.mode === 'graph' ? requestAnimationFrame(tick) : null;
+  }
+  function kick() { alpha = Math.max(alpha, 0.4); if (!graphAnim) graphAnim = requestAnimationFrame(tick); }
+  draw();
+  graphAnim = requestAnimationFrame(tick);
+
+  // Drag to move, click to open
+  let drag = null;
+  svg.addEventListener('pointerdown', e => {
+    const g = e.target.closest('.node');
+    if (!g) return;
+    const n = nodes.find(nd => nd.el === g);
+    drag = { n, sx: e.clientX, sy: e.clientY, moved: false };
+    n.fixed = true;
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return;
+    if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    const r = svg.getBoundingClientRect();
+    drag.n.x = ((e.clientX - r.left) / r.width) * W;
+    drag.n.y = ((e.clientY - r.top) / r.height) * H;
+    draw();
+    kick();
+  });
+  svg.addEventListener('pointerup', () => {
+    if (!drag) return;
+    const { n, moved } = drag;
+    drag = null;
+    if (!moved) { n.fixed = false; open(n.id); }
+  });
+}
+
+/* ==========================================================================
+   12. EXPORT / BACKUP / IMPORT
+   ========================================================================== */
+function download(filename, text, type) {
+  const blob = new Blob([text], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function today() { return new Date().toISOString().slice(0, 10); }
+
+/* Replace app-only tokens with readable Markdown (works in Obsidian) */
+function exportBody(note) {
+  return note.body.replace(TOKEN_RE, (m, kind, args) => {
+    const a = args.split('|');
+    switch (kind) {
+      case 'fact': {
+        const src = a.slice(1).join('|').trim();
+        return `**[${normStatus(a[0])}]**${src ? ` _(source: ${src})_` : ''}`;
+      }
+      case 'field': {
+        const v = (a[1] || '').trim();
+        return `**[${normStatus(a[0])}]** ${v || '________'}`;
+      }
+      case 'dashboard': {
+        const c = countStatuses(scanStatusItems());
+        return STATUSES.map(s => `- **${s}:** ${c[s]}`).join('\n');
+      }
+      case 'status-list': {
+        const st = normStatus(a[0]);
+        const items = scanStatusItems().filter(i => i.status === st);
+        return items.length ? items.map(i => `- [${st}] ${i.note.title}: ${truncate(i.context || i.id || i.heading, 140)}`).join('\n') : `_Nothing marked ${st}._`;
+      }
+      case 'tasks': {
+        const src = findByTitle((a[0] || '').trim());
+        return src ? src.body.split('\n').filter(l => /^\s*[-*+]\s+\[( |x|X)\]/.test(l)).join('\n') : '';
+      }
+      default: return m;
+    }
+  });
+}
+function noteToMarkdown(note) {
+  return `# ${note.title}\n\n> Folder: ${note.folder || 'Unfiled'} · Type: ${NOTE_TYPES[note.type] || 'Note'}\n\n${exportBody(note)}\n`;
+}
+function sortedNotes() {
+  return state.notes.map((n, i) => ({ n, i }))
+    .sort((a, b) => folderRank(a.n.folder) - folderRank(b.n.folder) || String(a.n.folder).localeCompare(String(b.n.folder)) || a.i - b.i)
+    .map(x => x.n);
+}
+function exportMarkdown() {
+  const notes = sortedNotes();
+  const c = countStatuses(scanStatusItems());
+  let out = `# Zambia Debt Burden — Knowledge Base export\n\nExported ${today()} · ${notes.length} notes · ` +
+    `VERIFIED ${c['VERIFIED']} · NEEDS CHECK ${c['NEEDS CHECK']} · MISSING ${c['MISSING']}\n\n## Contents\n\n` +
+    notes.map(n => `- [[${n.title}]] (${n.folder || 'Unfiled'})`).join('\n') + '\n';
+  notes.forEach(n => { out += '\n\n---\n\n' + noteToMarkdown(n); });
+  download(`zambia-kb-${today()}.md`, out, 'text/markdown;charset=utf-8');
+  toast('Exported all notes as one Markdown file.');
+}
+function exportCurrentNote() {
+  const note = getNote(state.current);
+  if (!note) return;
+  download(`${slug(note.title) || 'note'}.md`, noteToMarkdown(note), 'text/markdown;charset=utf-8');
+}
+function backupJSON() {
+  download(`zambia-kb-backup-${today()}.json`, JSON.stringify({ app: 'zambia-econ-kb', version: 1, exported: new Date().toISOString(), notes: state.notes }, null, 2), 'application/json');
+  toast('Backup downloaded.');
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const notes = Array.isArray(data) ? data : data.notes;
+      if (!Array.isArray(notes) || !notes.every(n => n && typeof n.title === 'string' && typeof n.body === 'string')) throw new Error('bad format');
+      if (!confirm(`Replace your current ${state.notes.length} notes with ${notes.length} notes from this backup?`)) return;
+      state.notes = notes.map(n => ({ id: n.id || uniqueId(n.title), title: n.title, folder: n.folder || 'Unfiled', type: n.type || 'note', body: n.body }));
+      save();
+      toast('Backup imported.');
+      open(homeId());
+    } catch (e) {
+      toast('That file is not a valid backup.');
+    }
+  };
+  reader.readAsText(file);
+}
+function resetAll() {
+  if (!confirm('Reset to the original notes? This deletes ALL your edits, statuses and new notes in this browser.\n\nTip: click "Backup JSON" first if you might want them back.')) return;
+  try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+  state.notes = JSON.parse(JSON.stringify(DEFAULT_NOTES));
+  state.collapsed = {};
+  save();
+  toast('Notes reset.');
+  open(homeId());
+}
+
+/* ==========================================================================
+   13. ROUTING  (#note/<id>  or  #graph)
+   ========================================================================== */
+function open(id, edit) {
+  state.pendingEdit = !!edit;
+  const hash = '#note/' + encodeURIComponent(id);
+  if (location.hash === hash) route();
+  else location.hash = hash;
+}
+function route() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h === 'graph') {
+    state.mode = 'graph';
+  } else {
+    const id = h.startsWith('note/') ? h.slice(5) : '';
+    state.current = getNote(id) ? id : homeId();
+    state.mode = state.pendingEdit ? 'edit' : 'view';
+    view.scrollTop = 0;
+  }
+  state.pendingEdit = false;
+  document.body.classList.remove('side-open', 'right-open');
+  render();
+}
+
+/* ==========================================================================
+   14. EVENTS (one delegated listener per event type)
+   ========================================================================== */
+const ACTIONS = {
+  'new': () => { const t = prompt('New note title:'); if (t) createNote(t, currentFolder()); },
+  'home': () => open(homeId()),
+  'graph': () => { if (state.mode === 'graph') open(state.current || homeId()); else location.hash = '#graph'; },
+  'edit': () => { state.mode = state.mode === 'edit' ? 'view' : 'edit'; renderMain(); renderTree(); },
+  'delete': deleteNote,
+  'export-md': exportMarkdown,
+  'export-note': exportCurrentNote,
+  'backup': backupJSON,
+  'import': () => $('#importFile').click(),
+  'reset': resetAll,
+  'clear-filters': () => { state.search = ''; state.tag = ''; $('#search').value = ''; renderTree(); },
+  'toggle-help': () => { const h = $('#edHelp'); if (h) h.hidden = !h.hidden; },
+  'toggle-side': () => document.body.classList.toggle('side-open'),
+  'toggle-right': () => document.body.classList.toggle('right-open')
+};
+
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  const act = t.closest('[data-action]');
+  if (act && ACTIONS[act.dataset.action]) { e.preventDefault(); ACTIONS[act.dataset.action](); return; }
+
+  const ins = t.closest('[data-insert]');
+  if (ins) { insertAtCursor(SNIPPETS[ins.dataset.insert]()); return; }
+
+  const badge = t.closest('.badge[data-k]');
+  if (badge) { e.preventDefault(); cycleStatus(badge.dataset.note, +badge.dataset.k); return; }
+
+  const link = t.closest('.wikilink');
+  if (link) {
+    e.preventDefault();
+    if (link.dataset.id && getNote(link.dataset.id)) return open(link.dataset.id);
+    const target = link.dataset.target;
+    const n = findByTitle(target);
+    if (n) return open(n.id);
+    if (confirm(`"${target}" doesn't exist yet. Create it?`)) createNote(target, currentFolder());
+    return;
+  }
+
+  const tag = t.closest('.tag');
+  if (tag) {
+    e.preventDefault();
+    state.tag = tag.dataset.tag.toLowerCase();
+    renderTree();
+    document.body.classList.add('side-open');
+    toast(`Showing notes tagged #${state.tag}`);
+    return;
+  }
+
+  const fh = t.closest('.folder-head');
+  if (fh) { state.collapsed[fh.dataset.folder] = !state.collapsed[fh.dataset.folder]; save(); renderTree(); return; }
+
+  const tn = t.closest('.tree-note');
+  if (tn) { e.preventDefault(); open(tn.dataset.id); return; }
+
+  // tap outside an open drawer closes it (small screens)
+  if (!t.closest('#sidebar') && !t.closest('#right') && !t.closest('#toolbar')) document.body.classList.remove('side-open', 'right-open');
+});
+
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('.field-input')) setFieldValue(t.dataset.note, +t.dataset.k, t.value);
+  else if (t.matches('.task-check')) toggleTask(t.dataset.note, +t.dataset.line, t.checked);
+});
+
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t.matches && t.matches('.field-input') && e.key === 'Enter') { t.blur(); return; }
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); document.body.classList.add('side-open'); $('#search').focus(); $('#search').select(); }
+  else if (mod && e.key.toLowerCase() === 'e' && state.mode !== 'graph') { e.preventDefault(); ACTIONS.edit(); }
+  else if (e.key === 'Escape' && state.mode === 'edit' && !t.matches('.field-input')) { ACTIONS.edit(); }
+});
+
+$('#search').addEventListener('input', e => { state.search = e.target.value; renderTree(); });
+$('#tagFilter').addEventListener('change', e => { state.tag = e.target.value; renderTree(); });
+$('#importFile').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
+window.addEventListener('hashchange', route);
+let resizeTimer;
+window.addEventListener('resize', () => {
+  if (state.mode !== 'graph') return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderMain, 200);
+});
+
+/* ==========================================================================
+   15. START
+   ========================================================================== */
+state.notes = loadNotes();
+route();
+</script>
+</body>
+</html>
