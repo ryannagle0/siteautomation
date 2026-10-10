@@ -275,23 +275,41 @@ a { color: var(--accent); }
 .ed-preview { overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 18px 20px; min-height: 0; }
 
 /* ==========================================================================
-   GRAPH VIEW
+   GRAPH VIEW (canvas 3D engine — colours live in FOLDER_COLORS / GRAPH_LOOK)
    ========================================================================== */
-.graph-wrap { position: absolute; inset: 0; }
-#graphSvg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
-#graphSvg .edge { stroke: #4a4a4a; stroke-width: 1.2; }
-#graphSvg .node circle { stroke: var(--bg); stroke-width: 2; cursor: pointer; }
-#graphSvg .node text { fill: var(--muted); font-size: 11.5px; font-family: var(--sans); pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
-#graphSvg .node.current circle { stroke: #fff; }
-#graphSvg .node.current text { fill: #fff; }
-#graphSvg.dim .edge { opacity: .12; }
-#graphSvg.dim .node { opacity: .25; }
-#graphSvg.dim .edge.hl { opacity: 1; stroke: var(--accent); }
-#graphSvg.dim .node.hl { opacity: 1; }
-#graphSvg.dim .node.hl text { fill: #fff; }
+.graph-wrap { position: absolute; inset: 0; overflow: hidden; }
+#graphCanvas { display: block; touch-action: none; cursor: grab; }
+#graphCanvas:active { cursor: grabbing; }
+.g-bar { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; pointer-events: none; }
+.g-bar > * { pointer-events: auto; }
+.g-bar .btn { background: rgba(42,42,42,.92); }
+.g-bar .btn.on { background: var(--accent-soft); }
+.g-bar .btn[disabled] { opacity: .4; cursor: default; }
+.g-seg { display: inline-flex; }
+.g-seg .btn:first-child { border-radius: 6px 0 0 6px; }
+.g-seg .btn:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+#gSearch { width: 180px; margin-left: auto; background: rgba(22,22,22,.92); }
+.g-depth { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); background: rgba(42,42,42,.92); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; }
+.g-depth input { width: 60px; accent-color: var(--accent); }
+.g-legend { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 1px; background: rgba(25,25,25,.9); border: 1px solid var(--border); border-radius: 8px; padding: 6px; max-height: 45%; overflow: auto; }
+.g-legend summary { cursor: pointer; font-size: 12px; color: var(--text-soft); padding: 0 6px 2px; }
+.g-group { all: unset; display: flex; gap: 7px; align-items: center; font-size: 12px; padding: 2px 6px; border-radius: 5px; cursor: pointer; color: var(--text-soft); }
+.g-group:hover { background: var(--bg-hover); }
+.g-group:focus-visible { outline: 1px solid var(--accent); }
+.g-group.off { opacity: .4; text-decoration: line-through; }
+.g-forces { position: absolute; left: 12px; bottom: 32px; background: rgba(25,25,25,.92); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--muted); width: 240px; }
+.g-forces summary { cursor: pointer; color: var(--text-soft); }
+.g-forces label { display: grid; grid-template-columns: 1fr 90px 36px; gap: 6px; align-items: center; margin: 6px 0; }
+.g-forces input { accent-color: var(--accent); width: 100%; }
+.g-forces .btn { margin-top: 4px; width: 100%; }
+.g-hint { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: var(--faint); pointer-events: none; }
+.mini-graph { height: 230px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); position: relative; overflow: hidden; }
+.mini-graph-canvas { display: block; touch-action: none; }
+.mini-depth { margin-top: 6px; background: transparent; border: 0; padding: 0; }
 .legend-list { list-style: none; padding: 0; margin: 0; }
 .legend-list li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.folder-badge { font-size: 11px; font-weight: 600; letter-spacing: .02em; padding: 2px 9px; border-radius: 999px; border: 1px solid; }
 
 /* Toast */
 #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2d2d2d; border: 1px solid var(--border-strong); padding: 8px 16px; border-radius: 8px; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; z-index: 50; }
@@ -426,6 +444,11 @@ details.bp-card > summary::-webkit-details-marker { display: none; }
   .props { grid-template-columns: 1fr; }
   .ed-help { columns: 1; }
   .hide-sm { display: none; }
+  #gSearch { width: 130px; margin-left: 0; }
+  .g-hint { display: none; }
+  .g-forces { bottom: 12px; width: 190px; }
+  .g-forces:not([open]) { width: auto; }
+  .g-legend { max-height: 32%; }
   .bp-sticky { padding: 8px 16px; }
   .bp-dl { grid-template-columns: 1fr; gap: 2px; }
   .bp-dl dd { margin-bottom: 8px; }
@@ -1015,7 +1038,13 @@ function normTitle(t) {
   return String(t).toLowerCase().replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim();
 }
 function getNote(id) { return state.notes.find(n => n.id === id); }
-function findByTitle(t) { const k = normTitle(t); return state.notes.find(n => normTitle(n.title) === k); }
+/* Resolve a [[link]] by title first, then by any old title kept in n.aliases */
+function findByTitle(t) {
+  const k = normTitle(t);
+  return state.notes.find(n => normTitle(n.title) === k) ||
+    state.notes.find(n => (n.aliases || []).some(a => normTitle(a) === k));
+}
+function titleKeys(n) { return new Set([n.title, ...(n.aliases || [])].map(normTitle)); }
 function homeId() { return getNote('dashboard') ? 'dashboard' : (state.notes[0] && state.notes[0].id); }
 function folderRank(f) { const i = FOLDER_ORDER.indexOf(f); return i < 0 ? 999 : i; }
 function folderColor(f) {
@@ -1080,8 +1109,8 @@ function outgoingLinks(note) {
   return out;
 }
 function backlinks(note) {
-  const key = normTitle(note.title);
-  return state.notes.filter(n => n.id !== note.id && outgoingLinks(n).some(t => normTitle(t) === key));
+  const keys = titleKeys(note);
+  return state.notes.filter(n => n.id !== note.id && outgoingLinks(n).some(t => keys.has(normTitle(t)) && findByTitle(t) === note));
 }
 function tagsOf(note) {
   const body = note.body
@@ -1653,25 +1682,28 @@ function renderTagOptions() {
    ========================================================================== */
 function renderRight() {
   const right = $('#right');
-  if (state.mode === 'blueprint') { right.innerHTML = bpRightHTML(); return; }
+  if (state.mode === 'blueprint') { unmountMiniGraph(); right.innerHTML = bpRightHTML(); return; }
   if (state.mode === 'graph') {
-    right.innerHTML = '<h3>Graph view</h3><p class="muted">Each dot is a note; each line is a [[wikilink]]. Bigger dots have more links. Click a dot to open it, drag to rearrange, hover to highlight neighbours.</p>' +
-      '<h3>Folders</h3><ul class="legend-list">' +
-      allFolders().map(f => `<li><span class="dot" style="background:${folderColor(f)}"></span>${esc(f)}</li>`).join('') + '</ul>';
+    unmountMiniGraph();
+    const hubs = mainGraph ? mainGraph.nodes.filter(n => n.hub).sort((a, b) => b.deg - a.deg) : [];
+    right.innerHTML = '<h3>Graph view</h3><p class="muted">Each dot is a note; each line is a [[wikilink]]. Bigger dots have more links. Click a dot to open it, double-click to fly to it, drag a dot to pin it.</p>' +
+      '<h3>Controls</h3><ul class="legend-list"><li>Drag: rotate (3D) or pan (2D)</li><li>Shift-drag or right-drag: pan</li><li>Wheel or pinch: zoom</li><li>Legend: click a group to hide or show it</li></ul>' +
+      `<h3>Hub notes <span>${hubs.length}</span></h3><p class="muted">More than ${GRAPH_LOOK.hubThreshold} links. In Tidy mode their links only show when you hover them.</p>` +
+      (hubs.length ? '<ul class="rlist">' + hubs.map(n => `<li><a href="#" class="wikilink" data-id="${esc(n.id)}" data-target="${esc(n.title)}">${esc(n.title)}</a><span class="snip">${n.deg} links</span></li>`).join('') + '</ul>' : '');
     return;
   }
   const note = getNote(state.current);
-  if (!note) { right.innerHTML = ''; return; }
+  if (!note) { unmountMiniGraph(); right.innerHTML = ''; return; }
 
   const back = backlinks(note);
   const out = outgoingLinks(note);
   const tags = tagsOf(note);
   const c = countStatuses(scanStatusItems().filter(i => i.note.id === note.id));
-  const key = normTitle(note.title);
+  const keys = titleKeys(note);
 
   let html = `<h3>Backlinks <span>${back.length}</span></h3>`;
   html += back.length ? '<ul class="rlist">' + back.map(n => {
-    const line = n.body.split('\n').find(l => [...l.matchAll(LINK_RE)].some(m => normTitle(parseLink(m[1]).target) === key)) || '';
+    const line = n.body.split('\n').find(l => [...l.matchAll(LINK_RE)].some(m => keys.has(normTitle(parseLink(m[1]).target)))) || '';
     return `<li><a href="#" class="wikilink" data-id="${esc(n.id)}" data-target="${esc(n.title)}">${esc(n.title)}</a><span class="snip">${esc(truncate(plainText(line), 110))}</span></li>`;
   }).join('') + '</ul>' : '<p class="muted">No other notes link here yet.</p>';
 
@@ -1681,17 +1713,19 @@ function renderRight() {
     return `<li><a href="#" class="wikilink${n ? '' : ' unresolved'}" data-target="${esc(t)}"${n ? ` data-id="${esc(n.id)}"` : ''}>${esc(n ? n.title : t)}</a>${n ? '' : '<span class="snip">Not created yet — click to create</span>'}</li>`;
   }).join('') + '</ul>' : '<p class="muted">This note has no [[links]].</p>';
 
+  html += miniGraphHTML();
+
   html += '<h3>Tags</h3>' + (tags.length ? tags.map(t => `<a href="#" class="tag" data-tag="${esc(t)}">#${esc(t)}</a>`).join(' ') : '<p class="muted">No tags.</p>');
 
   html += '<h3>Fact status in this note</h3><div class="mini-stats">' +
     STATUSES.map(s => `<div class="${statusClass(s)}"><b>${c[s]}</b>${s}</div>`).join('') + '</div>';
   right.innerHTML = html;
+  mountMiniGraph(note.id);
 }
 
 /* ==========================================================================
    10. MAIN PANE (note view / editor / graph)
    ========================================================================== */
-let graphAnim = null;
 
 function renderToolbar() {
   const note = getNote(state.current);
@@ -1710,7 +1744,7 @@ function renderToolbar() {
 }
 
 function renderMain() {
-  if (graphAnim) { cancelAnimationFrame(graphAnim); graphAnim = null; }
+  if (mainGraph && state.mode !== 'graph') { mainGraph.destroy(); mainGraph = null; }
   renderToolbar();
   if (state.mode === 'graph') return renderGraph();
   if (state.mode === 'blueprint') return renderBlueprint();
@@ -1718,9 +1752,14 @@ function renderMain() {
   if (!note) { view.innerHTML = '<div class="note"><p class="muted">Note not found.</p></div>'; return; }
   if (state.mode === 'edit') return renderEditor(note);
   view.innerHTML = `<article class="note">` +
-    `<div class="note-meta"><span class="pill type-${esc(note.type || 'note')}">${NOTE_TYPES[note.type] || 'Note'}</span><span>${esc(note.folder || 'Unfiled')}</span></div>` +
+    `<div class="note-meta"><span class="pill type-${esc(note.type || 'note')}">${NOTE_TYPES[note.type] || 'Note'}</span>${folderBadge(note.folder || 'Unfiled')}</div>` +
     `<h1 class="note-title">${esc(note.title)}</h1>` +
     `<div class="note-body">${renderBody(note)}</div></article>`;
+}
+
+function folderBadge(f) {
+  const c = folderColor(f);
+  return `<span class="folder-badge" style="color:${c};border-color:${hexA(c, .5)};background:${hexA(c, .12)}">${esc(f)}</span>`;
 }
 
 function render() { renderMain(); renderTree(); renderRight(); }
@@ -1814,7 +1853,9 @@ function renameNote(note, newTitle) {
       .replace(TOKEN_RE, (m, kind, args) => (kind === 'tasks' && normTitle(args) === old ? `{{tasks:${newTitle}}}` : m));
     if (n.body !== before && n !== note) changed++;
   });
+  const oldTitle = note.title;
   note.title = newTitle;
+  note.aliases = [...new Set([...(note.aliases || []), oldTitle])].filter(a => normTitle(a) !== normTitle(newTitle));
   $('#edTitle').value = newTitle;
   const ta = $('#edBody');
   if (ta && ta.value !== note.body) ta.value = note.body;
@@ -1848,141 +1889,698 @@ function deleteNote() {
 }
 
 /* ==========================================================================
-   11. GRAPH VIEW (simple force-directed layout in SVG)
+   11. GRAPH VIEW — a small 3D engine on <canvas> (no libraries)
+   - GraphView is used twice: the full graph (Graph button) and the small
+     "Local graph" panel in each note's right sidebar.
+   - Tweak colours in FOLDER_COLORS / GRAPH_LOOK and physics in FORCE.
+   - Settings (2D/3D, tidy, hidden groups, forces…) are saved per browser.
    ========================================================================== */
-function renderGraph() {
-  view.innerHTML = '<div class="graph-wrap"><svg id="graphSvg" aria-label="Graph of notes and links"></svg></div>';
-  const svg = $('#graphSvg');
-  const box = svg.getBoundingClientRect();
-  const W = Math.max(320, box.width), H = Math.max(320, box.height);
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const NS = 'http://www.w3.org/2000/svg';
 
-  // Nodes start on a circle; edges come from resolved [[links]]
-  const nodes = state.notes.map((n, i, arr) => {
-    const ang = (2 * Math.PI * i) / arr.length;
-    return { id: n.id, title: n.title, folder: n.folder || 'Unfiled', x: W / 2 + Math.cos(ang) * Math.min(W, H) * 0.35, y: H / 2 + Math.sin(ang) * Math.min(W, H) * 0.35, vx: 0, vy: 0, deg: 0, fixed: false };
-  });
-  const index = new Map(nodes.map((n, i) => [n.id, i]));
-  const edges = [], seen = new Set();
-  state.notes.forEach(n => outgoingLinks(n).forEach(t => {
-    const target = findByTitle(t);
-    if (!target || target.id === n.id) return;
-    const a = index.get(n.id), b = index.get(target.id);
-    const key = a < b ? a + '-' + b : b + '-' + a;
-    if (seen.has(key)) return;
-    seen.add(key);
-    edges.push({ a, b });
-    nodes[a].deg++; nodes[b].deg++;
-  }));
+/* ---- Physics. The Forces sliders multiply repulsion, linkDistance, cluster ---- */
+const FORCE = {
+  repulsion: 5200,      // push between every pair of nodes
+  linkDistance: 80,     // spring rest length for a link
+  sameGroupLink: 0.6,   // links inside one folder use shorter springs (× linkDistance)
+  spring: 0.035,        // spring stiffness
+  hubSpring: 0.12,      // in Tidy mode, hub links pull this much (× spring)
+  center: 0.0025,       // gentle pull to the centre
+  cluster: 0.010,       // pull toward the node's folder cluster centre
+  clusterRadius: 230,   // how far apart the folder clusters sit
+  damping: 0.82,        // velocity kept each tick (lower = calmer)
+  cooling: 0.986,       // alpha multiplier per tick; the simulation stops when settled
+  minAlpha: 0.004,
+  maxSpeed: 25
+};
 
-  // Build SVG elements once; the simulation only moves them
-  const gE = document.createElementNS(NS, 'g'), gN = document.createElementNS(NS, 'g');
-  svg.append(gE, gN);
-  edges.forEach(e => { e.el = document.createElementNS(NS, 'line'); e.el.setAttribute('class', 'edge'); gE.appendChild(e.el); });
-  nodes.forEach((n, i) => {
-    n.r = 5 + Math.sqrt(n.deg) * 2.6;
-    const g = document.createElementNS(NS, 'g');
-    g.setAttribute('class', 'node' + (n.id === state.current ? ' current' : ''));
-    const c = document.createElementNS(NS, 'circle');
-    c.setAttribute('r', n.r);
-    c.setAttribute('fill', folderColor(n.folder));
-    const t = document.createElementNS(NS, 'text');
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('dy', n.r + 14);
-    t.textContent = n.title;
-    const title = document.createElementNS(NS, 'title');
-    title.textContent = n.title + ' (' + n.folder + ')';
-    g.append(c, t, title);
-    gN.appendChild(g);
-    n.el = g;
-    n.i = i;
-  });
+/* ---- Look ---- */
+const GRAPH_LOOK = {
+  edgeRGB: '150,150,160',
+  edgeAlpha: 0.2,       // normal edges: thin and faint
+  dimAlpha: 0.15,       // everything not related to the hovered/selected node
+  hubThreshold: 8,      // notes with more links than this are "hubs"
+  hubScale: 0.85,       // hubs are drawn a little smaller
+  nodeMin: 3.5, nodeMax: 11,
+  labelChars: 24,
+  topLabels: 10,
+  font: '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  miniFont: '10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  autoRotateSpeed: 0.0022  // radians per frame
+};
 
-  // Hover: highlight a node and its neighbours
-  const neighbours = nodes.map(() => new Set());
-  edges.forEach(e => { neighbours[e.a].add(e.b); neighbours[e.b].add(e.a); });
-  nodes.forEach(n => {
-    n.el.addEventListener('pointerenter', () => {
-      svg.classList.add('dim');
-      n.el.classList.add('hl');
-      neighbours[n.i].forEach(j => nodes[j].el.classList.add('hl'));
-      edges.forEach(e => { if (e.a === n.i || e.b === n.i) e.el.classList.add('hl'); });
-    });
-    n.el.addEventListener('pointerleave', () => {
-      svg.classList.remove('dim');
-      svg.querySelectorAll('.hl').forEach(el => el.classList.remove('hl'));
-    });
-  });
+const GRAPH_KEY = 'zambia-graph-v1';
+const REDUCED_MOTION = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+const GRAPH_DEFAULTS = { mode: '3d', autoRotate: true, tidy: true, local: false, depth: 1, miniDepth: 1, hidden: {}, forces: { repulsion: 1, linkDistance: 1, cluster: 1 } };
 
-  // Physics
-  let alpha = 1;
-  function draw() {
-    edges.forEach(e => {
-      const A = nodes[e.a], B = nodes[e.b];
-      e.el.setAttribute('x1', A.x); e.el.setAttribute('y1', A.y);
-      e.el.setAttribute('x2', B.x); e.el.setAttribute('y2', B.y);
-    });
-    nodes.forEach(n => n.el.setAttribute('transform', `translate(${n.x},${n.y})`));
+function loadGraphSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(GRAPH_KEY) || '{}') || {}; } catch (e) { s = {}; }
+  const out = Object.assign({}, GRAPH_DEFAULTS, s);
+  out.forces = Object.assign({}, GRAPH_DEFAULTS.forces, s.forces || {});
+  out.hidden = Object.assign({}, s.hidden || {});
+  if (REDUCED_MOTION) out.autoRotate = false;
+  return out;
+}
+function saveGraphSettings() {
+  try { localStorage.setItem(GRAPH_KEY, JSON.stringify(gs)); } catch (e) { /* settings are optional */ }
+}
+let gs = loadGraphSettings();
+
+/* Layout memory so reopening the graph doesn't start from scratch */
+const LAYOUT_CACHE = { main: new Map(), mini: new Map() };
+
+/* Deterministic pseudo-random in [-1, 1] from a string */
+function hashRand(str, salt) {
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) / 4294967295) * 2 - 1;
+}
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [160, 160, 160];
+}
+function hexA(hex, a) { const [r, g, b] = hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+function truncLabel(t) { return t.length > GRAPH_LOOK.labelChars ? t.slice(0, GRAPH_LOOK.labelChars - 1).trimEnd() + '…' : t; }
+
+/* Build the undirected, de-duplicated link graph of all notes */
+function buildLinkGraph() {
+  const adj = new Map(state.notes.map(n => [n.id, new Set()]));
+  const edges = [];
+  const seen = new Set();
+  for (const n of state.notes) {
+    for (const t of outgoingLinks(n)) {
+      const m = findByTitle(t);
+      if (!m || m.id === n.id) continue;
+      const key = n.id < m.id ? n.id + '\u0000' + m.id : m.id + '\u0000' + n.id;
+      if (seen.has(key)) continue;      // A→B and B→A are one line
+      seen.add(key);
+      edges.push([n.id, m.id]);
+      adj.get(n.id).add(m.id);
+      adj.get(m.id).add(n.id);
+    }
   }
-  function tick() {
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {          // repulsion
-        const A = nodes[i], B = nodes[j];
-        let dx = A.x - B.x, dy = A.y - B.y;
-        const d2 = Math.max(dx * dx + dy * dy, 90), d = Math.sqrt(d2);
-        const f = 26000 / d2;
-        dx /= d; dy /= d;
-        A.vx += dx * f; A.vy += dy * f; B.vx -= dx * f; B.vy -= dy * f;
+  return { adj, edges };
+}
+
+class GraphView {
+  /* opts: { mini: bool, onOpen: id => {} } */
+  constructor(canvas, opts = {}) {
+    this.c = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.mini = !!opts.mini;
+    this.onOpen = opts.onOpen || (() => {});
+    this.cache = this.mini ? LAYOUT_CACHE.mini : LAYOUT_CACHE.main;
+    this.nodes = []; this.edges = []; this.byId = new Map();
+    this.hover = null; this.selected = null; this.search = '';
+    this.center = null;             // local-graph centre note id
+    this.alpha = 1;
+    this.w = 300; this.h = 200; this.dpr = 1;
+    this.pointers = new Map(); this.drag = null; this.clickTimer = null; this.lastClick = null;
+    this.fly = null; this.raf = null; this.dead = false; this.sig = '';
+    this.resetCamera(true);
+
+    this.loop = this.loop.bind(this);
+    this.h_down = e => this.onDown(e);
+    this.h_move = e => this.onMove(e);
+    this.h_up = e => this.onUp(e);
+    this.h_leave = () => { if (this.hover && !this.drag) { this.hover = null; this.c.title = ''; this.wake(); } };
+    this.h_wheel = e => this.onWheel(e);
+    this.h_ctx = e => e.preventDefault();
+    canvas.addEventListener('pointerdown', this.h_down);
+    canvas.addEventListener('pointermove', this.h_move);
+    canvas.addEventListener('pointerup', this.h_up);
+    canvas.addEventListener('pointercancel', this.h_up);
+    canvas.addEventListener('pointerleave', this.h_leave);
+    canvas.addEventListener('wheel', this.h_wheel, { passive: false });
+    canvas.addEventListener('contextmenu', this.h_ctx);
+    this.ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => this.resize()) : null;
+  }
+
+  get flat() { return gs.mode === '2d'; }
+
+  attach(host) {
+    if (this.ro && this.host) this.ro.unobserve(this.host);
+    this.host = host;
+    if (this.ro) this.ro.observe(host);
+    this.resize();
+  }
+  destroy() {
+    this.dead = true;
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.clickTimer);
+    if (this.ro) this.ro.disconnect();
+    this.saveLayout();
+    const c = this.c;
+    c.removeEventListener('pointerdown', this.h_down);
+    c.removeEventListener('pointermove', this.h_move);
+    c.removeEventListener('pointerup', this.h_up);
+    c.removeEventListener('pointercancel', this.h_up);
+    c.removeEventListener('pointerleave', this.h_leave);
+    c.removeEventListener('wheel', this.h_wheel);
+    c.removeEventListener('contextmenu', this.h_ctx);
+  }
+  resize() {
+    const host = this.host || this.c.parentElement;
+    if (!host) return;
+    const r = host.getBoundingClientRect();
+    const w = Math.max(120, Math.round(r.width)), h = Math.max(120, Math.round(r.height));
+    const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    if (w === this.w && h === this.h && dpr === this.dpr && this.c.width) { this.wake(); return; }
+    this.w = w; this.h = h; this.dpr = dpr;
+    this.c.width = Math.round(w * dpr); this.c.height = Math.round(h * dpr);
+    this.c.style.width = w + 'px'; this.c.style.height = h + 'px';
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.wake();
+  }
+
+  /* ---------- Camera ---------- */
+  get defaultDist() { return this.mini ? 520 : 900; }
+  get focal() { return Math.min(this.w, this.h) * (this.mini ? 1.0 : 0.95); }
+  resetCamera(silent) {
+    this.cam = { yaw: this.flat ? 0 : 0.55, pitch: this.flat ? 0 : -0.3, dist: this.defaultDist, tx: 0, ty: 0, tz: 0 };
+    this.fly = null;
+    this.userMoved = false;          // until the user moves the camera, it keeps the graph framed
+    if (this.nodes && this.nodes.length) this.fitView();
+    if (!silent) { this.selected = null; this.wake(); }
+  }
+  /* Frame all visible nodes: centre on them and pull back far enough to fit */
+  fitView() {
+    const N = this.nodes;
+    if (!N.length || !this.w) return;
+    let cx = 0, cy = 0, cz = 0;
+    N.forEach(n => { cx += n.x; cy += n.y; cz += n.z; });
+    cx /= N.length; cy /= N.length; cz /= N.length;
+    let r = 0;
+    N.forEach(n => { r = Math.max(r, Math.hypot(n.x - cx, n.y - cy, this.flat ? 0 : n.z - cz)); });
+    r = Math.max(r, this.mini ? 30 : 80);
+    this.cam.tx = cx; this.cam.ty = cy; this.cam.tz = this.flat ? 0 : cz;
+    // the outermost node lands about 44% (mini 40%) of the shorter side from the centre
+    this.cam.dist = Math.max(120, Math.min(4000, r * this.focal / (Math.min(this.w, this.h) * (this.mini ? 0.40 : 0.44)) + (this.flat ? 0 : r * 0.3)));
+  }
+  /* world → screen. Returns { x, y, s (scale), z (depth) } or null when behind the camera */
+  project(px, py, pz) {
+    const cam = this.cam;
+    let x = px - cam.tx, y = py - cam.ty, z = (this.flat ? 0 : pz) - cam.tz;
+    if (!this.flat) {
+      const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+      const x1 = x * cy - z * sy, z1 = x * sy + z * cy;
+      const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+      const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
+      x = x1; y = y2; z = z2;
+    } else z = 0;
+    const zc = z + cam.dist;
+    if (zc < 30) return null;
+    const s = this.focal / zc;
+    return { x: this.w / 2 + x * s, y: this.h / 2 + y * s, s, z: zc };
+  }
+  /* screen delta (px) at scale s → world delta (inverse camera rotation) */
+  unproject(dx, dy, s) {
+    const cam = this.cam;
+    let x = dx / s, y = dy / s, z = 0;
+    if (!this.flat) {
+      const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+      const y1 = y * cp + z * sp, z1 = -y * sp + z * cp;
+      const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+      const x2 = x * cy + z1 * sy, z2 = -x * sy + z1 * cy;
+      return [x2, y1, z2];
+    }
+    return [x, y, 0];
+  }
+
+  /* ---------- Data ---------- */
+  /* opts: { local: bool, center: id, depth: 1|2 } */
+  setData(opts = {}) {
+    const { adj, edges } = buildLinkGraph();
+    const folders = allFolders();
+    // Folder cluster centres: on a sphere (3D) or a circle (2D)
+    this.clusters = new Map();
+    folders.forEach((f, i) => {
+      const n = folders.length;
+      const R = FORCE.clusterRadius * (this.mini ? 0.5 : 1);
+      if (this.flat) {
+        const a = (i / n) * Math.PI * 2;
+        this.clusters.set(f, [Math.cos(a) * R, Math.sin(a) * R, 0]);
+      } else {                         // Fibonacci sphere
+        const y = 1 - (i + 0.5) / n * 2, r = Math.sqrt(1 - y * y), th = i * 2.39996;
+        this.clusters.set(f, [Math.cos(th) * r * R, y * R, Math.sin(th) * r * R]);
+      }
+    });
+
+    let keep = new Set(state.notes.filter(n => !gs.hidden[n.folder || 'Unfiled']).map(n => n.id));
+    this.center = null;
+    if (opts.local && opts.center && adj.has(opts.center)) {
+      this.center = opts.center;
+      const near = new Set([opts.center]);
+      let frontier = [opts.center];
+      for (let d = 0; d < (opts.depth || 1); d++) {
+        const next = [];
+        frontier.forEach(id => adj.get(id).forEach(m => { if (!near.has(m)) { near.add(m); next.push(m); } }));
+        frontier = next;
+      }
+      keep = new Set([...near].filter(id => keep.has(id) || id === opts.center));
+    }
+
+    const old = this.byId;
+    let cached = 0;
+    this.nodes = state.notes.filter(n => keep.has(n.id)).map(n => {
+      const folder = n.folder || 'Unfiled';
+      const deg = adj.get(n.id).size;
+      const prev = old.get(n.id) || this.cache.get(n.id);
+      const cc = this.clusters.get(folder) || [0, 0, 0];
+      if (prev) cached++;
+      return {
+        id: n.id, title: n.title, label: truncLabel(n.title), folder, color: folderColor(folder), deg,
+        hub: deg > GRAPH_LOOK.hubThreshold,
+        x: prev ? prev.x : cc[0] + hashRand(n.id, 1) * 70,
+        y: prev ? prev.y : cc[1] + hashRand(n.id, 2) * 70,
+        z: this.flat ? 0 : (prev && prev.z ? prev.z : cc[2] + hashRand(n.id, 3) * 70),
+        vx: 0, vy: 0, vz: 0, pinned: prev ? !!prev.pinned : false, p: null
+      };
+    });
+    this.byId = new Map(this.nodes.map(n => [n.id, n]));
+    this.edges = edges.filter(([a, b]) => this.byId.has(a) && this.byId.has(b)).map(([a, b]) => {
+      const A = this.byId.get(a), B = this.byId.get(b);
+      return { a: A, b: B, hub: A.hub || B.hub, same: A.folder === B.folder };
+    });
+    this.nbr = new Map(this.nodes.map(n => [n.id, new Set()]));
+    this.edges.forEach(e => { this.nbr.get(e.a.id).add(e.b.id); this.nbr.get(e.b.id).add(e.a.id); });
+    this.topIds = new Set([...this.nodes].sort((a, b) => b.deg - a.deg).slice(0, GRAPH_LOOK.topLabels).map(n => n.id));
+    this.rank = new Map([...this.nodes].sort((a, b) => b.deg - a.deg).map((n, i) => [n.id, i]));
+    if (this.hover && !this.byId.has(this.hover.id)) this.hover = null;
+    if (this.selected) this.selected = this.byId.get(this.selected.id) || null;
+    this.alpha = this.nodes.length && cached === this.nodes.length ? 0.15 : 1;
+    this.sig = this.nodes.map(n => n.id).join('|') + '#' + this.edges.length + '#' + gs.mode;
+    this.wake();
+  }
+  saveLayout() { this.nodes.forEach(n => this.cache.set(n.id, { x: n.x, y: n.y, z: n.z, pinned: n.pinned })); }
+  relayout() {
+    this.cache.clear();
+    this.nodes.forEach(n => {
+      const cc = this.clusters.get(n.folder) || [0, 0, 0];
+      n.x = cc[0] + hashRand(n.id + Math.random(), 1) * 90; n.y = cc[1] + hashRand(n.id + Math.random(), 2) * 90;
+      n.z = this.flat ? 0 : cc[2] + hashRand(n.id + Math.random(), 3) * 90;
+      n.vx = n.vy = n.vz = 0; n.pinned = false;
+    });
+    this.alpha = 1; this.wake();
+  }
+
+  /* ---------- Simulation (one tick) ---------- */
+  step() {
+    const N = this.nodes, flat = this.flat, f = gs.forces, a = this.alpha;
+    const rep = FORCE.repulsion * f.repulsion * (this.mini ? 0.5 : 1);
+    const L = FORCE.linkDistance * f.linkDistance * (this.mini ? 0.75 : 1);
+    const cl = FORCE.cluster * f.cluster;
+    for (const n of N) { n.fx = 0; n.fy = 0; n.fz = 0; }
+    // repulsion (O(n²) is fine for a few hundred notes)
+    for (let i = 0; i < N.length; i++) {
+      const A = N[i];
+      for (let j = i + 1; j < N.length; j++) {
+        const B = N[j];
+        const dx = A.x - B.x, dy = A.y - B.y, dz = flat ? 0 : A.z - B.z;
+        const d2 = dx * dx + dy * dy + dz * dz + 25;
+        if (d2 > 360000) continue;            // ignore pairs more than 600 apart
+        const d = Math.sqrt(d2), k = rep / d2 / d;
+        A.fx += dx * k; A.fy += dy * k; A.fz += dz * k;
+        B.fx -= dx * k; B.fy -= dy * k; B.fz -= dz * k;
       }
     }
-    edges.forEach(e => {                                     // springs
-      const A = nodes[e.a], B = nodes[e.b];
-      const dx = B.x - A.x, dy = B.y - A.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const f = (d - 200) * 0.01;
-      A.vx += (dx / d) * f; A.vy += (dy / d) * f; B.vx -= (dx / d) * f; B.vy -= (dy / d) * f;
-    });
-    nodes.forEach(n => {                                     // gravity + move
-      n.vx += (W / 2 - n.x) * 0.004; n.vy += (H / 2 - n.y) * 0.006;
-      if (n.fixed) { n.vx = n.vy = 0; return; }
-      n.vx *= 0.6; n.vy *= 0.6;
-      n.x = Math.min(W - 30, Math.max(30, n.x + n.vx * alpha));
-      n.y = Math.min(H - 30, Math.max(20, n.y + n.vy * alpha));
-    });
-    draw();
-    alpha *= 0.99;
-    graphAnim = alpha > 0.02 && state.mode === 'graph' ? requestAnimationFrame(tick) : null;
+    // springs along links
+    for (const e of this.edges) {
+      const A = e.a, B = e.b;
+      const dx = B.x - A.x, dy = B.y - A.y, dz = flat ? 0 : B.z - A.z;
+      const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      const rest = L * (e.same ? FORCE.sameGroupLink : 1);
+      const k = FORCE.spring * (gs.tidy && e.hub ? FORCE.hubSpring : 1) * (d - rest) / d;
+      A.fx += dx * k; A.fy += dy * k; A.fz += dz * k;
+      B.fx -= dx * k; B.fy -= dy * k; B.fz -= dz * k;
+    }
+    // centre + folder-cluster pull, then integrate
+    for (const n of N) {
+      const cc = this.clusters.get(n.folder) || [0, 0, 0];
+      n.fx += -n.x * FORCE.center + (cc[0] - n.x) * cl;
+      n.fy += -n.y * FORCE.center + (cc[1] - n.y) * cl;
+      n.fz += -n.z * FORCE.center + (cc[2] - n.z) * cl;
+      if (n.pinned) { n.vx = n.vy = n.vz = 0; continue; }
+      n.vx = (n.vx + n.fx * a) * FORCE.damping;
+      n.vy = (n.vy + n.fy * a) * FORCE.damping;
+      n.vz = flat ? 0 : (n.vz + n.fz * a) * FORCE.damping;
+      const sp = Math.hypot(n.vx, n.vy, n.vz);
+      if (sp > FORCE.maxSpeed) { const k = FORCE.maxSpeed / sp; n.vx *= k; n.vy *= k; n.vz *= k; }
+      n.x += n.vx; n.y += n.vy; n.z = flat ? 0 : n.z + n.vz;
+    }
+    this.alpha *= FORCE.cooling;
+    if (this.alpha < FORCE.minAlpha) { this.alpha = 0; this.saveLayout(); }
   }
-  function kick() { alpha = Math.max(alpha, 0.4); if (!graphAnim) graphAnim = requestAnimationFrame(tick); }
-  draw();
-  graphAnim = requestAnimationFrame(tick);
 
-  // Drag to move, click to open
-  let drag = null;
-  svg.addEventListener('pointerdown', e => {
-    const g = e.target.closest('.node');
-    if (!g) return;
-    const n = nodes.find(nd => nd.el === g);
-    drag = { n, sx: e.clientX, sy: e.clientY, moved: false };
-    n.fixed = true;
-    svg.setPointerCapture(e.pointerId);
+  /* ---------- Loop: runs only while something is changing ---------- */
+  wake() { if (!this.raf && !this.dead) this.raf = requestAnimationFrame(this.loop); }
+  rotating() { return !this.mini && !this.flat && gs.autoRotate && !this.hover && !this.drag && !this.pointers.size && !this.fly && !document.hidden; }
+  loop(t) {
+    this.raf = null;
+    if (this.dead) return;
+    if (this.alpha > 0) this.step();
+    if (this.fly) {
+      const k = Math.min(1, (t - this.fly.t0) / this.fly.ms), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const f = this.fly, c = this.cam;
+      c.tx = f.from[0] + (f.to[0] - f.from[0]) * e; c.ty = f.from[1] + (f.to[1] - f.from[1]) * e;
+      c.tz = f.from[2] + (f.to[2] - f.from[2]) * e; c.dist = f.from[3] + (f.to[3] - f.from[3]) * e;
+      if (k >= 1) this.fly = null;
+    }
+    if (this.rotating()) this.cam.yaw += GRAPH_LOOK.autoRotateSpeed;
+    if (this.alpha > 0 && !this.userMoved && !this.fly) this.fitView();
+    this.draw();
+    if (this.alpha > 0 || this.fly || this.rotating()) this.wake();
+  }
+
+  /* ---------- Drawing ---------- */
+  focusNode() { return this.hover || this.selected; }
+  draw() {
+    const ctx = this.ctx, w = this.w, h = this.h;
+    ctx.clearRect(0, 0, w, h);
+    if (!this.nodes.length) {
+      ctx.fillStyle = 'rgba(154,154,154,.9)'; ctx.font = GRAPH_LOOK.font; ctx.textAlign = 'center';
+      ctx.fillText(this.mini ? 'No links yet' : 'No notes to show — check the hidden groups or Local mode.', w / 2, h / 2);
+      return;
+    }
+    // project
+    let zMin = Infinity, zMax = -Infinity;
+    for (const n of this.nodes) {
+      n.p = this.project(n.x, n.y, n.z);
+      if (n.p) { zMin = Math.min(zMin, n.p.z); zMax = Math.max(zMax, n.p.z); }
+    }
+    const zr = Math.max(1, zMax - zMin);
+    const depthT = n => this.flat ? 0 : (n.p.z - zMin) / zr;           // 0 = nearest, 1 = farthest
+    const fade = n => this.flat ? 1 : 1 - depthT(n) * 0.55;
+    const sRef = this.focal / this.defaultDist;
+    const zoom = this.focal / this.cam.dist / sRef;                       // 1 = default zoom
+
+    const focus = this.focusNode();
+    const nb = focus ? this.nbr.get(focus.id) : null;
+    const q = this.search.trim().toLowerCase();
+    const match = q ? new Set(this.nodes.filter(n => n.title.toLowerCase().includes(q)).map(n => n.id)) : null;
+    const lit = n => (!focus || n === focus || nb.has(n.id)) && (!match || match.has(n.id));
+    const dimming = !!(focus || match);
+
+    // edges (thin, faint; highlighted when touching the focus)
+    ctx.lineCap = 'round';
+    for (const e of this.edges) {
+      const A = e.a, B = e.b;
+      if (!A.p || !B.p) continue;
+      const touches = focus && (A === focus || B === focus);
+      if (gs.tidy && e.hub && !touches) continue;                       // Tidy mode hides hub spokes
+      let al = GRAPH_LOOK.edgeAlpha * Math.min(fade(A), fade(B));
+      let col = GRAPH_LOOK.edgeRGB, lw = this.mini ? 0.8 : 0.9;
+      if (touches) { al = 0.85; lw = 1.6; const [r, g, b] = hexToRgb(focus.color); col = `${r},${g},${b}`; }
+      else if (dimming) al *= GRAPH_LOOK.dimAlpha / GRAPH_LOOK.edgeAlpha * 0.6;
+      if (match && !touches && !(match.has(A.id) && match.has(B.id))) al = Math.min(al, 0.04);
+      ctx.strokeStyle = `rgba(${col},${al.toFixed(3)})`;
+      ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.moveTo(A.p.x, A.p.y); ctx.lineTo(B.p.x, B.p.y); ctx.stroke();
+    }
+
+    // nodes, back to front
+    const order = this.nodes.filter(n => n.p).sort((a, b) => b.p.z - a.p.z);
+    for (const n of order) {
+      const base = Math.max(GRAPH_LOOK.nodeMin, Math.min(GRAPH_LOOK.nodeMax, GRAPH_LOOK.nodeMin + Math.sqrt(n.deg) * 1.7)) * (n.hub ? GRAPH_LOOK.hubScale : 1);
+      n.r = Math.max(1.5, base * (n.p.s / sRef) * (this.mini ? 0.8 : 1));
+      const al = fade(n) * (dimming && !lit(n) ? GRAPH_LOOK.dimAlpha : 1);
+      ctx.globalAlpha = al;
+      ctx.fillStyle = n.color;
+      ctx.beginPath(); ctx.arc(n.p.x, n.p.y, n.r, 0, Math.PI * 2); ctx.fill();
+      const ring = n === focus || n.id === state.current || n.id === this.center || n.pinned;
+      if (ring) {
+        ctx.lineWidth = n === focus ? 2 : 1.4;
+        ctx.strokeStyle = n === focus || n.id === this.center ? '#ffffff' : n.pinned ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.7)';
+        ctx.beginPath(); ctx.arc(n.p.x, n.p.y, n.r + 2.5, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    this.drawLabels(order, { focus, nb, match, zoom, depthT, fade, lit, dimming });
+  }
+
+  /* Labels: only the important ones, no overlaps */
+  drawLabels(order, o) {
+    const ctx = this.ctx;
+    const extra = this.mini ? Infinity : o.zoom > 2.6 ? Infinity : o.zoom > 1.15 ? Math.round((o.zoom - 1) * 35) : 0;
+    const cands = [];
+    for (const n of order) {
+      let pr = 0;
+      if (n === this.hover) pr = 5;
+      else if (n === this.selected || n.id === this.center) pr = 4;
+      else if (o.nb && o.nb.has(n.id)) pr = 3;
+      else if (o.match && o.match.has(n.id)) pr = 2.5;
+      else if (this.topIds.has(n.id) || this.rank.get(n.id) < GRAPH_LOOK.topLabels + extra) pr = 1 + Math.min(0.9, n.deg / 50);
+      if (!pr) continue;
+      if (o.dimming && !o.lit(n) && pr < 3) continue;
+      if (!this.flat && pr < 3 && o.depthT(n) > 0.7) continue;          // skip labels at the back
+      cands.push({ n, pr: pr + n.deg / 1000 });
+    }
+    cands.sort((a, b) => b.pr - a.pr);
+    ctx.font = this.mini ? GRAPH_LOOK.miniFont : GRAPH_LOOK.font;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const placed = [];
+    const lh = this.mini ? 13 : 15;
+    for (const { n, pr } of cands) {
+      const tw = ctx.measureText(n.label).width;
+      const x = n.p.x, y = n.p.y + n.r + 4;
+      const box = [x - tw / 2 - 3, y - 1, x + tw / 2 + 3, y + lh];
+      if (placed.some(b => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;  // collision: keep the more important one
+      placed.push(box);
+      const al = pr >= 3 ? 1 : o.fade(n);
+      ctx.globalAlpha = al;
+      ctx.lineWidth = 3.5; ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(24,24,24,.92)';                         // dark outline keeps text readable over lines
+      ctx.strokeText(n.label, x, y);
+      ctx.fillStyle = pr >= 3 ? '#ffffff' : '#c8c8c8';
+      ctx.fillText(n.label, x, y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- Interaction ---------- */
+  pos(e) { const r = this.c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  pick(x, y) {
+    let best = null, bestZ = Infinity;
+    for (const n of this.nodes) {
+      if (!n.p) continue;
+      const d = Math.hypot(n.p.x - x, n.p.y - y);
+      if (d <= (n.r || 4) + 5 && n.p.z < bestZ) { best = n; bestZ = n.p.z; }
+    }
+    return best;
+  }
+  onDown(e) {
+    const [x, y] = this.pos(e);
+    try { this.c.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    this.pointers.set(e.pointerId, { x, y });
+    this.fly = null;
+    if (this.pointers.size === 2) {                                     // pinch
+      const [a, b] = [...this.pointers.values()];
+      this.drag = { mode: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, dist0: this.cam.dist, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, moved: true };
+      return;
+    }
+    const hit = this.pick(x, y);
+    let mode = 'rotate';
+    if (hit && e.button === 0 && !e.shiftKey) mode = 'node';
+    else if (e.button === 2 || e.button === 1 || e.shiftKey || this.flat) mode = 'pan';
+    this.drag = { mode, node: hit, x0: x, y0: y, x, y, moved: false };
+    this.wake();
+  }
+  onMove(e) {
+    const [x, y] = this.pos(e);
+    if (!this.pointers.has(e.pointerId)) {                              // plain hover (mouse)
+      if (e.pointerType === 'touch') return;
+      const hit = this.pick(x, y);
+      if (hit !== this.hover) { this.hover = hit; this.c.title = hit ? hit.title : ''; this.c.style.cursor = hit ? 'pointer' : ''; this.wake(); }
+      return;
+    }
+    this.pointers.set(e.pointerId, { x, y });
+    const d = this.drag;
+    if (!d) return;
+    if (d.mode === 'pinch') {
+      if (this.pointers.size < 2) return;
+      const [a, b] = [...this.pointers.values()];
+      const dd = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      this.cam.dist = Math.max(140, Math.min(4000, d.dist0 * d.d0 / dd));
+      this.userMoved = true;
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      this.panBy(mx - d.mx, my - d.my); d.mx = mx; d.my = my;
+      this.wake();
+      return;
+    }
+    const dx = x - d.x, dy = y - d.y;
+    d.x = x; d.y = y;
+    if (!d.moved && Math.hypot(x - d.x0, y - d.y0) > 4) d.moved = true;
+    if (!d.moved) return;
+    if (d.mode !== 'node') this.userMoved = true;
+    if (d.mode === 'rotate') {
+      this.cam.yaw += dx * 0.006;
+      this.cam.pitch = Math.max(-1.45, Math.min(1.45, this.cam.pitch + dy * 0.006));
+    } else if (d.mode === 'pan') {
+      this.panBy(dx, dy);
+    } else if (d.mode === 'node' && d.node && d.node.p) {
+      const [wx, wy, wz] = this.unproject(dx, dy, d.node.p.s);
+      const n = d.node;
+      n.x += wx; n.y += wy; n.z = this.flat ? 0 : n.z + wz;
+      n.pinned = true;                                                    // dragging pins the node
+      this.alpha = Math.max(this.alpha, 0.25);                            // …and wakes the simulation briefly
+    }
+    this.wake();
+  }
+  panBy(dx, dy) {
+    const s = this.focal / this.cam.dist;
+    const [wx, wy, wz] = this.unproject(dx, dy, s);
+    this.cam.tx -= wx; this.cam.ty -= wy; this.cam.tz -= wz;
+  }
+  onUp(e) {
+    this.pointers.delete(e.pointerId);
+    const d = this.drag;
+    if (this.pointers.size) return;
+    this.drag = null;
+    if (!d) return;
+    if (d.mode === 'pinch' || d.moved) { this.wake(); return; }
+    const hit = this.pick(d.x0, d.y0);
+    if (!hit) { if (this.selected) { this.selected = null; this.wake(); } return; }
+    // single click opens the note; a second click within 300 ms flies to it instead
+    if (this.lastClick && this.lastClick.id === hit.id && e.timeStamp - this.lastClick.t < 300) {
+      clearTimeout(this.clickTimer); this.lastClick = null;
+      this.flyTo(hit);
+      return;
+    }
+    this.lastClick = { id: hit.id, t: e.timeStamp };
+    clearTimeout(this.clickTimer);
+    this.clickTimer = setTimeout(() => { this.lastClick = null; if (!this.dead) this.onOpen(hit.id); }, 300);
+  }
+  onWheel(e) {
+    e.preventDefault();
+    const k = Math.exp((e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY) * 0.0012);
+    this.cam.dist = Math.max(140, Math.min(4000, this.cam.dist * k));
+    this.fly = null;
+    this.userMoved = true;
+    this.wake();
+  }
+  flyTo(n) {
+    this.selected = n;
+    this.userMoved = true;
+    const to = [n.x, n.y, this.flat ? 0 : n.z, Math.max(220, this.defaultDist * 0.45)];
+    if (REDUCED_MOTION) { [this.cam.tx, this.cam.ty, this.cam.tz, this.cam.dist] = to; this.wake(); return; }
+    this.fly = { from: [this.cam.tx, this.cam.ty, this.cam.tz, this.cam.dist], to, t0: performance.now(), ms: 650 };
+    this.wake();
+  }
+}
+
+/* ---------- Full graph view ---------- */
+let mainGraph = null;
+function graphCenterId() { return getNote(state.current) ? state.current : homeId(); }
+function renderGraph() {
+  const folders = allFolders();
+  view.innerHTML = `<div class="graph-wrap">
+    <canvas id="graphCanvas" aria-label="Graph of notes and links. Use the note list for keyboard navigation."></canvas>
+    <div class="g-bar">
+      <div class="g-seg" role="group" aria-label="2D or 3D">
+        <button type="button" class="btn${gs.mode === '2d' ? ' on' : ''}" data-g="2d">2D</button><button type="button" class="btn${gs.mode === '3d' ? ' on' : ''}" data-g="3d">3D</button>
+      </div>
+      <button type="button" class="btn${gs.autoRotate ? ' on' : ''}" data-g="rotate"${gs.mode === '2d' ? ' disabled' : ''} title="Slowly rotate when idle">Auto-rotate</button>
+      <button type="button" class="btn${gs.tidy ? ' on' : ''}" data-g="tidy" title="Hide hub-to-everything links unless the hub is hovered or selected">Tidy</button>
+      <button type="button" class="btn${gs.local ? ' on' : ''}" data-g="local" title="Only the current note and its neighbours">Local</button>
+      <label class="g-depth"${gs.local ? '' : ' hidden'}>Depth <input type="range" id="gDepth" min="1" max="2" step="1" value="${gs.depth}"> <span id="gDepthVal">${gs.depth}</span></label>
+      <button type="button" class="btn" data-g="reset">Reset view</button>
+      <input type="search" id="gSearch" class="inp" placeholder="Find in graph…" autocomplete="off">
+    </div>
+    <details class="g-legend"${window.innerWidth > 760 ? ' open' : ''}><summary>Groups</summary>
+      ${folders.map(f => `<button type="button" class="g-group${gs.hidden[f] ? ' off' : ''}" data-g-group="${esc(f)}" title="${gs.hidden[f] ? 'Show' : 'Hide'} ${esc(f)}"><span class="dot" style="background:${folderColor(f)}"></span>${esc(f)}</button>`).join('')}
+    </details>
+    <details class="g-forces"${gs.forcesOpen ? ' open' : ''}>
+      <summary>Forces</summary>
+      ${[['repulsion', 'Repulsion'], ['linkDistance', 'Link distance'], ['cluster', 'Cluster strength']].map(([k, l]) =>
+        `<label>${l}<input type="range" min="0.2" max="3" step="0.1" data-g-force="${k}" value="${gs.forces[k]}"><span>${(+gs.forces[k]).toFixed(1)}×</span></label>`).join('')}
+      <button type="button" class="btn" data-g="relayout">Re-layout</button>
+    </details>
+    <div class="g-hint">${gs.mode === '3d' ? 'Drag to rotate · Shift- or right-drag to pan' : 'Drag to pan'} · Scroll or pinch to zoom · Click a dot to open · Double-click to focus</div>
+  </div>`;
+  const wrap = view.querySelector('.graph-wrap');
+  if (mainGraph) mainGraph.destroy();
+  mainGraph = new GraphView($('#graphCanvas'), { onOpen: id => open(id) });
+  mainGraph.attach(wrap);
+  mainGraph.setData({ local: gs.local, center: graphCenterId(), depth: gs.depth });
+  if (gs.local) mainGraph.selected = mainGraph.byId.get(graphCenterId()) || null;
+
+  const rebuild = () => { mainGraph.setData({ local: gs.local, center: graphCenterId(), depth: gs.depth }); mainGraph.selected = gs.local ? mainGraph.byId.get(graphCenterId()) || null : mainGraph.selected; };
+  wrap.addEventListener('click', e => {
+    const b = e.target.closest('[data-g],[data-g-group]');
+    if (!b) return;
+    if (b.dataset.gGroup) {
+      const f = b.dataset.gGroup;
+      gs.hidden[f] = !gs.hidden[f];
+      if (!gs.hidden[f]) delete gs.hidden[f];
+      b.classList.toggle('off', !!gs.hidden[f]);
+      saveGraphSettings(); rebuild(); return;
+    }
+    const k = b.dataset.g;
+    if (k === '2d' || k === '3d') {
+      if (gs.mode === k) return;
+      mainGraph.saveLayout();
+      gs.mode = k; saveGraphSettings();
+      renderMain(); return;                         // rebuilds the engine with the z-axis flattened (or not)
+    }
+    if (k === 'rotate') { gs.autoRotate = !gs.autoRotate; b.classList.toggle('on', gs.autoRotate); saveGraphSettings(); mainGraph.wake(); }
+    else if (k === 'tidy') { gs.tidy = !gs.tidy; b.classList.toggle('on', gs.tidy); saveGraphSettings(); mainGraph.alpha = Math.max(mainGraph.alpha, 0.3); mainGraph.wake(); }
+    else if (k === 'local') { gs.local = !gs.local; b.classList.toggle('on', gs.local); wrap.querySelector('.g-depth').hidden = !gs.local; saveGraphSettings(); rebuild(); renderRight(); }
+    else if (k === 'reset') mainGraph.resetCamera();
+    else if (k === 'relayout') mainGraph.relayout();
   });
-  svg.addEventListener('pointermove', e => {
-    if (!drag) return;
-    if (Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy) > 4) drag.moved = true;
-    if (!drag.moved) return;
-    const r = svg.getBoundingClientRect();
-    drag.n.x = ((e.clientX - r.left) / r.width) * W;
-    drag.n.y = ((e.clientY - r.top) / r.height) * H;
-    draw();
-    kick();
+  wrap.querySelector('.g-forces').addEventListener('toggle', e => { gs.forcesOpen = e.target.open; saveGraphSettings(); });
+  wrap.addEventListener('input', e => {
+    const t = e.target;
+    if (t.id === 'gSearch') { mainGraph.search = t.value; mainGraph.wake(); }
+    else if (t.id === 'gDepth') { gs.depth = +t.value; $('#gDepthVal').textContent = gs.depth; saveGraphSettings(); rebuild(); }
+    else if (t.dataset.gForce) {
+      gs.forces[t.dataset.gForce] = +t.value;
+      t.nextElementSibling.textContent = (+t.value).toFixed(1) + '×';
+      saveGraphSettings();
+      mainGraph.alpha = Math.max(mainGraph.alpha, 0.5); mainGraph.wake();
+    }
   });
-  svg.addEventListener('pointerup', () => {
-    if (!drag) return;
-    const { n, moved } = drag;
-    drag = null;
-    if (!moved) { n.fixed = false; open(n.id); }
-  });
+}
+
+/* ---------- Local graph panel in the right sidebar ---------- */
+let miniGraph = null, miniCanvas = null;
+function miniGraphHTML() {
+  return `<h3>Local graph</h3><div class="mini-graph" id="miniGraphHost"></div>
+    <label class="g-depth mini-depth">Depth <input type="range" id="miniDepth" min="1" max="2" step="1" value="${gs.miniDepth}"> <span>${gs.miniDepth}</span></label>`;
+}
+function mountMiniGraph(noteId) {
+  const host = $('#miniGraphHost');
+  if (!host) return;
+  if (!miniCanvas) {
+    miniCanvas = document.createElement('canvas');
+    miniCanvas.className = 'mini-graph-canvas';
+    miniCanvas.setAttribute('aria-label', 'Local graph of this note');
+  }
+  host.appendChild(miniCanvas);
+  if (!miniGraph || miniGraph.dead) miniGraph = new GraphView(miniCanvas, { mini: true, onOpen: id => open(id) });
+  miniGraph.attach(host);
+  // Only rebuild when the note, depth, mode, hidden groups or any link changed
+  const key = [noteId, gs.miniDepth, gs.mode, JSON.stringify(gs.hidden),
+    state.notes.map(n => n.id + ':' + n.title + ':' + (n.folder || '') + ':' + outgoingLinks(n).join('|')).join('/')].join('#');
+  if (miniGraph.key !== key) {
+    const prevCenter = miniGraph.center;
+    miniGraph.setData({ local: true, center: noteId, depth: gs.miniDepth });
+    if (prevCenter !== noteId) miniGraph.resetCamera(true);
+    miniGraph.key = key;
+  } else miniGraph.wake();
+  const slider = $('#miniDepth');
+  slider.oninput = () => { gs.miniDepth = +slider.value; slider.nextElementSibling.textContent = gs.miniDepth; saveGraphSettings(); miniGraph.key = null; miniGraph.setData({ local: true, center: noteId, depth: gs.miniDepth }); };
+}
+function unmountMiniGraph() {
+  if (miniGraph) { miniGraph.destroy(); miniGraph = null; }
+}
+
+/* ---------- Broken wikilink report (console) ---------- */
+function reportBrokenLinks() {
+  const broken = [];
+  state.notes.forEach(n => outgoingLinks(n).forEach(t => { if (!findByTitle(t)) broken.push(`${n.title} → [[${t}]]`); }));
+  if (broken.length) console.warn(`Broken wikilinks (${broken.length}):\n` + broken.join('\n'));
+  else console.info('Wikilinks: all resolve.');
+  return broken;
 }
 
 /* ==========================================================================
@@ -2064,7 +2662,7 @@ function importJSON(file) {
       const notes = Array.isArray(data) ? data : data.notes;
       if (!Array.isArray(notes) || !notes.every(n => n && typeof n.title === 'string' && typeof n.body === 'string')) throw new Error('bad format');
       if (!confirm(`Replace your current ${state.notes.length} notes with ${notes.length} notes from this backup?`)) return;
-      state.notes = notes.map(n => ({ id: n.id || uniqueId(n.title), title: n.title, folder: n.folder || 'Unfiled', type: n.type || 'note', body: n.body }));
+      state.notes = notes.map(n => ({ id: n.id || uniqueId(n.title), title: n.title, folder: n.folder || 'Unfiled', type: n.type || 'note', body: n.body, aliases: Array.isArray(n.aliases) ? n.aliases : [] }));
       save();
       toast('Backup imported.');
       open(homeId());
@@ -3016,18 +3614,13 @@ $('#search').addEventListener('input', e => { state.search = e.target.value; ren
 $('#tagFilter').addEventListener('change', e => { state.tag = e.target.value; renderTree(); });
 $('#importFile').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
 window.addEventListener('hashchange', route);
-let resizeTimer;
-window.addEventListener('resize', () => {
-  if (state.mode !== 'graph') return;
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(renderMain, 200);
-});
 
 /* ==========================================================================
    15. START
    ========================================================================== */
 state.notes = loadNotes();
 route();
+reportBrokenLinks();
 </script>
 </body>
 </html>
