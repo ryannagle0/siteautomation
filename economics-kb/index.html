@@ -32,6 +32,10 @@
     ~~~chart ... ~~~              line chart (see the Measure 1 note for the format;
                                   "@id" pulls a value from a {{field}} with that id)
   STATUS is one of: VERIFIED, NEEDS CHECK, MISSING
+
+  PROJECT BLUEPRINT: the report scaffold lives in the BLUEPRINT object (section 12b of
+  the script). Edit it to change sections, slots, inserts, data shelf chips and rules.
+  Drafts and ticks are saved separately in localStorage, so editing the outline is safe.
 -->
 <style>
 /* ==========================================================================
@@ -294,6 +298,114 @@ a { color: var(--accent); }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ==========================================================================
+   PROJECT BLUEPRINT
+   ========================================================================== */
+.bp-wrap { position: relative; }
+.bp-sticky { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; padding: 9px 40px; background: rgba(30,30,30,.96); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); backdrop-filter: blur(4px); }
+.bp-sticky b { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
+.bp-sticky .over, .bp-sticky .over b { color: var(--bad); }
+.bp-sticky-actions { margin-left: auto; }
+.bp-note { padding-top: 18px; }
+.bp-card { border: 1px solid var(--border); background: var(--bg-panel); border-radius: 10px; padding: 12px 16px; margin: 0 0 14px; }
+.bp-card-title { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 650; }
+details.bp-card > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; }
+details.bp-card > summary::-webkit-details-marker { display: none; }
+.bp-dl { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr); gap: 6px 16px; margin: 10px 0 0; font-size: 14px; }
+.bp-dl dt { color: var(--muted); font-size: 12.5px; }
+.bp-dl dd { margin: 0; }
+.bp-dl ul { margin: 0; padding-left: 1.1em; }
+.bp-inline { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-soft); margin-top: 6px; }
+.bp-inline .inp { width: 70px; }
+.bp-wf { margin: 8px 0 0; }
+.bp-import { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; border-top: 1px solid var(--border); }
+.bp-import:first-of-type { border-top: 0; }
+.bp-import-name { font-family: var(--mono); font-size: 12.5px; }
+.badge.static { cursor: default; }
+.badge.static:hover { filter: none; }
+
+.bp-node { margin: 14px 0; }
+.bp-section { border-top: 2px solid var(--border-strong); padding-top: 8px; margin-top: 26px; }
+.bp-head { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 9px; width: 100%; }
+.bp-head:focus-visible { outline: 1px solid var(--accent); }
+.bp-sec-head { font-size: 21px; font-weight: 700; padding: 4px 0; }
+.bp-sub-head { font-size: 16px; font-weight: 650; padding: 4px 0; }
+.bp-node.collapsed > .bp-head .chev { transform: rotate(-90deg); }
+.bp-node.collapsed > .bp-children { display: none; }
+.bp-sec-id { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 15px; }
+.bp-budget-tag { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
+.bp-earns { font-size: 12.5px; color: var(--muted); margin: 0 0 4px 37px; }
+.bp-sub { margin-left: 14px; padding-left: 14px; border-left: 1px solid var(--border); }
+.bp-children { margin-top: 6px; }
+.bp-progress { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; }
+.bp-bar { flex: 1; height: 6px; background: var(--bg-input); border-radius: 99px; overflow: hidden; max-width: 340px; }
+.bp-bar span { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .2s; }
+.bp-bar span.over { background: var(--bad); }
+.bp-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bp-count.over { color: var(--bad); font-weight: 600; }
+.bp-node.off > .bp-head { opacity: .5; }
+.bp-offnote { margin: 2px 0 8px; font-size: 13px; }
+
+.bp-slot { border: 1px solid var(--border); border-left: 3px solid var(--faint); border-radius: 10px; background: var(--bg-panel); padding: 12px 16px 14px; margin: 12px 0; scroll-margin-top: 60px; transition: box-shadow .3s; }
+.bp-slot.st-drafting { border-left-color: var(--warn); }
+.bp-slot.st-done { border-left-color: var(--ok); }
+.bp-slot.off { opacity: .55; }
+.bp-node, .bp-slot { scroll-margin-top: 60px; }
+.flash { box-shadow: 0 0 0 2px var(--accent); }
+.bp-slot-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.bp-slot-head h4 { margin: 0; font-size: 15.5px; flex: 1 1 200px; min-width: 0; }
+.bp-id { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 5px; }
+.bp-status { width: auto; padding: 3px 6px; font-size: 12.5px; }
+.bp-meta { font-size: 12px; color: var(--muted); margin: 4px 0 2px; }
+.bp-label { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 650; margin: 12px 0 5px; }
+.bp-what { margin: 0; padding-left: 1.2em; font-size: 14px; }
+.bp-inserts { display: flex; flex-wrap: wrap; gap: 6px; }
+.bp-insert { background: transparent; border: 1.5px dotted #7d6aa8; color: #c5adff; border-radius: 6px; padding: 4px 9px; font: 12.5px/1.4 var(--mono); cursor: pointer; text-align: left; }
+.bp-insert:hover { background: var(--accent-soft); border-style: dashed; }
+.bp-chips { display: flex; flex-direction: column; gap: 5px; }
+.bp-chip { display: flex; gap: 8px; align-items: baseline; font-size: 13px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; line-height: 1.45; }
+.bp-chip .badge { flex: none; margin-left: 0; }
+.kind { flex: none; font: 650 9.5px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; border: 1px solid; }
+.k-quant { color: var(--info); border-color: rgba(91,164,240,.5); }
+.k-qual { color: #c5adff; border-color: rgba(168,130,255,.5); }
+.k-caution { color: var(--warn); border-color: rgba(232,176,75,.5); }
+.bp-hints { margin: 6px 0 0; padding-left: 1.2em; font-size: 12.5px; color: var(--muted); }
+.bp-rules { color: #f08a82; font-size: 12px; margin-top: 10px; line-height: 1.5; }
+.bp-rules b { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+.bp-rules ul { margin: 2px 0 0; padding-left: 1.2em; }
+.bp-children > .bp-rules { margin: 0 0 6px; }
+.bp-draft { margin-top: 12px; }
+.bp-draft textarea { width: 100%; resize: vertical; min-height: 80px; font: 14px/1.55 var(--sans); padding: 9px 11px; }
+.bp-draft-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+.bp-pulled { margin-top: 10px; border: 1px dashed var(--border-strong); border-radius: 8px; padding: 4px 12px 10px; font-size: 13px; }
+.bp-pulled .bp-label { margin-top: 8px; }
+.bp-pulled-empty { padding: 8px 12px; color: var(--muted); }
+.bp-pulled table { font-size: 12.5px; }
+.bp-pulled-block ul { margin: 4px 0 8px; padding-left: 1.2em; }
+.bp-pulled-title { font-weight: 600; margin-top: 6px; }
+.bp-figlist { list-style: none; padding: 0; margin: 4px 0 8px; font-size: 14px; }
+.bp-figlist li { padding: 3px 0; }
+.bp-figlist li.off { opacity: .5; }
+.bp-figtotal { font-weight: 600; }
+.bp-figtotal.over { color: var(--bad); }
+.bp-goto { font-family: var(--mono); font-size: 12px; text-decoration: none; }
+.bp-remember { margin-top: 30px; }
+
+/* Blueprint outline in the sidebar */
+.bp-tree { margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.bp-tlink { display: flex; gap: 6px; align-items: baseline; padding: 2px 8px; font-size: 12.5px; line-height: 1.4; color: var(--text-soft); text-decoration: none; border-radius: 5px; }
+.bp-tlink:hover { background: var(--bg-hover); color: var(--text); }
+.bp-tlink b { font-family: var(--mono); font-size: 11.5px; color: var(--accent); font-weight: 500; }
+.bp-tlink-top { padding-left: 21px; font-size: 13px; color: var(--text); margin-bottom: 2px; }
+.bp-tlink-top.active { background: var(--bg-active); }
+.bp-trow.off > .bp-tlink { opacity: .45; }
+.bp-tchev { cursor: pointer; transform: translateY(-1px); }
+.bp-tchev.closed { transform: rotate(-90deg); }
+.bp-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; transform: translateY(-1px); }
+.bp-dot.st-drafting { background: var(--warn); }
+.bp-dot.st-done { background: var(--ok); }
+.rlist .snip.over { color: var(--bad); }
+
+/* ==========================================================================
    RESPONSIVE: right panel and sidebar become slide-over drawers
    ========================================================================== */
 @media (max-width: 1150px) {
@@ -314,6 +426,10 @@ a { color: var(--accent); }
   .props { grid-template-columns: 1fr; }
   .ed-help { columns: 1; }
   .hide-sm { display: none; }
+  .bp-sticky { padding: 8px 16px; }
+  .bp-dl { grid-template-columns: 1fr; gap: 2px; }
+  .bp-dl dd { margin-bottom: 8px; }
+  .bp-sub { margin-left: 4px; padding-left: 10px; }
 }
 </style>
 </head>
@@ -345,6 +461,7 @@ a { color: var(--accent); }
       <button class="btn icon-btn" id="menuBtn" data-action="toggle-side" aria-label="Show notes">☰</button>
       <div class="crumbs" id="crumbs"></div>
       <button class="btn" data-action="home" title="Dashboard">Home</button>
+      <button class="btn" data-action="blueprint" id="bpBtn" title="Project Blueprint">Blueprint</button>
       <button class="btn" data-action="graph" id="graphBtn" title="Graph view">Graph</button>
       <button class="btn" data-action="edit" id="editBtn" title="Edit note (Ctrl+E)">Edit</button>
       <button class="btn hide-sm" data-action="export-note" id="exportNoteBtn" title="Download this note as .md">⤓ .md</button>
@@ -358,6 +475,8 @@ a { color: var(--accent); }
   <aside id="right" aria-label="Links"></aside>
 </div>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
+<input type="file" id="bpImportProject" accept=".json,application/json" hidden>
+<input type="file" id="bpImportGuide" accept=".json,application/json" hidden>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -1496,7 +1615,7 @@ function renderTree() {
   const q = state.search.toLowerCase().trim();
   const filtering = !!(q || state.tag);
   const visible = state.notes.filter(noteMatches);
-  let html = '';
+  let html = bpTreeHTML(q);
   for (const f of allFolders()) {
     const notes = visible.filter(n => (n.folder || 'Unfiled') === f);
     if (!notes.length && filtering) continue;
@@ -1506,7 +1625,7 @@ function renderTree() {
       '<div class="folder-notes">' +
       notes.map(n => {
         const snip = searchSnippet(n, q);
-        return `<a href="#note/${encodeURIComponent(n.id)}" class="tree-note${n.id === state.current && state.mode !== 'graph' ? ' active' : ''}" data-id="${esc(n.id)}">` +
+        return `<a href="#note/${encodeURIComponent(n.id)}" class="tree-note${n.id === state.current && state.mode !== 'graph' && state.mode !== 'blueprint' ? ' active' : ''}" data-id="${esc(n.id)}">` +
           `<span class="ico">${TYPE_ICONS[n.type] || TYPE_ICONS.note}</span><span>${esc(n.title)}</span></a>` +
           (snip ? `<span class="tree-snippet">${snip}</span>` : '');
       }).join('') + '</div></div>';
@@ -1534,6 +1653,7 @@ function renderTagOptions() {
    ========================================================================== */
 function renderRight() {
   const right = $('#right');
+  if (state.mode === 'blueprint') { right.innerHTML = bpRightHTML(); return; }
   if (state.mode === 'graph') {
     right.innerHTML = '<h3>Graph view</h3><p class="muted">Each dot is a note; each line is a [[wikilink]]. Bigger dots have more links. Click a dot to open it, drag to rearrange, hover to highlight neighbours.</p>' +
       '<h3>Folders</h3><ul class="legend-list">' +
@@ -1575,10 +1695,12 @@ let graphAnim = null;
 
 function renderToolbar() {
   const note = getNote(state.current);
-  const graph = state.mode === 'graph';
-  $('#crumbs').innerHTML = graph ? '<b>Graph view</b>'
+  const bpMode = state.mode === 'blueprint';
+  const graph = state.mode === 'graph' || bpMode;
+  $('#bpBtn').classList.toggle('on', bpMode);
+  $('#crumbs').innerHTML = bpMode ? '<b>Project Blueprint</b>' : graph ? '<b>Graph view</b>'
     : note ? `${esc(note.folder || 'Unfiled')} / <b>${esc(note.title)}</b>` : '';
-  $('#graphBtn').classList.toggle('on', graph);
+  $('#graphBtn').classList.toggle('on', state.mode === 'graph');
   const editBtn = $('#editBtn');
   editBtn.textContent = state.mode === 'edit' ? 'Done' : 'Edit';
   editBtn.classList.toggle('on', state.mode === 'edit');
@@ -1591,6 +1713,7 @@ function renderMain() {
   if (graphAnim) { cancelAnimationFrame(graphAnim); graphAnim = null; }
   renderToolbar();
   if (state.mode === 'graph') return renderGraph();
+  if (state.mode === 'blueprint') return renderBlueprint();
   const note = getNote(state.current);
   if (!note) { view.innerHTML = '<div class="note"><p class="muted">Note not found.</p></div>'; return; }
   if (state.mode === 'edit') return renderEditor(note);
@@ -1962,7 +2085,824 @@ function resetAll() {
 }
 
 /* ==========================================================================
-   13. ROUTING  (#note/<id>  or  #graph)
+   12b. PROJECT BLUEPRINT
+   A scaffold for the report (it never writes the report for you):
+   Section > Subsection > Slot. Edit BLUEPRINT below to change the outline.
+
+   Node fields (all optional except id and title):
+     id, title   shown on the card, e.g. "A1", "Title"
+     budget      word budget (number). Slots without one count toward their parent.
+     earns       marks the section earns (sections only)
+     what        "WHAT GOES HERE" bullets
+     insert      "[INSERT: …]" boxes (write the text without the brackets)
+     heading     an INSERT box shown on a subsection header (e.g. the aim in bold)
+     shelf       data chips: { t: 'text', s: 'VERIFIED' | 'NEEDS CHECK' | 'MISSING' }
+     sources     source chips: { t: 'text', k: 'Quantitative' | 'Qualitative' | 'Use with caution' }
+     hints       grey notes under the shelf
+     rules       small red rules
+     figure      figure number, if this slot is a planned figure
+     aim3        true = belongs to the optional Aim 3 (hidden when Aim 3 is off)
+     pull        show data from an imported file: 'imfDebt' | 'policies' | 'outcomes' | 'impact'
+     special     built-in widget instead of a draft box: 'figures' | 'presentation' | 'checklist'
+     noCount     true = the draft is not counted in the 1,500 words (references)
+     children    subsections or slots
+
+   Drafts, statuses and ticks are saved in localStorage under BP_KEY, never in
+   this object, so you can edit the outline without losing your work.
+   ========================================================================== */
+const BP_KEY = 'zambia-blueprint-v1';
+const BP_TOTAL_WORDS = 1500;
+const BP_MAX_FIGURES = 10;
+const BP_STATUSES = ['Not started', 'Drafting', 'Done'];
+
+const BLUEPRINT = {
+  project: {
+    rows: [
+      ['Project', 'Leaving Cert Economics research study (2027 brief)'],
+      ['Country', 'Zambia (a Least Developed Country)'],
+      ['Challenge', 'Debt burden'],
+      ['Line of inquiry (suggested — confirm with teacher and brief)', '"To what extent has the Zambian government overcome the economic challenges caused by its debt burden, and what has been the impact on its economy and people?"'],
+      ['Word limits', 'Introduction 250 · Research Process 750 · Conclusion 350 · Reflection 150 · Total 1,500 (excludes references, graphs, diagrams)'],
+      ['Format', 'Arial 12 · digital completion booklet (do not re-arrange layout) · max 10 graphs/tables/images · max 12 pages · submit as .docx · use Word, not Google Docs'],
+      ['Marks out of 100', 'Line of inquiry + aims 10 · Evidence of data 5 · Application and analysis 10 · Interpret and evaluate 10 · Arguments and judgements 10 · Data 10 · Conclusion 20 · Reflection 10 · Communication/presentation/coherence 15']
+    ],
+    aims: [
+      'Aim 1 = size and cost of the debt burden (two measures: public debt as % of GDP, and debt servicing cost).',
+      'Aim 2 = the government\'s response: what policies it carried out and how far they worked.',
+      'Aim 3 (optional, delete if too much) = impact on the economy and people, and the outlook.'
+    ]
+  },
+
+  workflow: [
+    'Get the line of inquiry approved by my teacher before substantive work.',
+    'Confirm the 2027 brief theme, topic list and due date (SEC circular).',
+    'Confirm the exact learning outcome numbers and names from my textbook.',
+    'Gather the data on the Data Shelf and fill the MISSING items.',
+    'Draft the Research Process (build each figure first, then analyse it).',
+    'Draft the Conclusion (no new data).',
+    'Draft the Introduction (write it after the research is done so it matches).',
+    'Draft the Reflection.',
+    'Write the reverse bibliography last.',
+    'Run the final checklist.'
+  ],
+
+  sections: [
+    /* ---------------- SECTION A ---------------- */
+    { id: 'A', title: 'Introduction', budget: 250, earns: 'LOI 10 + evidence of data 5',
+      rules: ['No answers, no conclusions, no bias.', 'Use a subheading for each part.'],
+      children: [
+        { id: 'A1', title: 'Title', budget: 10,
+          what: ['A specific title that is a slight rewording of the line of inquiry.'],
+          insert: ['title'],
+          rules: ['Not generic; same topic as the LOI.'] },
+        { id: 'A2', title: 'Line of inquiry', budget: 25,
+          what: ['The LOI as an economic QUESTION.'],
+          insert: ['line of inquiry as a question'],
+          rules: ['Must be a question.', 'Must not contain the answer (do not write words like "negative effect" in it).'] },
+        { id: 'A3', title: 'Background', budget: 60,
+          what: ['One short paragraph on Zambia as an LDC, the 2020 default, and the scale of the debt, plus one quote or statement from a named source.'],
+          insert: ['Zambia and LDC context', '2020 default and debt peak, with source', 'one short quote or statement, named source'],
+          shelf: [
+            { t: 'IMF public debt series (peak 133.4% in 2023)', s: 'VERIFIED' },
+            { t: '2020 default (first African default of the COVID era)', s: 'NEEDS CHECK' }
+          ],
+          rules: ['No conclusions here.'] },
+        { id: 'A4', title: 'Aims', budget: 90,
+          what: ['One block per aim. For each aim, in this order: aim as a verb statement, how I will measure it, link to the course, sources used.'],
+          rules: ['Each aim must cover a distinct area (little overlap).', 'Aims must narrow the LOI.', 'Use the verbs analyse, explore, evaluate, assess, investigate, compare, measure, calculate, identify, discuss, study, examine.'],
+          children: [
+            { id: 'A4.1', title: 'Aim 1',
+              insert: ['"To [analyse/evaluate/examine/assess] ..."', 'what I will measure', 'LEARNING OUTCOME: number and name from my textbook', 'quantitative source', 'qualitative source'],
+              shelf: [{ t: 'Learning outcome hints: 4.2 Fiscal Policy and the Budget Framework (national debt), 4.1 National Income, 1.3 Sustainability — confirm in textbook', s: 'NEEDS CHECK' }] },
+            { id: 'A4.2', title: 'Aim 2',
+              insert: ['"To [analyse/evaluate/examine/assess] ..."', 'what I will measure', 'LEARNING OUTCOME: number and name from my textbook', 'quantitative source', 'qualitative source'],
+              shelf: [{ t: 'Learning outcome hints: 4.2 Fiscal Policy, 4.4 Monetary Policy and Price Level, 4.5 Financial Sector — confirm in textbook', s: 'NEEDS CHECK' }] },
+            { id: 'A4.3', title: 'Aim 3 (optional)', aim3: true,
+              insert: ['"To [analyse/evaluate/examine/assess] ..."', 'what I will measure', 'LEARNING OUTCOME: number and name from my textbook', 'quantitative source', 'qualitative source'],
+              shelf: [{ t: 'Learning outcome hints: 1.2 Scarcity, choice and opportunity cost, 5.1 Economic Growth and Development — confirm in textbook', s: 'NEEDS CHECK' }] }
+          ] },
+        { id: 'A5', title: 'Sources and appraisal', budget: 40,
+          what: ['Name at least one quantitative and one qualitative source, with one line appraising each (who published it, why it is reliable, any weakness).'],
+          insert: ['quantitative source + one-line appraisal', 'qualitative source + one-line appraisal'],
+          sources: [
+            { t: 'IMF Country Report, Zambia, sixth and final ECF review (2026) — primary', k: 'Quantitative' },
+            { t: 'Trading Economics, data from Bank of Zambia — secondary aggregator, different debt measure to IMF', k: 'Quantitative' },
+            { t: 'BTI 2026 Zambia Country Report', k: 'Qualitative' },
+            { t: 'IMF Press Release 22/297 (31 Aug 2022)', k: 'Qualitative' },
+            { t: 'IMF Frequently Asked Questions on Zambia', k: 'Qualitative' },
+            { t: 'Center for Global Development case study on the G20 Common Framework', k: 'Qualitative' },
+            { t: 'Georgetown Journal of International Affairs structuralist article — a critical argument, name it as an opinion', k: 'Qualitative' },
+            { t: 'Coface', k: 'Use with caution' },
+            { t: 'AFRODAD', k: 'Use with caution' }
+          ],
+          rules: ['At least two sources, one quantitative and one qualitative.', 'A missing qualitative source drops the evidence marks.'] }
+      ] },
+
+    /* ---------------- SECTION B ---------------- */
+    { id: 'B', title: 'Research Process', budget: 750, earns: 'application and analysis 10, interpret and evaluate 10, arguments and judgements 10, data 10',
+      rules: ['Balance data and my own argument about 40/60.', 'Start each aim on a new page with the aim in bold as a heading.', 'One graph or table per aim minimum.', 'Analyse every graph.', 'Give reasons, not just facts.'],
+      children: [
+        { id: 'B0', title: 'Concept box', budget: 50,
+          what: ['One economic concept named, defined briefly, and why it is the basis for the research.'],
+          insert: ['concept, e.g. deadweight vs self-liquidating debt, or opportunity cost', 'definition in my own words', 'LEARNING OUTCOME number and name'],
+          rules: ['Reference the concept again in each aim.'] },
+
+        { id: 'B1', title: 'Aim 1', budget: 240, heading: 'Aim 1 statement in bold',
+          children: [
+            { id: 'B1.1', title: 'Figure 1: public debt as % of GDP over time', figure: 1, pull: 'imfDebt',
+              insert: ['line chart, numbered, titled, source and year in the caption'],
+              shelf: [{ t: 'IMF public debt % GDP: 2021 112.1, 2022 110.9, 2023 133.4 (peak), 2024 101.8, 2025 87.6, 2026 78.3 (projection), 2027 68.5 (projection)', s: 'VERIFIED' }],
+              hints: ['Show projections as dashed.'],
+              rules: ['Use ONE source (IMF) for the series.', 'Do not mix with Trading Economics\' 60.9% (different measure); mention the difference as a limitation.'] },
+            { id: 'B1.2', title: 'Figure 2 (graph or simple table): debt servicing cost', figure: 2,
+              insert: ['debt service as % of government revenue by year', 'before-default and target comparison'],
+              shelf: [
+                { t: 'Debt service above 50% of revenue before the default (Coface)', s: 'NEEDS CHECK' },
+                { t: 'IMF programme target of 14% by 2025', s: 'NEEDS CHECK' },
+                { t: 'Yearly series 2019–2025 — get from the IMF Country Report debt sustainability tables', s: 'MISSING' },
+                { t: 'Interest payments as % of revenue or spending', s: 'MISSING' }
+              ] },
+            { id: 'B1.3', title: 'Data analysis (in this order)',
+              insert: ['time period', 'trend (increase/decrease)', 'nominal figure', 'percentage or percentage-point change', 'reasons why'],
+              shelf: [{ t: 'Government debt in USD (Trading Economics, Bank of Zambia): 2023 14,572.9m, 2024 15,434m, 2025 16,145.2m, a record high', s: 'VERIFIED' }],
+              hints: ['Point to investigate: debt in dollars at a record while the ratio falls.'] },
+            { id: 'B1.4', title: 'Concept link',
+              insert: ['sentence applying the B0 concept, e.g. what debt servicing costs in lost spending (opportunity cost)', 'LEARNING OUTCOME'] },
+            { id: 'B1.5', title: 'Qualitative evidence',
+              insert: ['one short quote or statement from a named qualitative source'],
+              sources: [
+                { t: 'BTI 2026: the restructuring cut annual payments but they are still a large share of government spending', k: 'Qualitative' },
+                { t: 'The Finance Minister\'s statement on the cost of the fuel subsidy and the debt burden (Anadolu Agency)', k: 'Qualitative' }
+              ] },
+            { id: 'B1.6', title: 'Judgement, counter argument, limitation',
+              insert: ['my "I" statement judgement', 'one counter argument and why I agree or disagree', 'one data limitation'],
+              rules: ['Say what the data does not show.'] }
+          ] },
+
+        { id: 'B2', title: 'Aim 2', budget: 260, heading: 'Aim 2 statement in bold',
+          children: [
+            { id: 'B2.1', title: 'Figure 3: table of government policies', figure: 3, pull: 'policies',
+              insert: ['table with columns Policy | Date | What it promised | Result with data | Judgement'],
+              shelf: [
+                { t: 'p1 8NDP 2022–2026', s: 'VERIFIED' },
+                { t: 'p2 Ending fuel and electricity subsidies', s: 'NEEDS CHECK' },
+                { t: 'p3 Removal of VAT exemptions', s: 'NEEDS CHECK' },
+                { t: 'p4 Revenue Mobilization Plan (2022)', s: 'NEEDS CHECK' },
+                { t: 'p5 2024 budget tax-base measures', s: 'NEEDS CHECK' },
+                { t: 'p6 Agricultural input subsidy reform', s: 'NEEDS CHECK' },
+                { t: 'p7 Debt restructuring decisions (local-currency debt excluded; official creditors agreed June 2023)', s: 'NEEDS CHECK' },
+                { t: 'p8 Governance and debt management reforms (diagnostic published Jan 2023)', s: 'NEEDS CHECK' },
+                { t: 'p9 Social Cash Transfer expansion', s: 'NEEDS CHECK' },
+                { t: 'p10 Bank of Zambia rate rises of 450bp from Feb 2023 (central bank, label separately)', s: 'NEEDS CHECK' }
+              ],
+              hints: ['From zambia_project_data.json, government_policies p1 to p10. Most dates are NEEDS CHECK.'],
+              rules: ['Name each policy, date it and say what it promised.', 'The IMF programme is context, not a government policy.', 'Write "the government removed X as part of its IMF-backed programme", never "the government\'s policy was the IMF programme".'] },
+            { id: 'B2.2', title: 'Figure 4: outcome indicator', figure: 4, pull: 'outcomes',
+              insert: ['chart of inflation and/or kwacha and/or policy rate'],
+              shelf: [
+                { t: 'Inflation 16.7% Dec 2024 (highest since Nov 2021) to 6.1% Sept 2026 (lowest since Feb 2018, target band 6–8%)', s: 'VERIFIED' },
+                { t: 'First rate cut since Aug 2020 on 12 Nov 2025, to 14.25%', s: 'VERIFIED' },
+                { t: 'USD/ZMW all-time high 29.10 in March 2025', s: 'VERIFIED' },
+                { t: 'Kwacha up nearly 18% in 2026, helped by copper prices', s: 'VERIFIED' }
+              ],
+              hints: ['Source: Trading Economics.'],
+              rules: ['Note that part of the recovery came from copper prices, not only policy.'] },
+            { id: 'B2.3', title: 'Data analysis (time period, trend, nominal figure, % change, reasons)',
+              insert: ['analysis of Figure 4', 'which policy plausibly caused which result'] },
+            { id: 'B2.4', title: 'Concept link',
+              insert: ['sentence applying a concept, e.g. fiscal consolidation, opportunity cost, debt sustainability', 'LEARNING OUTCOME'] },
+            { id: 'B2.5', title: 'Qualitative evidence',
+              insert: ['quote or statement, named source'],
+              sources: [
+                { t: 'BTI 2026: subsidy cuts limited the ability to reduce poverty and inequality', k: 'Qualitative' },
+                { t: 'Georgetown article: removing subsidies raised prices; critical of IMF conditions', k: 'Qualitative' },
+                { t: 'IMF Press Release 22/297: what the programme set out to do', k: 'Qualitative' }
+              ] },
+            { id: 'B2.6', title: 'Judgement ("to what extent")',
+              insert: ['my judgement on how far the government overcame the debt burden', 'counter argument', 'limitation'] }
+          ] },
+
+        { id: 'B3', title: 'Aim 3 (optional)', budget: 200, heading: 'Aim 3 statement in bold', aim3: true,
+          children: [
+            { id: 'B3.1', title: 'Figure 5: impact or outlook', figure: 5, pull: 'impact',
+              insert: ['table or chart of budget balance, or education/health spending'],
+              shelf: [
+                { t: 'Budget deficit 5.7% (2023), 3.5% (2024), 3.8% (2025) of GDP (Trading Economics)', s: 'VERIFIED' },
+                { t: 'Unemployment 12.9% (Dec 2024)', s: 'VERIFIED' },
+                { t: 'Adult literacy about 72% (2024) but about 80% in 2022, likely a data revision', s: 'NEEDS CHECK' },
+                { t: 'Gross primary enrolment about 95% (2020)', s: 'NEEDS CHECK' },
+                { t: 'Primary completion about 83% (2013, old)', s: 'NEEDS CHECK' },
+                { t: 'Mean years of schooling about 7.2 vs global 8.7', s: 'NEEDS CHECK' },
+                { t: 'HDI 0.595 (2023)', s: 'NEEDS CHECK' },
+                { t: 'Education and health spending as % of budget', s: 'MISSING' }
+              ],
+              rules: ['Quote the data limitations (patchy and out of date) rather than hiding them.'] },
+            { id: 'B3.2', title: 'Data analysis',
+              insert: ['time period, trend, nominal figure, change, reasons'] },
+            { id: 'B3.3', title: 'Outlook and risk',
+              insert: ['what the 2026 fiscal pressure (election spending, weaker tax collection, subsidy overruns) means for the future, with a named source', 'LEARNING OUTCOME'] },
+            { id: 'B3.4', title: 'Judgement',
+              insert: ['my "I" statement', 'counter argument'] }
+          ] }
+      ] },
+
+    /* ---------------- SECTION C ---------------- */
+    { id: 'C', title: 'Conclusions', budget: 350, earns: 'conclusion 20',
+      rules: ['Summary only.', 'NO NEW INFORMATION: no new statistics, quotes or data.', 'Use a sub-heading per aim.', 'The last heading is the general conclusion.'],
+      children: [
+        { id: 'C1', title: 'Aim 1 summary', budget: 70, insert: ['what I set out to find', 'what I found, using figures already in Section B', 'my main judgement'] },
+        { id: 'C2', title: 'Aim 2 summary', budget: 70, insert: ['what I set out to find', 'what I found, using figures already in Section B', 'my main judgement'] },
+        { id: 'C3', title: 'Aim 3 summary (if used)', budget: 60, aim3: true, insert: ['what I set out to find', 'what I found, using figures already in Section B', 'my main judgement'] },
+        { id: 'C4', title: 'General conclusion', budget: 60, insert: ['direct answer to the line of inquiry', 'link to the concept and learning outcome'] },
+        { id: 'C5', title: 'Recommendations', budget: 50, insert: ['what the government should do, based only on my findings', 'the opportunity cost or trade-off of that recommendation'] },
+        { id: 'C6', title: 'New line of inquiry', budget: 40, insert: ['a further question I would research, and why'],
+          rules: ['This goes in the conclusion, NOT the reflection.'] }
+      ] },
+
+    /* ---------------- SECTION D ---------------- */
+    { id: 'D', title: 'Reflection', budget: 150, earns: 'reflection 10',
+      rules: ['Personal and sincere.', 'Do not list content learned.', 'Do not say what could have been done better or differently.'],
+      children: [
+        { id: 'D1', title: 'Skills gained', budget: 50, insert: ['two specific skills and how this project developed them'] },
+        { id: 'D2', title: 'How my thinking changed', budget: 60, insert: ['what I thought before', 'what I think now and why'] },
+        { id: 'D3', title: 'Everyday life', budget: 40, insert: ['how this may influence my opinions or behaviour'] }
+      ] },
+
+    /* ---------------- SECTION E ---------------- */
+    { id: 'E', title: 'References and Presentation', budget: null, earns: 'communication 15',
+      children: [
+        { id: 'E1', title: 'Reverse bibliography (write last, Vancouver numbered style)', noCount: true,
+          insert: ['numbered reference list; for websites: author, page title, URL, date accessed (10 October 2026 or the date I read it)'],
+          rules: ['Every source used in the report must be acknowledged.', 'Keep it neat (untidy references can lose communication marks).'] },
+        { id: 'E2', title: 'Figure list', special: 'figures',
+          what: ['Auto-counts the figures planned and warns if over 10.', 'Each figure needs a number, a title and a source.'] },
+        { id: 'E3', title: 'Presentation checks', special: 'presentation',
+          what: ['Tick each check before you submit.'] },
+        { id: 'E4', title: 'Final checklist', special: 'checklist',
+          what: ['The 23-item checklist from the Grinds360 guide. Import grinds360_research_guide.json to use the copy in your file.'] }
+      ] }
+  ],
+
+  /* E3 checks */
+  presentation: [
+    'Arial 12',
+    'The aim in bold at the start of each page',
+    'Paragraphs and headings',
+    'No spelling mistakes',
+    'Plain language (could a first year follow it?)',
+    'Do not exceed word limits'
+  ],
+
+  remember: [
+    'The 2027 brief and due date still need confirming.',
+    'Sources must include one quantitative AND one qualitative.',
+    'One new line of inquiry goes in the conclusion.',
+    'My line of inquiry needs teacher approval before substantive work.'
+  ]
+};
+
+/* E4 fallback: the checklist items as listed in the Grinds360 guide (pages 478–479) */
+const BP_FALLBACK_CHECKLIST = [
+  "I have read the research study brief carefully and selected one topic",
+  "I have stated my line of inquiry as an economic issue, problem or question",
+  "I have consulted my teacher regarding my line of inquiry",
+  "My research study relates directly to the learning outcomes of the specification",
+  "The aims of my line of inquiry have been outlined in the context of the learning outcomes in the specification",
+  "I have referenced at least two sources of reliable information including at least one quantitative source",
+  "I have referenced and explained at least one economic concept relevant to my line of inquiry",
+  "I have evaluated my sources of evidence",
+  "My conclusions are based on my research and findings and relate to my line of inquiry, the aims of my study and the economic concepts and theory underpinning my line of inquiry",
+  "I have reflected on the insights gained from my engagement with this research study considering how it relates to my own life and how my attitudes/opinions/behaviour have/have not been influenced",
+  "This research study is my own work",
+  "My research study report has been completed in the digital completion booklet",
+  "My research study report does not exceed 1500 words (excluding references, diagrams, graphs etc.)",
+  "I have performed a spell check on my research study report and corrected any errors shown",
+  "I have acknowledged all secondary sources of information used and included them in the References and Bibliography section of the digital completion booklet",
+  "I have included a title for my research study report",
+  "My report is no more than 12 pages long (excluding instruction pages at the beginning)",
+  "The text I have written is in Arial font with a text size of 12",
+  "I have not altered the structure/format of the digital completion booklet in any way",
+  "Any images I have used have been properly labelled",
+  "There are no more than 10 images included in my report",
+  "I have kept a copy of all notes I have made in relation to my research study",
+  "My research study report is presented for submission in the MS Word (.docx) format and is free from viruses"
+];
+
+/* ---------- Blueprint state (localStorage, every access guarded) ---------- */
+const bp = {
+  drafts: {}, status: {}, workflow: {}, checks: {}, chips: {}, collapsed: {}, sideCollapsed: {},
+  useAim3: true, extraFigures: 0, imports: { project: null, guide: null }
+};
+let bpFocus = null;
+
+function bpLoad() {
+  try {
+    const d = JSON.parse(localStorage.getItem(BP_KEY) || 'null');
+    if (d && typeof d === 'object') Object.assign(bp, d, { imports: Object.assign({ project: null, guide: null }, d.imports || {}) });
+  } catch (e) { /* storage blocked or corrupt: start empty */ }
+}
+let bpSaveTimer = null, bpSaveWarned = false;
+function bpSave(now) {
+  clearTimeout(bpSaveTimer);
+  const write = () => {
+    try { localStorage.setItem(BP_KEY, JSON.stringify(bp)); }
+    catch (e) { if (!bpSaveWarned) { toast('Could not save the blueprint in this browser — use "Export drafts" to keep your work.'); bpSaveWarned = true; } }
+  };
+  if (now) write(); else bpSaveTimer = setTimeout(write, 400);
+}
+
+/* ---------- Tree helpers ---------- */
+const bpIndex = new Map();          // id -> { node, parent, section, depth }
+(function indexBlueprint() {
+  const walk = (node, parent, section, depth) => {
+    bpIndex.set(node.id, { node, parent, section: section || node, depth });
+    (node.children || []).forEach(c => walk(c, node, section || node, depth + 1));
+  };
+  BLUEPRINT.sections.forEach(s => walk(s, null, null, 0));
+})();
+const bpIsSlot = n => !n.children;
+const bpActive = n => !(n.aim3 && !bp.useAim3);
+function bpSlots(node) {
+  if (!bpActive(node)) return [];
+  if (bpIsSlot(node)) return [node];
+  return node.children.flatMap(bpSlots);
+}
+const bpAllSlots = () => BLUEPRINT.sections.flatMap(bpSlots);
+function wordCount(t) { return String(t || '').trim().split(/\s+/).filter(Boolean).length; }
+function bpWords(node) {
+  return bpSlots(node).filter(s => !s.noCount).reduce((sum, s) => sum + wordCount(bp.drafts[s.id]), 0);
+}
+function bpTotals() {
+  const slots = bpAllSlots();
+  return {
+    words: BLUEPRINT.sections.reduce((s, sec) => s + bpWords(sec), 0),
+    figures: slots.filter(s => s.figure).length + (Math.max(0, parseInt(bp.extraFigures, 10) || 0)),
+    done: slots.filter(s => bp.status[s.id] === 'Done').length,
+    total: slots.length
+  };
+}
+function bpChipStatus(key, s) { return normStatus(bp.chips[key] || s); }
+function bpSearchText(n) {
+  const parts = [n.id, n.title, n.heading, ...(n.what || []), ...(n.insert || []), ...(n.hints || []), ...(n.rules || []),
+    ...(n.shelf || []).map(c => c.t), ...(n.sources || []).map(c => c.t), bp.drafts[n.id]];
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+function bpMatches(n, q) {
+  if (!q) return true;
+  if (bpSearchText(n).includes(q)) return true;
+  return (n.children || []).some(c => bpMatches(c, q));
+}
+
+/* ---------- Imported files ---------- */
+function bpImportFile(kind, file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); } catch (e) { toast('That file is not valid JSON.'); return; }
+    if (kind === 'project' && !(data && Array.isArray(data.government_policies))) { toast('That doesn\'t look like zambia_project_data.json (no government_policies list).'); return; }
+    if (kind === 'guide' && !(data && Array.isArray(data.sections))) { toast('That doesn\'t look like grinds360_research_guide.json (no sections list).'); return; }
+    bp.imports[kind] = data;
+    bpSave(true);
+    toast(kind === 'project' ? 'Project data imported.' : 'Research guide imported.');
+    renderMain(); renderRight();
+  };
+  reader.readAsText(file);
+}
+function bpGuideChecklist() {
+  const g = bp.imports.guide;
+  if (g && Array.isArray(g.sections)) {
+    for (const s of g.sections) for (const b of (s.blocks || [])) {
+      if (b.type === 'checklist' && Array.isArray(b.items)) return { items: b.items.map(i => typeof i === 'string' ? i : String(i.text || '')).filter(Boolean), from: 'grinds360_research_guide.json' };
+    }
+  }
+  return { items: BP_FALLBACK_CHECKLIST, from: 'the Grinds360 guide (built in)' };
+}
+
+/* Small renderers for imported data (values shown exactly as in the file) */
+function bpValueHTML(v) {
+  if (v == null) return '<span class="muted">—</span>';
+  if (typeof v === 'object') {
+    return Array.isArray(v) ? esc(v.join('; ')) : Object.entries(v).map(([k, x]) => `${esc(k.replace(/_/g, ' '))}: ${typeof x === 'object' ? esc(JSON.stringify(x)) : esc(x)}`).join(' · ');
+  }
+  const s = String(v);
+  return STATUSES.includes(s.trim()) ? `<span class="badge static ${statusClass(s.trim())}">${esc(s.trim())}</span>` : esc(s);
+}
+function bpObjList(title, obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  const status = obj.status ? `<span class="badge static ${statusClass(normStatus(obj.status))}">${esc(normStatus(obj.status))}</span>` : '';
+  const rows = Object.entries(obj).filter(([k]) => k !== 'status').map(([k, v]) => `<li><span class="muted">${esc(k.replace(/_/g, ' '))}:</span> ${bpValueHTML(v)}</li>`).join('');
+  return `<div class="bp-pulled-block"><div class="bp-pulled-title">${esc(title)} ${status}</div><ul>${rows}</ul></div>`;
+}
+function bpPulled(n) {
+  if (!n.pull) return '';
+  const p = bp.imports.project;
+  const wrap = (inner, src) => `<div class="bp-pulled"><div class="bp-label">From your imported file <span class="muted">· ${esc(src)}</span></div>${inner}</div>`;
+  const need = '<div class="bp-pulled bp-pulled-empty">Import <b>zambia_project_data.json</b> at the top of the blueprint to show this data here.</div>';
+  if (!p) return need;
+  const ev = p.evidence_of_struggle || {};
+  if (n.pull === 'imfDebt') {
+    const d = ev.imf_public_debt_pct_gdp;
+    if (!d || !d.series) return wrap('<p class="muted">No imf_public_debt_pct_gdp series in the file.</p>', 'evidence_of_struggle');
+    const keys = Object.keys(d.series);
+    const years = keys.map(k => k.replace(/_projection$/, ''));
+    const firstProj = keys.find(k => /_projection$/.test(k));
+    const raw = `title: Public debt (% of GDP)\nyears: ${years.join(', ')}\n` + (firstProj ? `projection-from: ${firstProj.replace(/_projection$/, '')}\n` : '') +
+      `unit: % of GDP\nseries: Public debt (% of GDP) | ${keys.map(k => d.series[k]).join(', ')}\nsource: ${d.source || 'imported file'}`;
+    return wrap(renderChart(raw) + (d.status ? `<p>Status in file: <span class="badge static ${statusClass(normStatus(d.status))}">${esc(normStatus(d.status))}</span></p>` : ''), 'evidence_of_struggle.imf_public_debt_pct_gdp');
+  }
+  if (n.pull === 'policies') {
+    const rows = p.government_policies.map(x => `<tr><td><b>${esc(x.id || '')}</b> ${esc(x.name || '')}<div class="muted">${esc(x.actor || '')}</div></td>` +
+      `<td>${bpValueHTML(x.date)}${x.date_status ? ` <span class="badge static ${statusClass(normStatus(x.date_status))}">${esc(normStatus(x.date_status))}</span>` : ''}</td>` +
+      `<td>${bpValueHTML(x.what_it_promised)}</td><td>${bpValueHTML(x.result_data)}</td><td>${bpValueHTML(x.judgement)}</td>` +
+      `<td>${x.status ? `<span class="badge static ${statusClass(normStatus(x.status))}">${esc(normStatus(x.status))}</span>` : ''}</td></tr>`).join('');
+    return wrap(`<div class="table-wrap"><table><thead><tr><th>Policy</th><th>Date</th><th>What it promised</th><th>Result with data</th><th>Judgement</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`, 'government_policies');
+  }
+  if (n.pull === 'outcomes') {
+    return wrap(bpObjList('Inflation', ev.inflation_trading_economics) + bpObjList('Interest rates', ev.interest_rates_trading_economics) + bpObjList('Currency', ev.currency_trading_economics) || '<p class="muted">No outcome data in the file.</p>', 'evidence_of_struggle');
+  }
+  if (n.pull === 'impact') {
+    return wrap(bpObjList('Budget balance (% of GDP)', ev.budget_balance_pct_gdp_trading_economics) + bpObjList('Unemployment', ev.unemployment_trading_economics) + bpObjList('Growth', ev.growth) || '<p class="muted">No impact data in the file.</p>', 'evidence_of_struggle');
+  }
+  return '';
+}
+
+/* ---------- Main blueprint view ---------- */
+function bpCountLabel(n) {
+  const w = bpWords(n);
+  if (n.noCount) return `${wordCount(bp.drafts[n.id])} words · not counted`;
+  if (n.budget) return `${w} / ${n.budget} words`;
+  const parent = bpIndex.get(n.id).parent;
+  return parent && parent.budget ? `${w} words · counts toward ${parent.id}` : `${w} words`;
+}
+function bpOver(n) { return n.budget && bpWords(n) > n.budget; }
+
+function bpChipsHTML(n) {
+  let html = '';
+  if (n.shelf && n.shelf.length) {
+    html += '<div class="bp-label">Data shelf</div><div class="bp-chips">' + n.shelf.map((c, i) => {
+      const key = n.id + ':' + i, s = bpChipStatus(key, c.s);
+      return `<span class="bp-chip"><button type="button" class="badge ${statusClass(s)}" data-bp-chip="${esc(key)}" title="Click to change status">${s}</button>${esc(c.t)}</span>`;
+    }).join('') + '</div>';
+  }
+  if (n.sources && n.sources.length) {
+    html += '<div class="bp-label">Source shelf</div><div class="bp-chips">' + n.sources.map(c => {
+      const cls = c.k === 'Quantitative' ? 'k-quant' : c.k === 'Qualitative' ? 'k-qual' : 'k-caution';
+      return `<span class="bp-chip"><span class="kind ${cls}">${esc(c.k)}</span>${esc(c.t)}</span>`;
+    }).join('') + '</div>';
+  }
+  return html;
+}
+function bpInsertsHTML(n, list) {
+  if (!list || !list.length) return '';
+  return `<div class="bp-label">Insert</div><div class="bp-inserts">` + list.map(t =>
+    `<button type="button" class="bp-insert" data-bp-ins="${esc(n.id)}" data-text="${esc('[INSERT: ' + t + ']')}" title="Add this placeholder to your draft">[INSERT: ${esc(t)}]</button>`).join('') + '</div>';
+}
+function bpRulesHTML(rules) {
+  return rules && rules.length ? `<div class="bp-rules"><b>Rules</b><ul>${rules.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : '';
+}
+function bpProgressHTML(n) {
+  if (!n.budget) return `<div class="bp-progress"><span class="bp-count" data-bp-count="${esc(n.id)}">${bpCountLabel(n)}</span></div>`;
+  const w = bpWords(n), pct = Math.min(100, (w / n.budget) * 100);
+  return `<div class="bp-progress"><div class="bp-bar"><span data-bp-bar="${esc(n.id)}" class="${bpOver(n) ? 'over' : ''}" style="width:${pct.toFixed(1)}%"></span></div>` +
+    `<span class="bp-count${bpOver(n) ? ' over' : ''}" data-bp-count="${esc(n.id)}">${bpCountLabel(n)}</span></div>`;
+}
+
+function bpSpecialHTML(n) {
+  if (n.special === 'figures') {
+    const t = bpTotals();
+    const figs = BLUEPRINT.sections.flatMap(s => { const out = []; const walk = x => { if (x.figure) out.push(x); (x.children || []).forEach(walk); }; walk(s); return out; });
+    return `<ul class="bp-figlist">${figs.map(f => `<li class="${bpActive(f) && bpActive(bpIndex.get(f.id).parent || f) ? '' : 'off'}"><b>Figure ${f.figure}</b> · ${esc(f.title.replace(/^Figure \d+[^:]*:\s*/, ''))} <a href="#blueprint/${esc(f.id)}" class="bp-goto" data-bp-goto="${esc(f.id)}">${esc(f.id)}</a>${bpActive(f) && bpActive(bpIndex.get(f.id).parent || f) ? '' : ' <span class="muted">(Aim 3 off)</span>'}</li>`).join('')}</ul>` +
+      `<label class="bp-inline">Other tables, images or photos I plan: <input type="number" min="0" max="20" class="inp bp-extra" id="bpExtraFigures" value="${esc(bp.extraFigures || 0)}"></label>` +
+      `<p class="bp-figtotal${t.figures > BP_MAX_FIGURES ? ' over' : ''}" data-bp-figtotal>${t.figures} / ${BP_MAX_FIGURES} figures planned${t.figures > BP_MAX_FIGURES ? ' — over the limit of 10' : ''}</p>`;
+  }
+  if (n.special === 'presentation') return bpCheckList('pres', BLUEPRINT.presentation);
+  if (n.special === 'checklist') { const c = bpGuideChecklist(); return `<p class="muted">From ${esc(c.from)}.</p>` + bpCheckList('final', c.items); }
+  return '';
+}
+function bpCheckList(prefix, items) {
+  const done = items.filter(t => bp.checks[prefix + ':' + t]).length;
+  return `<div class="task-progress">${done} of ${items.length} done</div><ul class="task-list">` + items.map(t => {
+    const key = prefix + ':' + t, on = !!bp.checks[key];
+    return `<li class="task-item"><label class="task${on ? ' done' : ''}"><input type="checkbox" data-bp-check="${esc(key)}"${on ? ' checked' : ''}><span>${esc(t)}</span></label></li>`;
+  }).join('') + '</ul>';
+}
+
+function bpSlotHTML(n) {
+  const st = bp.status[n.id] || 'Not started';
+  const sec = bpIndex.get(n.id).section;
+  const off = !bpActive(n);
+  return `<article class="bp-slot st-${st.replace(/\s/g, '-').toLowerCase()}${off ? ' off' : ''}" id="bp-${esc(n.id)}" data-bp-slot="${esc(n.id)}">
+    <header class="bp-slot-head">
+      <span class="bp-id">${esc(n.id)}</span><h4>${esc(n.title)}</h4>
+      ${n.special ? '' : `<span class="bp-count${bpOver(n) ? ' over' : ''}" data-bp-count="${esc(n.id)}">${bpCountLabel(n)}</span>`}
+      <select class="inp bp-status" data-bp-status="${esc(n.id)}" aria-label="Status of ${esc(n.id)}">${BP_STATUSES.map(s => `<option${s === st ? ' selected' : ''}>${s}</option>`).join('')}</select>
+    </header>
+    <div class="bp-meta">Marks: ${esc(sec.earns || '—')} <span class="muted">(${esc(sec.title)} section)</span>${n.figure ? ` · <b>Figure ${n.figure}</b>` : ''}</div>
+    ${off ? '<p class="muted">Aim 3 is switched off. Turn it on in the project card to use this slot.</p>' : `
+    ${n.what ? `<div class="bp-label">What goes here</div><ul class="bp-what">${n.what.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+    ${bpInsertsHTML(n, n.insert)}
+    ${bpChipsHTML(n)}
+    ${n.hints ? `<ul class="bp-hints">${n.hints.map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}
+    ${bpPulled(n)}
+    ${bpSpecialHTML(n)}
+    ${bpRulesHTML(n.rules)}
+    ${n.special ? '' : `<div class="bp-draft">
+      <textarea class="inp" data-bp-draft="${esc(n.id)}" id="bpd-${esc(n.id)}" rows="${n.budget && n.budget > 60 ? 6 : 4}" placeholder="Your draft for ${esc(n.id)} — your own words.">${esc(bp.drafts[n.id] || '')}</textarea>
+      <div class="bp-draft-foot"><span class="bp-count${bpOver(n) ? ' over' : ''}" data-bp-count2="${esc(n.id)}">${bpCountLabel(n)}</span><button type="button" class="btn" data-bp-copy="${esc(n.id)}">Copy</button></div>
+    </div>`}`}
+  </article>`;
+}
+
+function bpNodeHTML(n) {
+  if (bpIsSlot(n)) return bpSlotHTML(n);
+  const isSection = bpIndex.get(n.id).depth === 0;
+  const collapsed = !!bp.collapsed[n.id];
+  const off = !bpActive(n);
+  const head = isSection
+    ? `<button type="button" class="bp-head bp-sec-head" data-bp-toggle="${esc(n.id)}" aria-expanded="${!collapsed}"><span class="chev"></span><span class="bp-sec-id">${esc(n.id)}</span>${esc(n.title)}${n.budget ? `<span class="bp-budget-tag">${n.budget} words</span>` : '<span class="bp-budget-tag">no word budget</span>'}</button>
+       <div class="bp-earns">Earns: ${esc(n.earns || '—')}</div>`
+    : `<button type="button" class="bp-head bp-sub-head" data-bp-toggle="${esc(n.id)}" aria-expanded="${!collapsed}"><span class="chev"></span><span class="bp-id">${esc(n.id)}</span>${esc(n.title)}</button>`;
+  return `<section class="bp-node ${isSection ? 'bp-section' : 'bp-sub'}${collapsed ? ' collapsed' : ''}${off ? ' off' : ''}" id="bp-${esc(n.id)}" data-bp-node="${esc(n.id)}">
+    ${head}
+    ${off ? '<p class="muted bp-offnote">Aim 3 is switched off — not counted in words, figures or slots. Turn it back on in the project card.</p>' : (n.budget || !isSection ? bpProgressHTML(n) : '')}
+    ${off ? '' : `<div class="bp-children">
+      ${n.heading ? bpInsertsHTML(n, [n.heading]) : ''}
+      ${n.what ? `<ul class="bp-what">${n.what.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+      ${bpRulesHTML(n.rules)}
+      ${n.children.map(bpNodeHTML).join('')}
+    </div>`}
+  </section>`;
+}
+
+function bpStickyHTML() {
+  const t = bpTotals();
+  return `<div class="bp-sticky" id="bpSticky">
+    <span class="${t.words > BP_TOTAL_WORDS ? 'over' : ''}" data-bp-total-words><b>${t.words}</b> / ${BP_TOTAL_WORDS} words</span>
+    <span class="${t.figures > BP_MAX_FIGURES ? 'over' : ''}" data-bp-total-figs><b>${t.figures}</b> / ${BP_MAX_FIGURES} figures</span>
+    <span data-bp-total-done><b>${t.done}</b> / ${t.total} slots done</span>
+    <span class="bp-sticky-actions"><button type="button" class="btn" data-bp-act="export">Export drafts</button></span>
+  </div>`;
+}
+
+function renderBlueprint() {
+  const P = BLUEPRINT.project;
+  const wfDone = BLUEPRINT.workflow.filter((_, i) => bp.workflow[i]).length;
+  const imp = (kind, file, label) => {
+    const have = !!bp.imports[kind];
+    return `<div class="bp-import"><span class="bp-import-name">${esc(file)}</span>` +
+      `<span class="badge static ${have ? 's-verified' : 's-missing'}">${have ? 'IMPORTED' : 'NOT IMPORTED'}</span>` +
+      `<button type="button" class="btn" data-bp-act="import-${kind}">${have ? 'Replace…' : 'Import JSON'}</button>` +
+      (have ? `<button type="button" class="btn" data-bp-act="clear-${kind}">Remove</button>` : '') +
+      `<span class="muted">${esc(label)}</span></div>`;
+  };
+  view.innerHTML = `<div class="bp-wrap">
+    ${bpStickyHTML()}
+    <article class="note bp-note">
+      <div class="note-meta"><span class="pill type-dashboard">Blueprint</span><span>Scaffold only — every word of the report is yours.</span></div>
+      <h1 class="note-title">Project Blueprint</h1>
+
+      <div class="bp-card">
+        <div class="bp-card-title">Project card</div>
+        <dl class="bp-dl">${P.rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+          <dt>Aims (suggested)</dt><dd><ul>${P.aims.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+          <label class="bp-inline"><input type="checkbox" id="bpUseAim3"${bp.useAim3 ? ' checked' : ''}> Use Aim 3 (untick to drop it from words, figures and slots)</label></dd>
+        </dl>
+      </div>
+
+      <details class="bp-card bp-workflow" open>
+        <summary><span class="bp-card-title">Workflow order</span> <span class="muted">${wfDone} of ${BLUEPRINT.workflow.length} done</span></summary>
+        <ol class="task-list bp-wf">${BLUEPRINT.workflow.map((w, i) => `<li class="task-item"><label class="task${bp.workflow[i] ? ' done' : ''}"><input type="checkbox" data-bp-wf="${i}"${bp.workflow[i] ? ' checked' : ''}><span>${i + 1}. ${esc(w)}</span></label></li>`).join('')}</ol>
+      </details>
+
+      <div class="bp-card">
+        <div class="bp-card-title">Data files</div>
+        <p class="muted">Pick each file from your computer. Its data is shown in the slots that use it and saved in this browser. Nothing is uploaded.</p>
+        ${imp('project', 'zambia_project_data.json', 'Policy table (B2.1), debt chart (B1.1), outcome and impact data (B2.2, B3.1)')}
+        ${imp('guide', 'grinds360_research_guide.json', 'Final checklist (E4)')}
+      </div>
+
+      ${BLUEPRINT.sections.map(bpNodeHTML).join('')}
+
+      <div class="callout callout-warning bp-remember"><div class="callout-title">Remember</div><div class="callout-body"><ul>${BLUEPRINT.remember.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
+    </article>
+  </div>`;
+  if (bpFocus) {
+    const el = document.getElementById('bp-' + bpFocus);
+    if (el) { el.scrollIntoView({ block: 'start' }); view.scrollTop -= 60; el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1400); }
+    bpFocus = null;
+  }
+}
+
+/* Update every count, bar and total in place (keeps typing focus) */
+function bpUpdateCounts() {
+  view.querySelectorAll('[data-bp-count],[data-bp-count2]').forEach(el => {
+    const n = bpIndex.get(el.dataset.bpCount || el.dataset.bpCount2);
+    if (!n) return;
+    el.textContent = bpCountLabel(n.node);
+    el.classList.toggle('over', !!bpOver(n.node));
+  });
+  view.querySelectorAll('[data-bp-bar]').forEach(el => {
+    const n = bpIndex.get(el.dataset.bpBar).node;
+    el.style.width = Math.min(100, (bpWords(n) / n.budget) * 100).toFixed(1) + '%';
+    el.classList.toggle('over', !!bpOver(n));
+  });
+  const t = bpTotals(), set = (sel, html, over) => { const el = view.querySelector(sel); if (el) { el.innerHTML = html; el.classList.toggle('over', !!over); } };
+  set('[data-bp-total-words]', `<b>${t.words}</b> / ${BP_TOTAL_WORDS} words`, t.words > BP_TOTAL_WORDS);
+  set('[data-bp-total-figs]', `<b>${t.figures}</b> / ${BP_MAX_FIGURES} figures`, t.figures > BP_MAX_FIGURES);
+  set('[data-bp-total-done]', `<b>${t.done}</b> / ${t.total} slots done`);
+  set('[data-bp-figtotal]', `${t.figures} / ${BP_MAX_FIGURES} figures planned${t.figures > BP_MAX_FIGURES ? ' — over the limit of 10' : ''}`, t.figures > BP_MAX_FIGURES);
+}
+
+/* ---------- Sidebar outline ---------- */
+function bpTreeHTML(q) {
+  if (state.tag) return '';
+  const open = !bp.sideCollapsed.__root || q;
+  const row = (n, depth) => {
+    if (q && !bpMatches(n, q)) return '';
+    const slot = bpIsSlot(n), st = bp.status[n.id] || 'Not started';
+    const kids = slot ? '' : n.children.map(c => row(c, depth + 1)).join('');
+    const closed = !slot && bp.sideCollapsed[n.id] && !q;
+    return `<div class="bp-trow${bpActive(n) ? '' : ' off'}">` +
+      `<a href="#blueprint/${esc(n.id)}" class="bp-tlink" data-bp-goto="${esc(n.id)}" style="padding-left:${12 + depth * 13}px">` +
+      (slot ? `<span class="bp-dot st-${st.replace(/\s/g, '-').toLowerCase()}" title="${esc(st)}"></span>` :
+        `<span class="chev bp-tchev${closed ? ' closed' : ''}" data-bp-side="${esc(n.id)}" title="Collapse"></span>`) +
+      `<b>${esc(n.id)}</b> ${esc(n.title)}</a>` + (closed ? '' : kids) + '</div>';
+  };
+  const t = bpTotals();
+  return `<div class="folder bp-tree${open ? '' : ' collapsed'}">` +
+    `<button class="folder-head" data-bp-side="__root" aria-expanded="${!!open}"><span class="chev"></span>Project Blueprint<span class="count">${t.done}/${t.total}</span></button>` +
+    `<div class="folder-notes"><a href="#blueprint" class="bp-tlink bp-tlink-top${state.mode === 'blueprint' ? ' active' : ''}" data-bp-goto="">◆ Open the blueprint</a>` +
+    BLUEPRINT.sections.map(s => row(s, 0)).join('') + '</div></div>';
+}
+
+function bpRightHTML() {
+  const t = bpTotals();
+  return '<h3>Project Blueprint</h3><p class="muted">A scaffold for the report. Click an [INSERT] box to add that placeholder to the draft, then replace it with your own words.</p>' +
+    '<h3>Words by section</h3><ul class="rlist">' + BLUEPRINT.sections.filter(s => s.budget).map(s =>
+      `<li><a href="#blueprint/${esc(s.id)}" data-bp-goto="${esc(s.id)}">${esc(s.id)} ${esc(s.title)}</a><span class="snip${bpOver(s) ? ' over' : ''}">${bpWords(s)} / ${s.budget} words</span></li>`).join('') + '</ul>' +
+    `<h3>Totals</h3><div class="mini-stats"><div><b>${t.words}</b>of ${BP_TOTAL_WORDS} words</div><div><b>${t.figures}</b>of ${BP_MAX_FIGURES} figures</div><div><b>${t.done}</b>of ${t.total} slots</div></div>` +
+    `<h3>Data files</h3><p class="muted">Project data: ${bp.imports.project ? 'imported' : 'not imported'}<br>Research guide: ${bp.imports.guide ? 'imported' : 'not imported'}</p>`;
+}
+
+/* ---------- Export drafts (.md in report order) ---------- */
+function bpExportDrafts() {
+  const t = bpTotals();
+  let out = `# Zambia debt burden — report drafts\n\nExported ${today()} · ${t.words} / ${BP_TOTAL_WORDS} words · ${t.done} / ${t.total} slots done\n`;
+  const walk = (n, level) => {
+    if (!bpActive(n)) return;
+    const h = '#'.repeat(Math.min(6, level));
+    if (bpIsSlot(n)) {
+      if (n.special) return;
+      const d = (bp.drafts[n.id] || '').trim();
+      out += `\n${h} ${n.id} ${n.title}\n\n${d || '_(not drafted yet)_'}\n`;
+    } else {
+      out += `\n${h} ${level === 2 ? n.id + '. ' : n.id + ' '}${n.title}\n`;
+      n.children.forEach(c => walk(c, level + 1));
+    }
+  };
+  BLUEPRINT.sections.forEach(s => walk(s, 2));
+  download(`zambia-report-drafts-${today()}.md`, out, 'text/markdown;charset=utf-8');
+  toast('Drafts exported.');
+}
+
+/* ---------- Copy a draft ---------- */
+function bpCopy(id) {
+  const text = bp.drafts[id] || '';
+  if (!text.trim()) { toast('This draft is empty.'); return; }
+  const fallback = () => {
+    const ta = document.getElementById('bpd-' + id);
+    if (!ta) return;
+    ta.focus(); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    toast(ok ? 'Copied.' : 'Text selected — press Ctrl+C to copy.');
+  };
+  try { navigator.clipboard.writeText(text).then(() => toast('Copied.'), fallback); } catch (e) { fallback(); }
+}
+
+/* ---------- Blueprint events ---------- */
+function bpHandleClick(e) {
+  const t = e.target;
+  const side = t.closest('[data-bp-side]');
+  if (side) {
+    e.preventDefault(); e.stopPropagation();
+    const k = side.dataset.bpSide;
+    bp.sideCollapsed[k] = !bp.sideCollapsed[k];
+    bpSave(); renderTree();
+    return true;
+  }
+  const go = t.closest('[data-bp-goto]');
+  if (go) {
+    e.preventDefault();
+    const id = go.dataset.bpGoto;
+    if (id) { let p = bpIndex.get(id); while (p) { bp.collapsed[p.node.id] = false; p = p.parent ? bpIndex.get(p.parent.id) : null; } }
+    bpFocus = id || null;
+    const hash = id ? '#blueprint/' + id : '#blueprint';
+    if (location.hash === hash) route(); else location.hash = hash;
+    return true;
+  }
+  const tog = t.closest('[data-bp-toggle]');
+  if (tog) {
+    const id = tog.dataset.bpToggle;
+    bp.collapsed[id] = !bp.collapsed[id];
+    bpSave();
+    const el = tog.closest('[data-bp-node]');
+    el.classList.toggle('collapsed', bp.collapsed[id]);
+    tog.setAttribute('aria-expanded', String(!bp.collapsed[id]));
+    return true;
+  }
+  const chip = t.closest('[data-bp-chip]');
+  if (chip) {
+    const key = chip.dataset.bpChip, [id, i] = [key.slice(0, key.lastIndexOf(':')), +key.slice(key.lastIndexOf(':') + 1)];
+    const base = bpIndex.get(id).node.shelf[i].s;
+    const cur = bpChipStatus(key, base);
+    bp.chips[key] = STATUSES[(STATUSES.indexOf(cur) + 1) % STATUSES.length];
+    bpSave();
+    chip.textContent = bp.chips[key];
+    chip.className = 'badge ' + statusClass(bp.chips[key]);
+    return true;
+  }
+  const ins = t.closest('[data-bp-ins]');
+  if (ins) {
+    const ta = document.getElementById('bpd-' + ins.dataset.bpIns) ||
+      (() => { const n = bpIndex.get(ins.dataset.bpIns).node; const first = bpSlots(n)[0]; return first && document.getElementById('bpd-' + first.id); })();
+    if (!ta) return true;
+    const text = ins.dataset.text;
+    const start = ta.selectionStart ?? ta.value.length, end = ta.selectionEnd ?? ta.value.length;
+    const pad = start > 0 && !/\s$/.test(ta.value.slice(0, start)) ? ' ' : '';
+    ta.focus();
+    ta.setRangeText(pad + text, start, end, 'end');
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+  const copy = t.closest('[data-bp-copy]');
+  if (copy) { bpCopy(copy.dataset.bpCopy); return true; }
+  const act = t.closest('[data-bp-act]');
+  if (act) {
+    const a = act.dataset.bpAct;
+    if (a === 'export') bpExportDrafts();
+    else if (a === 'import-project') $('#bpImportProject').click();
+    else if (a === 'import-guide') $('#bpImportGuide').click();
+    else if (a === 'clear-project' || a === 'clear-guide') {
+      const kind = a.slice(6);
+      if (confirm('Remove the imported ' + (kind === 'project' ? 'project data' : 'research guide') + ' from this browser?')) { bp.imports[kind] = null; bpSave(true); renderMain(); renderRight(); }
+    }
+    return true;
+  }
+  return false;
+}
+
+function bpHandleChange(e) {
+  const t = e.target;
+  if (t.matches('[data-bp-status]')) {
+    bp.status[t.dataset.bpStatus] = t.value; bpSave();
+    const card = t.closest('.bp-slot');
+    card.className = card.className.replace(/\bst-[a-z-]+/, 'st-' + t.value.replace(/\s/g, '-').toLowerCase());
+    bpUpdateCounts(); renderTree(); renderRight();
+    return true;
+  }
+  if (t.matches('[data-bp-wf]')) {
+    bp.workflow[t.dataset.bpWf] = t.checked; bpSave();
+    t.closest('.task').classList.toggle('done', t.checked);
+    const sum = view.querySelector('.bp-workflow summary .muted');
+    if (sum) sum.textContent = `${BLUEPRINT.workflow.filter((_, i) => bp.workflow[i]).length} of ${BLUEPRINT.workflow.length} done`;
+    return true;
+  }
+  if (t.matches('[data-bp-check]')) {
+    bp.checks[t.dataset.bpCheck] = t.checked; bpSave();
+    t.closest('.task').classList.toggle('done', t.checked);
+    const list = t.closest('.task-list'), prog = list && list.previousElementSibling;
+    if (prog && prog.classList.contains('task-progress')) {
+      const boxes = list.querySelectorAll('input[type=checkbox]');
+      prog.textContent = `${[...boxes].filter(b => b.checked).length} of ${boxes.length} done`;
+    }
+    return true;
+  }
+  if (t.id === 'bpUseAim3') { bp.useAim3 = t.checked; bpSave(); const top = view.scrollTop; renderMain(); view.scrollTop = top; renderTree(); renderRight(); return true; }
+  if (t.id === 'bpExtraFigures') { bp.extraFigures = Math.max(0, parseInt(t.value, 10) || 0); bpSave(); bpUpdateCounts(); return true; }
+  if (t.id === 'bpImportProject' || t.id === 'bpImportGuide') {
+    if (t.files[0]) bpImportFile(t.id === 'bpImportProject' ? 'project' : 'guide', t.files[0]);
+    t.value = '';
+    return true;
+  }
+  return false;
+}
+
+let bpTreeTimer = null;
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (!t.matches || !t.matches('[data-bp-draft]')) return;
+  bp.drafts[t.dataset.bpDraft] = t.value;
+  bpSave();
+  bpUpdateCounts();
+  clearTimeout(bpTreeTimer);
+  bpTreeTimer = setTimeout(() => { if (state.search) renderTree(); renderRight(); }, 500);
+});
+
+bpLoad();
+
+/* ==========================================================================
+   13. ROUTING  (#note/<id>, #graph, #blueprint or #blueprint/<slot id>)
    ========================================================================== */
 function open(id, edit) {
   state.pendingEdit = !!edit;
@@ -1974,6 +2914,11 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   if (h === 'graph') {
     state.mode = 'graph';
+  } else if (h === 'blueprint' || h.startsWith('blueprint/')) {
+    const id = h.slice(10);
+    if (id && bpIndex.has(id)) { bpFocus = id; let p = bpIndex.get(id); while (p) { bp.collapsed[p.node.id] = false; p = p.parent ? bpIndex.get(p.parent.id) : null; } }
+    if (state.mode !== 'blueprint' && !bpFocus) view.scrollTop = 0;
+    state.mode = 'blueprint';
   } else {
     const id = h.startsWith('note/') ? h.slice(5) : '';
     state.current = getNote(id) ? id : homeId();
@@ -1991,6 +2936,7 @@ function route() {
 const ACTIONS = {
   'new': () => { const t = prompt('New note title:'); if (t) createNote(t, currentFolder()); },
   'home': () => open(homeId()),
+  'blueprint': () => { if (state.mode === 'blueprint') open(state.current || homeId()); else location.hash = '#blueprint'; },
   'graph': () => { if (state.mode === 'graph') open(state.current || homeId()); else location.hash = '#graph'; },
   'edit': () => { state.mode = state.mode === 'edit' ? 'view' : 'edit'; renderMain(); renderTree(); },
   'delete': deleteNote,
@@ -2010,6 +2956,8 @@ document.addEventListener('click', e => {
 
   const act = t.closest('[data-action]');
   if (act && ACTIONS[act.dataset.action]) { e.preventDefault(); ACTIONS[act.dataset.action](); return; }
+
+  if (bpHandleClick(e)) return;
 
   const ins = t.closest('[data-insert]');
   if (ins) { insertAtCursor(SNIPPETS[ins.dataset.insert]()); return; }
@@ -2050,6 +2998,7 @@ document.addEventListener('click', e => {
 
 document.addEventListener('change', e => {
   const t = e.target;
+  if (bpHandleChange(e)) return;
   if (t.matches('.field-input')) setFieldValue(t.dataset.note, +t.dataset.k, t.value);
   else if (t.matches('.task-check')) toggleTask(t.dataset.note, +t.dataset.line, t.checked);
 });
@@ -2059,7 +3008,7 @@ document.addEventListener('keydown', e => {
   if (t.matches && t.matches('.field-input') && e.key === 'Enter') { t.blur(); return; }
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); document.body.classList.add('side-open'); $('#search').focus(); $('#search').select(); }
-  else if (mod && e.key.toLowerCase() === 'e' && state.mode !== 'graph') { e.preventDefault(); ACTIONS.edit(); }
+  else if (mod && e.key.toLowerCase() === 'e' && state.mode !== 'graph' && state.mode !== 'blueprint') { e.preventDefault(); ACTIONS.edit(); }
   else if (e.key === 'Escape' && state.mode === 'edit' && !t.matches('.field-input')) { ACTIONS.edit(); }
 });
 
